@@ -1,7 +1,7 @@
 /* Briques d'interface et écrans */
 const hue=id=>[...id].reduce((a,c)=>a+c.charCodeAt(0)*7,0)%360;
 const ini=id=>M[id].n.split(' ').map(w=>w[0]).join('').slice(0,2);
-const av=(id,c='')=>id==='club'?`<span class="av club ${c}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>`:`<span class="av ${c}" style="--h:${hue(id)}">${ini(id)}</span>`;
+const av=(id,c='')=>id==='club'?`<span class="av club ${c}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>`:M[id].photo?`<span class="av ${c}" style="background-image:url(${M[id].photo})"></span>`:`<span class="av ${c}" style="--h:${hue(id)}">${ini(id)}</span>`;
 const RC={Club:'club',Enseignante:'coach',Enseignant:'coach',Président:'pres',Capitaine:'cap'};
 /* Un seul classement par personne, choisi selon le sport de l'écran */
 const rk=(id,sport)=>{const m=M[id],tn=m.r&&m.r!=='NC'?m.r+' Tennis':'',pd=m.pl?'Niv '+m.pl+' Padel':'';return sport==='Padel'?(pd||tn):(tn||pd)};
@@ -18,7 +18,7 @@ const gallery=ph=>ph&&ph.length?`<div class="gal ${ph.length===1?'one':''}">${ph
 
 function recCard(r){const g=grp(r.tid),s=teamScore(r);
  return `<button class="rec" data-a="open" data-v="rec" data-id="${r.id}"><span class="row" style="justify-content:space-between"><span class="tags">${teamTags(r.tid)}</span>${stPill(r)}</span>
- <span class="vs"><span class="t">${teamName(g)}<br><span class="muted small" style="font-weight:500">${club().name}</span></span><span class="n">${r.st==='soon'?'–':`<b>${s[0]}</b> · ${s[1]}`}</span><span class="t">${r.opp}</span></span>
+ <span class="vs"><span class="t">${teamName(g)}<br><span class="muted small" style="font-weight:500">${club().name}</span></span><span class="n" data-live2="${r.id}">${r.st==='soon'?'–':`<b>${s[0]}</b> · ${s[1]}`}</span><span class="t">${r.opp}</span></span>
  <span class="muted small">${r.comp} · ${r.when}</span></button>`}
 
 /* ---------- publications ---------- */
@@ -52,7 +52,7 @@ function evBox(p){const y=(p.yes||0)+(p.my==='yes'?1:0),m=(p.maybe||0)+(p.my==='
 
 function postBody(p){const k=p.kind;
  if(k==='annonce'||k==='event'||k==='cta'){const usePoster=p.img||k==='event';
-  return (usePoster?`<div class="poster ${p.img?'photo':''}" ${p.img?`style="background-image:url(${p.img})"`:''}>${p.done?'<span class="bd done">Terminé</span>':''}<span class="kicker" style="color:var(--fg)">${k==='event'?'Événement':club().name}</span><span class="big">${p.title}</span>${k==='event'?`<span class="datepill">${ic('cal')}${shortDate(p)}</span>`:''}</div>`:`<h2 class="tilt sm">${p.title}<i class="dd"></i></h2>`)
+  return (usePoster?`<div class="poster ${p.img?'photo':''}" ${p.img?`style="background-image:url(${p.img})" data-a="photo" role="button" tabindex="0" aria-label="Agrandir la photo"`:''}>${p.done?'<span class="bd done">Terminé</span>':''}<span class="kicker" style="color:var(--fg)">${k==='event'?'Événement':club().name}</span><span class="big">${p.title}</span>${k==='event'?`<span class="datepill">${ic('cal')}${shortDate(p)}</span>`:''}</div>`:`<h2 class="tilt sm">${p.title}<i class="dd"></i></h2>`)
   +`<p>${p.body}</p>${k==='event'?evBox(p):''}${k==='cta'?`<a class="btn full" href="${p.url}" target="_blank" rel="noopener">${p.label} ${ic('link')}</a><span class="muted small">Ouvre ${p.url.replace(/^https?:\/\//,'').split('/')[0]} en dehors de l'appli.</span>`:''}`}
  if(k==='perf'){const r=p.res;return `<div class="perf ${r.w?'':'lost'}"><span class="stamp ${r.perf?'':r.w?'win':'lose'}">${r.perf?'Perf !':r.w?'Victoire':'Défaite'}</span><span class="kicker">${esc(r.ctx)}</span><span class="sc">${esc(r.sc)}</span><span>${r.w?'Victoire':'Défaite'} contre <b>${esc(r.opp)}</b> <span class="bd rk">${esc(r.or)}</span></span></div>`}
  if(k==='play'){const y=p.play,inn=y.in.includes(ME()),full=y.in.length>=y.places,wt=y.wait.includes(ME());
@@ -72,7 +72,7 @@ function postHTML(p){const liked=S.liked.has(p.id),sp=postSport(p);
  return `<article class="post">${sp?`<span class="sp ${sp==='Padel'?'padel':''}">${sp}</span>`:''}<div class="hd">${av(p.by)}<div class="grow"><div class="row" style="gap:6px;flex-wrap:wrap">${who(p.by)}${bd(p.by,sp)}</div><div class="muted small">${p.t}</div></div><button class="ib" data-a="pmenu" data-id="${p.id}" aria-label="Options de la publication">${ic('more')}</button></div>
  ${isAdmin()&&p.vis&&p.vis.length?`<div class="vis">${ic('eye')}Visible par ${p.vis.map(v=>`<span class="tag">${v}</span>`).join('')}</div>`:''}${postBody(p)}
  <div class="acts"><button class="act ${liked?'on':''} ${S.pop===p.id?'pop':''}" data-a="like" data-id="${p.id}" aria-pressed="${liked}" aria-label="J'aime">${ic('heart')}${p.likes+(liked?1:0)}</button><button class="act" data-a="comments" data-id="${p.id}" aria-label="Commentaires">${ic('com')}${p.com.length}</button></div></article>`}
-const msgRow=(m,i,sport,ref,fresh)=>S.blocked.has(m.by)?'':`<div class="msg ${m.by===ME()?'me':''} ${fresh?'in':''}">${av(m.by,'sm')}<div class="grow"><div class="hd">${who(m.by)}${bd(m.by,sport)}<time>${m.t}</time></div><button class="bub" data-a="mmenu" data-ref="${ref}" data-i="${i}" aria-label="Options du message">${m.img?`<span class="ph" style="background-image:url(${m.img})"></span>`:''}${esc(m.x)}</button></div></div>`;
+const msgRow=(m,i,sport,ref,fresh)=>S.blocked.has(m.by)?'':`<div class="msg ${m.by===ME()?'me':''} ${fresh?'in':''}">${av(m.by,'sm')}<div class="grow"><div class="hd">${who(m.by)}${bd(m.by,sport)}<time>${m.t}</time></div>${m.img?`<button class="ph mph" style="background-image:url(${m.img})" data-a="photo" aria-label="Agrandir la photo"></button>`:''}<button class="bub" data-a="mmenu" data-ref="${ref}" data-i="${i}" aria-label="Options du message">${m.x?esc(m.x):ic('more')}</button></div></div>`;
 const muteBtn=c=>`<button class="ib ${c.mute?'off':''}" data-a="mute" data-id="${c.id}" aria-pressed="${!!c.mute}" aria-label="${c.mute?'Réactiver les notifications de '+c.name:'Mettre '+c.name+' en sourdine'}">${ic(c.mute?'bellOff':'bell')}</button>`;
 /* Un compte jeune ne voit que les annonces et les canaux de son groupe */
 const chanOk=c=>S.role!=='kid'||c.id==='annonces'||c.kid;
@@ -183,7 +183,7 @@ function contact(id){const self=id===ME(),row=(i,l,v)=>`<div class="ct">${ic(i)}
  const c=CT[id]||{};
  return `<div class="card"><span class="kicker">Contact</span>${ageRow}${c.tel?row('phone','Téléphone',c.tel):''}${c.mail?row('mail','E-mail',c.mail):''}${c.soc?row('at',c.soc[0],c.soc[1]):''}<p class="muted small">${c.tel||c.mail||c.soc?`Les coordonnées affichées sont celles que ${first(id)} a choisi de partager.`:`${first(id)} ne partage pas ses coordonnées.`}</p></div>`}
 function profile(id){const m=M[id],self=id===ME(),f=S.follow.has(id),w=m.res.filter(r=>r.w).length,pf=m.res.filter(r=>r.perf).length,blk=S.blocked.has(id);
- let h=`<div class="pad"><div class="phero"><div class="row" style="gap:14px">${av(id)}<div class="grow"><h2 class="tilt">${m.n.replace(' ','<br>')}</h2></div></div>
+ let h=`<div class="pad"><div class="phero"><div class="row" style="gap:14px">${self?`<label class="avedit" aria-label="Changer ma photo de profil">${av(id)}<span class="cam">${ic('image')}</span><input type="file" id="me-photo" accept="image/*"></label>`:m.photo?`<button class="avbtn" data-a="photo" style="background-image:url(${m.photo})" aria-label="Agrandir la photo de profil">${av(id)}</button>`:av(id)}<div class="grow"><h2 class="tilt">${m.n.replace(' ','<br>')}</h2></div></div>
  <div class="row" style="flex-wrap:wrap;gap:6px">${m.role?`<span class="bd ${RC[m.role]||''}">${m.role}</span>`:''}<span class="muted small">${m.team}</span></div>
  <div class="rtiles">${m.r&&m.r!=='NC'?`<span class="rt tennis"><b>${m.r}</b>Tennis</span>`:''}${m.pl?`<span class="rt padel"><b>Niv ${m.pl}</b>Padel</span>`:''}${m.pad?`<span class="rt"><b>${m.pad}</b>Classement padel</span>`:''}${(!m.r||m.r==='NC')&&!m.pl&&!m.pad?'<span class="rt"><b>NC</b>Non classé</span>':''}</div>
  ${self?'':`<div class="ctl">${blk?`<button class="btn grow ghost" data-a="unblock" data-id="${id}">Débloquer ${first(id)}</button>`:`<button class="btn grow ${f?'on':''}" data-a="follow" data-id="${id}" aria-pressed="${f}">${ic(f?'check':'plus')}${f?'Suivi':'Suivre '+first(id)}</button>`}<button class="ib rnd" data-a="umenu" data-id="${id}" aria-label="Options">${ic('more')}</button></div>`}</div>
@@ -202,9 +202,9 @@ function profile(id){const m=M[id],self=id===ME(),f=S.follow.has(id),w=m.res.fil
 
 /* ---------- écrans ---------- */
 const V={
- home(){const live=recs.find(r=>r.st==='live'&&!r.arch),v=M[ME()],feed=posts.filter(canSee);
+ home(){const v=M[ME()],feed=posts.filter(canSee);
   const st=(a,attrs,inner,l,cls)=>`<button class="story" data-a="${a}" ${attrs}><span class="ring ${cls||''}"><span>${inner}</span></span>${l}</button>`;
-  return `<div class="stories">${live?st('open',`data-v="rec" data-id="${live.id}"`,teamScore(live).join('-'),'En direct','live'):''}${S.role==='kid'?'':st('newPost','data-k="play"',ic('plus'),'Chercher une partie')}${chans.filter(c=>chanOk(c)&&c.g!=='club'&&(S.role==='kid'||!c.kid||(v.kids&&v.kids.length))).slice(0,4).map(c=>st('open',`data-v="chan" data-id="${c.id}"`,c.name.split(' ').map(w=>w[0]).join('').slice(0,3),c.name.split(' ').slice(0,2).join(' '))).join('')}${st('goClub','data-t="actus"',ic('news'),'Journal')}</div>
+  return `<div class="stories">${recs.filter(r=>r.st==='live'&&!r.arch).map(r=>st('open',`data-v="rec" data-id="${r.id}"`,`<b data-live="${r.id}">${teamScore(r).join(' - ')}</b>`,`<b>Direct</b>${teamName(grp(r.tid))}`,'live')).join('')}${S.role==='kid'?'':st('newPost','data-k="play"',ic('plus'),'Chercher une partie')}${chans.filter(c=>chanOk(c)&&c.g!=='club'&&(S.role==='kid'||!c.kid||(v.kids&&v.kids.length))).slice(0,4).map(c=>st('open',`data-v="chan" data-id="${c.id}"`,c.name.split(' ').map(w=>w[0]).join('').slice(0,3),c.name.split(' ').slice(0,2).join(' '))).join('')}${st('goClub','data-t="actus"',ic('news'),'Journal')}</div>
   <div class="feed">${feed.length?feed.map(postHTML).join(''):empty('home','Le mur est vide','Les annonces et les résultats du club apparaîtront ici.')}</div>`},
  chans(){const list=chans.filter(c=>c.g===S.chanTab&&chanOk(c));
   return segs('chanTab',[['club','Club','club'],['train','Entraînements','ball'],['team','Équipes','users']])+(list.length?list.map(c=>{const l=c.msgs.filter(m=>!S.blocked.has(m.by)).slice(-1)[0];return `<div class="li ${c.mute?'dim':''}"><button class="go" data-a="open" data-v="chan" data-id="${c.id}"><span class="tile">#</span><span class="grow"><span class="nm">${c.name}</span> <span class="muted small">· ${c.desc}</span><span class="last">${l?first(l.by)+' : '+(l.img&&!l.x?'Photo':esc(l.x)):'Aucun message'}</span></span>${c.un?`<span class="un">${c.un}</span>`:''}</button>${muteBtn(c)}</div>`}).join(''):empty('chat','Aucun canal ici','Tes canaux s\'ouvrent selon ton groupe et ton équipe.'))

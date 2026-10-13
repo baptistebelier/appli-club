@@ -127,7 +127,7 @@ const arts=[
 ];
 const FORM=[["Adhésion adulte","Tennis illimité, licence comprise","210 € / an"],["Adhésion jeune","Moins de 18 ans, licence comprise","140 € / an"],["École de tennis","1 h 30 par semaine, 30 séances","+ 190 € / an"],["Pass padel","Réservation illimitée en heures creuses","35 € / mois"],["Location de piste","Padel, 1 h 30, 4 joueurs","32 €"]];
 const PARTNERS=[['Garage des Tilleuls','Partenaire des équipes'],['Boulangerie Lachaud','Partenaire du tournoi interne'],['Optique du Centre',"Partenaire de l'école de tennis"]];
-const NOTIFS=[{by:'thomas',txt:'mène 2 jeux à 1 au 3e set contre A. Morel',t:'En direct',n:1},{by:'club',txt:"a publié un événement : Doubles surprise et barbecue",t:'Il y a 1 h',n:1},{by:'ines',txt:'a signé une perf à 5/6 au Tournoi de Tulle',t:'Il y a 5 h'},{by:'sarah',txt:'a écrit dans Adultes compétition',t:'Dim.'}];
+const NOTIFS=[{by:'thomas',txt:'mène 2 jeux à 1 au 3e set contre A. Morel',t:'En direct',n:1,go:{v:'rec',id:'r1'}},{by:'club',txt:"a publié un événement : Doubles surprise et barbecue",t:'Il y a 1 h',n:1,go:{v:'post',id:'p0'}},{by:'ines',txt:'a signé une perf à 5/6 au Tournoi de Tulle',t:'Il y a 5 h',go:{v:'post',id:'p2'}},{by:'sarah',txt:'a écrit dans Adultes compétition',t:'Dim.',go:{v:'chan',id:'compet'}}];
 const REPORTS=[];
 
 /* État de l'appli. role : admin (bureau), cap (capitaine), mem (adhérent), kid (compte jeune de Léo) */

@@ -20,7 +20,7 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
  const foot=$('foot'),tabs=$('tabs'),liveRec=v.v==='rec'&&recs.find(r=>r.id===v.id).st==='live',fk=key+(liveRec?'L':'');
  if(v.v==='chan'||liveRec){foot.hidden=false;tabs.hidden=true;
   if(fk!==lastFoot){const c=v.v==='chan'?chans.find(c=>c.id===v.id):null;S.img=null;
-   foot.innerHTML=c&&c.ro&&!isAdmin()?'<div class="muted small" style="text-align:center;padding:8px">Seul le club publie dans ce canal.</div>':`<form class="composer" id="composer"><label class="attach" aria-label="Joindre une photo">${ic('image')}<input type="file" id="m-img" accept="image/*"></label><input type="text" id="msg-input" autocomplete="off" placeholder="${c?'Écrire dans '+esc(c.name):"Encourager l'équipe en direct"}" aria-label="Message"><button class="send" aria-label="Envoyer">${ic('send')}</button></form>`}}
+   foot.innerHTML=c&&c.ro&&!isAdmin()?'<div class="muted small" style="text-align:center;padding:8px">Seul le club publie dans ce canal.</div>':`<div class="att" id="att" hidden></div><form class="composer" id="composer"><label class="attach" aria-label="Joindre une photo">${ic('image')}<input type="file" id="m-img" accept="image/*"></label><input type="text" id="msg-input" autocomplete="off" placeholder="${c?'Écrire dans '+esc(c.name):"Encourager l'équipe en direct"}" aria-label="Message"><button class="send" aria-label="Envoyer">${ic('send')}</button></form>`}}
  else{foot.hidden=true;tabs.hidden=false;const un=chans.reduce((a,c)=>a+(c.mute||!chanOk(c)?0:c.un),0),tb=(k,i,l)=>`<button data-a="tab" data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${ic(i)}${l}${k==='chans'&&un?`<span class="cnt">${un}</span>`:''}</button>`;
   tabs.innerHTML=tb('home','home','Accueil')+tb('chans','chat','Canaux')+tb('recs','users','Équipes')+tb('club','club','Club')+tb('me','user','Profil')}
  main.scrollTop=keep&&key===lastKey?y:(v.v==='chan'?main.scrollHeight:0);
@@ -41,21 +41,26 @@ const BASE={true:{bg:'#0B0B0B',card:'#161616',card2:'#222222',line:'#2E2E2E',fg:
 function setTheme(i){S.club=i;const c=CLUBS[i],r=document.documentElement.style,b=BASE[!!c.dark];
  Object.keys(b).forEach(k=>r.setProperty('--'+k,c[k]||b[k]));r.setProperty('--accent',c.accent);r.setProperty('--on-accent',onColor(c.accent));r.setProperty('--hot',c.hot);r.setProperty('--on-hot',onColor(c.hot));r.setProperty('--stage',c.dark?'#050505':'#DDE2EC');r.colorScheme=c.dark?'dark':'light';try{localStorage.setItem('club-theme',i)}catch(e){}}
 
-function notify(type,by,txt){if(!S.nset[type]||by===ME())return;NOTIFS.unshift({by,txt,t:"À l'instant",n:1});if(NOTIFS.length>30)NOTIFS.pop()}
+function notify(type,by,txt,go){if(!S.nset[type]||by===ME())return;NOTIFS.unshift({by,txt,t:"À l'instant",n:1,go});if(NOTIFS.length>30)NOTIFS.pop()}
 const msgList=ref=>{const [k,id]=ref.split(':');const o=k==='c'?chans.find(c=>c.id===id):recs.find(r=>r.id===id);return o?(k==='c'?o.msgs:o.chat):null};
 
 /* ---------- score en direct ---------- */
 function addGame(r,i,side){const m=r.ms[i];if(m.st!=='live')return;const k=m.sets.length-1,st=m.sets[k];st[side]++;S.flash=[i,side,k];
  const a=st[side],b=st[1-side];
  if((a>=6&&a-b>=2)||a===7){const w=[0,0];m.sets.forEach(s=>w[s[0]>s[1]?0:1]++);
-  if(w[side]===2){m.st='done';m.w=side;if(m.a&&side===0)notify(S.follow.has(m.a)?'follow':'team',m.a,`a gagné son match contre ${m.b[0]}`);
+  if(w[side]===2){m.st='done';m.w=side;if(m.a&&side===0)notify(S.follow.has(m.a)?'follow':'team',m.a,`a gagné son match contre ${m.b[0]}`,{v:'rec',id:r.id});
    if(r.ms.every(x=>x.st==='done')){if(S.scoring)toast('Tous les matchs sont terminés · vérifie les scores puis clôture la rencontre');else endRec(r)}
    else{toast(`${m.l} terminé · point pour ${side===0?club().short:r.opp}`);if(!S.scoring){const n=r.ms.find(x=>x.st==='soon');if(n){n.st='live';n.sets=[[0,0]]}}}}
   else m.sets.push([0,0])}}
 /* Fin de rencontre : le résultat part tout seul sur le mur et la discussion du direct s'efface */
 function endRec(r){r.st='done';delete r.chat;S.scoring=false;const s=teamScore(r);
- posts.unshift({id:'p'+Date.now(),by:'club',t:"À l'instant",kind:'result',rec:r.id,likes:0,com:[]});notify('club','club',`a publié le résultat : ${teamName(grp(r.tid))} ${s[0]} à ${s[1]} contre ${r.opp}`);
+ const pid='p'+Date.now();posts.unshift({id:pid,by:'club',t:"À l'instant",kind:'result',rec:r.id,likes:0,com:[]});notify('club','club',`a publié le résultat : ${teamName(grp(r.tid))} ${s[0]} à ${s[1]} contre ${r.opp}`,{v:'post',id:pid});
  toast(`Rencontre terminée ${s[0]} à ${s[1]} · résultat publié sur le mur`)}
+/* Bandeau au-dessus du champ de message quand une photo est jointe */
+function showAtt(){const a=$('att');if(!a)return;a.hidden=!S.img;a.innerHTML=S.img?`<span class="ph" style="background-image:url(${S.img})"></span><span class="grow"><span class="nm">Photo jointe</span><br><span class="muted small">Elle partira avec ton message.</span></span><button type="button" class="ib rnd" data-a="unattach" aria-label="Retirer la photo">${ic('x')}</button>`:''}
+/* Pendant le direct, on ne redessine que les scores affichés, pas tout l'écran */
+function liveRefresh(r){const v=view();if($('sheet'))return;if(v.v==='rec'){if(v.id===r.id)render(true);return}if(!['home','recs'].includes(v.v))return;if(r.st!=='live'){render(true);return}
+ const s=teamScore(r);document.querySelectorAll(`[data-live="${r.id}"]`).forEach(e=>e.textContent=s.join(' - '));document.querySelectorAll(`[data-live2="${r.id}"]`).forEach(e=>e.innerHTML=`<b>${s[0]}</b> · ${s[1]}`)}
 function shrink(file,cb){const fr=new FileReader();fr.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,900/im.width),c=document.createElement('canvas');c.width=im.width*k;c.height=im.height*k;c.getContext('2d').drawImage(im,0,0,c.width,c.height);cb(c.toDataURL('image/jpeg',.8))};im.src=fr.result};fr.readAsDataURL(file)}
 
 /* ---------- formulaires ---------- */
@@ -108,7 +113,11 @@ const A={
  like(d){if(S.liked.has(d.id))S.liked.delete(d.id);else{S.liked.add(d.id);S.pop=d.id}render(true);S.pop=null},
  comments(d){sheet('Commentaires',commentsBody(posts.find(p=>p.id===d.id)))},
  follow(d){const on=!S.follow.has(d.id);on?S.follow.add(d.id):S.follow.delete(d.id);render(true);toast(on?`Tu suis ${first(d.id)} : tu seras notifié de ses résultats et de ses messages`:`Tu ne suis plus ${first(d.id)}`)},
- notifs(){sheet('Notifications',`<div class="body">${NOTIFS.length?NOTIFS.filter(n=>!S.blocked.has(n.by)).map(n=>`<div class="msg">${av(n.by,'sm')}<div class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time></div>${n.n?'<span class="st no">Nouveau</span>':''}</div>`).join(''):empty('heart','Aucune notification','Suis des adhérents pour être prévenu de leurs résultats.')}<div class="note">Tu choisis ce que tu reçois dans ton profil, rubrique « Mes notifications ».</div></div>`);NOTIFS.forEach(n=>n.n=0);render(true)},
+ notifs(){sheet('Notifications',`<div class="body">${NOTIFS.length?NOTIFS.map((n,i)=>S.blocked.has(n.by)?'':`<button class="msg nrow" data-a="ngo" data-i="${i}">${av(n.by,'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time></span>${n.n?'<span class="st no">Nouveau</span>':''}</button>`).join(''):empty('heart','Aucune notification','Suis des adhérents pour être prévenu de leurs résultats.')}<div class="note">Tu choisis ce que tu reçois dans ton profil, rubrique « Mes notifications ».</div></div>`);NOTIFS.forEach(n=>n.n=0);render(true)},
+ ngo(d){const n=NOTIFS[+d.i],g=n&&n.go;closeSheet();if(!n)return;if(!g){if(n.by!=='club')A.member({id:n.by});return}
+  const ok=g.v==='rec'?recs.some(r=>r.id===g.id):g.v==='post'?posts.some(p=>p.id===g.id&&(canSee(p)||p.arch)):g.v==='chan'?chans.some(c=>c.id===g.id&&chanOk(c)):true;
+  if(ok)A.open(g);else toast("Ce contenu n'est plus disponible")},
+ unattach(){S.img=null;showAtt();const i=$('m-img');if(i)i.value=''},
  plus(){menuSheet('Publier',[['score','Ajouter un résultat','result'],S.role!=='kid'&&['search','Chercher une partie','newPost','data-k="play"'],isAdmin()&&['info','Annonce du club','newPost','data-k="annonce"'],isAdmin()&&['cal','Événement','newPost','data-k="event"'],isAdmin()&&['poll','Sondage','newPost','data-k="poll"'],isAdmin()&&['link',"Bouton d'action",'newPost','data-k="cta"'],isAdmin()&&['news','Article du journal','newPost','data-k="article"']])},
  newPost(d){const [t,b,cta]=forms(d.k);S.img=null;sheet(t,`<form class="body" id="adm-form" data-k="${d.k}" data-c="${d.c||''}">${b}<button class="btn full">${cta}</button></form>`)},
  /* publications : menu, modification, suppression, signalement */
@@ -129,7 +138,7 @@ const A={
  mreport(d){const l=msgList(d.ref),m=l[+d.i];REPORTS.push({kind:'msg',author:m.by,by:ME(),excerpt:esc(m.x||'Photo'),msg:m,ref:d.ref});closeSheet();toast('Signalement envoyé au bureau du club')},
  repDel(d){const r=REPORTS.splice(+d.i,1)[0];if(r.post){const i=posts.findIndex(p=>p.id===r.post);if(i>=0)posts.splice(i,1)}else{const l=msgList(r.ref),i=l?l.indexOf(r.msg):-1;if(i>=0)l.splice(i,1)}render(true);toast('Contenu supprimé')},
  repIgn(d){REPORTS.splice(+d.i,1);render(true);toast('Signalement classé')},
- photo(d,el){const u=el.style.backgroundImage.replace(/^url\(["']?|["']?\)$/g,'');closeSheet();const b=document.createElement('div');b.className='back anim';b.id='sheet';b.style.alignItems='center';b.innerHTML=`<img src="${u}" alt="" data-a="close" style="width:100%;max-height:100%;object-fit:contain">`;$('layer').appendChild(b)},
+ photo(d,el){const u=el.style.backgroundImage.replace(/^url\(["']?|["']?\)$/g,'');closeSheet();const b=document.createElement('div');b.className='back anim';b.id='sheet';b.style.alignItems='center';b.style.background='#000';b.innerHTML=`<img src="${u}" alt="" data-a="close" style="width:100%;max-height:100%;object-fit:contain">`;$('layer').appendChild(b)},
  /* événements, sondages, parties */
  rsvp(d){const p=posts.find(p=>p.id===d.id);p.my=p.my===d.r?null:d.r;render(true);toast(p.my==='yes'?'Tu es inscrit · le club est prévenu':p.my==='maybe'?'Noté en peut-être':'Inscription retirée')},
  evClose(d){const p=posts.find(p=>p.id===d.id);p.closed=!p.closed;closeSheet();render(true);toast(p.closed?'Inscriptions closes · les inscrits sont conservés':'Inscriptions rouvertes')},
@@ -192,6 +201,7 @@ const A={
 
 /* ---------- événements du navigateur ---------- */
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(el){if(el.disabled)return;A[el.dataset.a](el.dataset,el);return}if(e.target.id==='sheet')closeSheet()});
+document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 let tsx=null,tsy=0;
 document.addEventListener('touchstart',e=>{const g=e.target.closest('#plan')&&!e.target.closest('.chips')&&S.plan.mode!=='events';tsx=g?e.touches[0].clientX:null;tsy=g?e.touches[0].clientY:0},{passive:true});
@@ -205,13 +215,14 @@ document.addEventListener('change',e=>{const el=e.target,prev=u=>{const p=$('a-p
  if(el.id==='p-sport'){const pad=el.value==='Padel',f=$('a-fmt');$('p-rk').hidden=pad;$('p-lv').hidden=!pad;if(pad)f.value='Double';f.disabled=pad}
  if(el.id==='cap-sel'){grp(el.dataset.team).cap=el.value;render(true);toast(`${name(el.value)} est capitaine · prévenu`)}
  if((el.id==='a-img'||el.id==='lk-logo')&&el.files[0])shrink(el.files[0],u=>{S.img=u;prev(u)});
- if(el.id==='m-img'&&el.files[0])shrink(el.files[0],u=>{S.img=u;toast('Photo prête : touche Envoyer')});
+ if(el.id==='m-img'&&el.files[0])shrink(el.files[0],u=>{S.img=u;showAtt()});
+ if(el.id==='me-photo'&&el.files[0])shrink(el.files[0],u=>{M[ME()].photo=u;render(true);toast('Photo de profil mise à jour')});
  if(el.id==='d-ph'){[...el.files].slice(0,10-S.imgs.length).forEach(f=>shrink(f,u=>{if(S.imgs.length<10)S.imgs.push(u);const p=$('d-prev');if(p)p.innerHTML=S.imgs.map(x=>`<span class="ph" style="background-image:url(${x})"></span>`).join('')+`<span class="muted small" style="grid-column:1/-1">${S.imgs.length} photo${S.imgs.length>1?'s':''} sur 10</span>`}));el.value=''}
  if(el.id==='rec-ph'&&el.files[0])shrink(el.files[0],u=>{recs.find(r=>r.id===el.dataset.r).img=u;render(true);toast('Photo ajoutée · la publication du mur est à jour')})});
 
 document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=id=>{const x=$(id);return x?x.value.trim():''},g=id=>esc(val(id)),home=msg=>{closeSheet();S.tab='home';S.stack=[];render();toast(msg)};
  if(f.id==='composer'){const inp=$('msg-input'),x=inp.value.trim(),img=S.img;if(!x&&!img)return;const v=view(),list=v.v==='rec'?recs.find(r=>r.id===v.id).chat:chans.find(c=>c.id===v.id).msgs;if(!list)return;
-  list.push({by:ME(),x,img,t:"À l'instant"});S.img=null;inp.value='';S.sent=true;render(true);S.sent=false;$('main').scrollTop=$('main').scrollHeight;inp.focus();return}
+  list.push({by:ME(),x,img,t:"À l'instant"});S.img=null;showAtt();inp.value='';S.sent=true;render(true);S.sent=false;$('main').scrollTop=$('main').scrollHeight;inp.focus();return}
  if(f.id==='com-form'){const x=val('com-input');if(!x)return;const p=posts.find(p=>p.id===f.dataset.id);p.com.push({by:ME(),x});sheet('Commentaires',commentsBody(p),true);const l=$('com-list');l.scrollTop=l.scrollHeight;render(true);return}
  if(f.id==='edit-form'){const p=posts.find(p=>p.id===f.dataset.id);if(p.kind==='poll')p.q=g('e-title');else{p.title=g('e-title');p.body=g('e-body');if($('e-place'))p.place=g('e-place')}closeSheet();render(true);toast('Publication modifiée');return}
  if(f.id==='done-form'){const i=posts.findIndex(p=>p.id===f.dataset.id),p=posts[i],n=Math.min(S.imgs.length,10);p.done={txt:g('d-txt'),photos:S.imgs.slice(0,10)};S.imgs=[];p.t="À l'instant";posts.splice(i,1);posts.unshift(p);home(`Événement terminé · publié sur le mur${n?' avec '+n+' photo'+(n>1?'s':''):''}`);return}
@@ -259,11 +270,11 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
 
 /* ---------- la démo vit : le direct avance, des messages arrivent ---------- */
 setInterval(()=>{if(S.scoring)return;const r=recs.find(r=>r.sim&&r.st==='live');if(!r)return;const lives=r.ms.map((m,i)=>m.st==='live'?i:-1).filter(i=>i>=0),v=view(),here=()=>['home','recs'].includes(v.v)||(v.v==='rec'&&v.id===r.id);
- if(!lives.length){if(r.ms.every(x=>x.st==='done'))endRec(r);else{const n=r.ms.find(x=>x.st==='soon');n.st='live';n.sets=[[0,0]]}if(here()&&!$('sheet'))render(true);return}
- addGame(r,lives[Math.floor(Math.random()*lives.length)],Math.random()<.58?0:1);if(here()&&!$('sheet'))render(true);S.flash=null},6500);
+ if(!lives.length){if(r.ms.every(x=>x.st==='done'))endRec(r);else{const n=r.ms.find(x=>x.st==='soon');n.st='live';n.sets=[[0,0]]}liveRefresh(r);return}
+ addGame(r,lives[Math.floor(Math.random()*lives.length)],Math.random()<.58?0:1);liveRefresh(r);S.flash=null},6500);
 let simN=0;
 setInterval(()=>{if(simN>=8)return;const v=view(),pool=chans.filter(c=>!c.ro&&chanOk(c)&&!(v.v==='chan'&&v.id===c.id)),who2=adults().filter(x=>x!=='me'&&!S.blocked.has(x));if(!pool.length||!who2.length)return;
- const c=pool[Math.floor(Math.random()*pool.length)],by=who2[Math.floor(Math.random()*who2.length)];simN++;c.msgs.push({by,x:CANNED[simN%CANNED.length],t:'Maintenant'});c.un++;if(!c.mute)notify('chan',by,`a écrit dans ${c.name}`);
+ const c=pool[Math.floor(Math.random()*pool.length)],by=who2[Math.floor(Math.random()*who2.length)];simN++;c.msgs.push({by,x:CANNED[simN%CANNED.length],t:'Maintenant'});c.un++;if(!c.mute)notify('chan',by,`a écrit dans ${c.name}`,{v:'chan',id:c.id});
  if(['home','chans'].includes(v.v)&&!$('sheet'))render(true)},24000);
 
 let saved=0;try{saved=+localStorage.getItem('club-theme')||0}catch(e){}
