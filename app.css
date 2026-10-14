@@ -260,6 +260,23 @@ button.nm{padding-block:4px}
 .price{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
 .price:last-child{border-bottom:0}
 .price b{font-family:var(--f-display);font-weight:400;font-size:22px;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* bandeau partenaires, commissions, partenaires */
+.adband{background:var(--accent);color:var(--on-accent);border-radius:var(--r);overflow:hidden;padding:10px 0 14px}
+.adband.hot{background:var(--hot);color:var(--on-hot)}
+.adh{display:flex;justify-content:space-between;align-items:center;min-height:44px;padding:0 6px 4px 16px;font-family:var(--f-display);font-style:italic;text-transform:uppercase;font-size:21px}
+.adw{overflow:hidden}
+.track{display:flex;gap:12px;width:max-content;padding-left:12px;animation:marq 24s linear infinite}
+.adband:hover .track{animation-play-state:paused}
+@keyframes marq{to{translate:-50% 0}}
+.adi{display:flex;align-items:center;gap:10px;min-height:58px;padding:6px 16px 6px 6px;border-radius:12px;background:rgba(0,0,0,.14);font-family:var(--f-sub);font-weight:700;font-size:17px;white-space:nowrap;color:inherit}
+.adi img,.adl{width:46px;height:46px;border-radius:10px;object-fit:contain;background:#fff;flex:none}
+.adl{display:grid;place-items:center;color:#0B0B0B;font-family:var(--f-display);font-size:18px}
+.pgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.pcard{background:var(--card);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:6px;align-items:flex-start;min-width:0}
+.pcard img.big,.adl.big{width:64px;height:64px;border-radius:12px;object-fit:contain;background:#fff}
+.adl.big{font-size:24px}
+.reqc{box-shadow:inset 0 0 0 2px var(--hot)}
+.price b.tv{font-family:var(--f-sub);font-weight:700;font-size:16px;white-space:normal;text-align:right}
 .art{display:flex;flex-direction:column;gap:8px;padding:14px;background:var(--card);border-radius:var(--r);width:100%}
 .prose{display:flex;flex-direction:column;gap:12px;font-size:16px;line-height:1.6}
 .dblk{flex:none;width:64px;height:64px;border-radius:12px;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;align-content:center;gap:2px;font-family:var(--f-sub);font-weight:700;text-transform:uppercase;letter-spacing:.12em;font-size:13px;line-height:1}
@@ -318,7 +335,11 @@ button.nm{padding-block:4px}
 .fld textarea{min-height:92px;resize:vertical}
 .fld input[type=file]{font-size:12px;padding:12px}
 .fld input[type=color]{padding:4px;height:48px}
-.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+/* iPhone : un champ date garde sinon une largeur propre et dépasse de l'écran */
+.fld input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-width:0;max-width:100%;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
+.sheet .body>*{min-width:0;max-width:100%}
 .fld .chk{display:flex;gap:12px;align-items:center;min-height:48px;font-family:var(--f-body);font-size:var(--t2);letter-spacing:0;text-transform:none;color:var(--fg);font-weight:500}
 .fld .chk input{width:26px;height:26px;min-height:0;flex:none;padding:0;accent-color:var(--accent)}
 .radio{display:grid;grid-template-columns:1fr 1fr;gap:10px}

@@ -68,7 +68,9 @@ const GROUPS=[
 
 const posts=[
  {id:'p0',by:'club',t:'Il y a 1 h',kind:'event',reg:'int',sport:'Tennis',d:'2026-10-24',h1:'14 h',h2:'22 h',date:'Sam. 24 oct · 14 h – 22 h',place:'Courts 1 à 4',title:'Doubles surprise <em>et barbecue</em>',body:"Tirage au sort des paires à 14 h, matchs en 4 jeux, barbecue à partir de 19 h. Ouvert à tous les adhérents, familles bienvenues.",yes:23,maybe:7,my:null,ins:['emma','nathan','hugo','sarah','marc','paul'],likes:31,com:[{by:'emma',x:'Je viens avec les salades.'}]},
- {id:'p1',by:'club',t:'Il y a 2 h',kind:'event',reg:'ext',sport:'Tennis',d:'2026-10-26',d2:'2026-11-15',date:'Du 26 oct au 15 nov',place:'Au club',title:"Tournoi interne <em>d'automne</em>",body:"Inscriptions ouvertes jusqu'au 25 octobre. Simples et doubles, tous classements. Finales le 15 novembre, suivies du repas du club.",likes:42,com:[{by:'ines',x:'Inscrite en simple et en double.'},{by:'marc',x:"On peut s'inscrire en double sans partenaire ?"},{by:'club',x:'Oui Marc, on forme les paires le 26 au matin.'}]},
+ {id:'p1',by:'club',t:'Il y a 2 h',kind:'event',reg:'ext',sport:'Tennis',d:'2026-10-26',d2:'2026-11-15',date:'Du 26 oct au 15 nov',place:'Au club',trn:{sport:'Tennis',gen:'Mixte',pub:'Adultes',fmt:'Traditionnel',open:true,max:64,dl:'2026-10-25'},title:"Tournoi interne <em>d'automne</em>",body:"Inscriptions ouvertes jusqu'au 25 octobre. Simples et doubles, tous classements. Finales le 15 novembre, suivies du repas du club.",likes:42,com:[{by:'ines',x:'Inscrite en simple et en double.'},{by:'marc',x:"On peut s'inscrire en double sans partenaire ?"},{by:'club',x:'Oui Marc, on forme les paires le 26 au matin.'}]},
+ {id:'p12',by:'club',t:'Il y a 4 h',kind:'event',reg:'ext',sport:'Padel',d:'2026-10-31',d2:'2026-11-01',h1:'9 h',h2:'20 h',date:'Du 31 oct au 1 nov · 9 h',place:'Pistes 1 et 2',title:'Tournoi P100 <em>de la Toussaint</em>',body:"Tableau messieurs, poules puis phase finale. Balles fournies, buvette ouverte tout le week-end.",trn:{sport:'Padel',gen:'Hommes',pub:'Adultes',cat:'P100',max:24,dl:'2026-10-27'},likes:14,com:[]},
+ {id:'p13',by:'club',t:'Hier',kind:'event',reg:'ext',sport:'Tennis',d:'2026-11-08',h1:'9 h',h2:'18 h',date:'Dim. 8 nov · 9 h – 18 h',place:'Courts 1 à 4',title:'TMC jeunes <em>13-14 ans</em>',body:"Tournoi multi-chances : chaque joueur dispute au moins quatre matchs, qu'il gagne ou qu'il perde.",trn:{sport:'Tennis',gen:'Mixte',pub:'Jeunes',a1:13,a2:14,fmt:'TMC',open:false,lo:'30/2',hi:'15/4',max:16,dl:'2026-11-04'},likes:9,com:[]},
  {id:'p7',by:'emma',t:'Il y a 3 h',kind:'play',play:{sport:'Tennis',date:'Mer. 14 oct',time:'18 h',dur:'1 h 30',fmt:'Simple',lo:'15/4',hi:'15/1',places:1,in:[],wait:[]},likes:2,com:[]},
  {id:'p2',by:'ines',t:'Il y a 5 h',kind:'perf',res:{w:1,opp:'L. Vidal',or:'5/6',sc:'6-4 3-6 7-5',ctx:'Tournoi de Tulle · quart de finale',perf:1},likes:27,com:[{by:'sarah',x:'Le travail au service paie. Bravo !'},{by:'thomas',x:'Énorme. Demie demain ?'}]},
  {id:'p6',by:'club',t:'Il y a 5 h',kind:'poll',vis:['Compétiteurs','Adultes'],rule:{age:'Adultes',prat:'Compétiteurs'},q:'Quel créneau pour le nouveau cours de préparation physique ?',opts:[['Samedi 9 h',14],['Samedi 11 h',9],['Jeudi 19 h 30',17]],my:null,likes:8,com:[]},
@@ -76,7 +78,9 @@ const posts=[
  {id:'p9',by:'nathan',t:'Hier',kind:'play',play:{sport:'Padel',date:'Ven. 16 oct',time:'20 h',dur:'1 h 30',fmt:'Double',lo:4,hi:6,places:3,in:['paul'],wait:[]},likes:1,com:[]},
  {id:'p10',by:'julie',t:'Hier',kind:'play',play:{sport:'Tennis',date:'Sam. 17 oct',time:'10 h',dur:'1 h',fmt:'Simple',lo:'30/3',hi:'30',places:1,in:[],wait:[]},likes:0,com:[]},
  {id:'p8',by:'paul',t:'Hier',kind:'play',play:{sport:'Tennis',date:'Jeu. 15 oct',time:'19 h',dur:'1 h 30',fmt:'Double',lo:'15/4',hi:'15',places:3,in:['nathan','marc','antoine'],wait:['hugo']},likes:4,com:[]},
+ {id:'ad1',by:'club',t:'',kind:'ad',partners:['pa1','pa2','pa3','pa4'],title:'Nos partenaires',color:'',likes:0,com:[]},
  {id:'p4',by:'club',t:'Hier',kind:'journal',art:'a1',likes:35,com:[{by:'julie',x:'Zoé en parle encore. Merci aux coachs.'}]},
+ {id:'p14',by:'club',t:'Hier',kind:'comm',comm:'anim',title:'Rejoins la <em>commission animation</em>',body:"On cherche trois bénévoles pour préparer la fête du club et le tournoi interne. Une réunion par mois, beaucoup de bonne humeur.",yes:6,maybe:3,my:null,likes:11,com:[]},
  {id:'p11',by:'club',t:'Hier',kind:'cta',title:'Le textile du club <em>est arrivé</em>',body:'Sweats, t-shirts et shorts aux couleurs du club, produits à la demande.',label:'Voir la collection',url:'https://www.riseandmove.fr',likes:12,com:[]},
  {id:'p5',by:'club',t:'Hier',kind:'annonce',title:'Court 3 <em>fermé jeudi</em>',body:"Réfection des lignes jeudi 15 de 8 h à 14 h. Les réservations concernées sont déplacées sur le court 4.",likes:6,com:[]},
  {id:'x5',arch:'2025-2026',by:'club',t:'Juin 2026',kind:'event',reg:'int',d:'2026-06-27',h1:'18 h',h2:'23 h',date:'Sam. 27 juin 2026 · 18 h – 23 h',place:'Club-house',title:'Fête du club',body:'Finales du tournoi interne, remise des prix et repas.',yes:86,maybe:0,my:null,done:{txt:'Merci aux 86 participants et aux bénévoles du barbecue.',photos:[]},likes:54,com:[{by:'hugo',x:'Belle soirée, à refaire.'}]},
@@ -126,8 +130,20 @@ const arts=[
  {id:'x2',arch:'2025-2026',sport:'Padel',cat:'Padel',title:'Premier tournoi P100 organisé au club',date:'22 mars 2026',lead:"Vingt-quatre paires engagées, des tribunes pleines et un club-house ouvert jusqu'à minuit.",body:["Le club a accueilli son premier tournoi homologué de padel. La finale a opposé deux paires venues de Limoges.","Le bureau prévoit deux dates supplémentaires la saison prochaine."]}
 ];
 const FORM=[["Adhésion adulte","Tennis illimité, licence comprise","210 € / an"],["Adhésion jeune","Moins de 18 ans, licence comprise","140 € / an"],["École de tennis","1 h 30 par semaine, 30 séances","+ 190 € / an"],["Pass padel","Réservation illimitée en heures creuses","35 € / mois"],["Location de piste","Padel, 1 h 30, 4 joueurs","32 €"]];
-const PARTNERS=[['Garage des Tilleuls','Partenaire des équipes'],['Boulangerie Lachaud','Partenaire du tournoi interne'],['Optique du Centre',"Partenaire de l'école de tennis"]];
-const NOTIFS=[{by:'thomas',txt:'mène 2 jeux à 1 au 3e set contre A. Morel',t:'En direct',n:1,go:{v:'rec',id:'r1'}},{by:'club',txt:"a publié un événement : Doubles surprise et barbecue",t:'Il y a 1 h',n:1,go:{v:'post',id:'p0'}},{by:'ines',txt:'a signé une perf à 5/6 au Tournoi de Tulle',t:'Il y a 5 h',go:{v:'post',id:'p2'}},{by:'sarah',txt:'a écrit dans Adultes compétition',t:'Dim.',go:{v:'chan',id:'compet'}}];
+const PARTNERS=[
+ {id:'pa1',name:'Garage des Tilleuls',desc:'Entretien et réparation toutes marques. Partenaire des équipes.'},
+ {id:'pa2',name:'Boulangerie Lachaud',desc:'Pains, viennoiseries et le goûter des plateaux jeunes. Partenaire du tournoi interne.'},
+ {id:'pa3',name:'Optique du Centre',desc:"Lunettes de sport et lentilles. Partenaire de l'école de tennis."},
+ {id:'pa4',name:'Rise and Move',desc:'Textile sportif produit à la demande. Partenaire textile du club.',logo:LOGO,dark:1}
+];
+/* Commissions du club : un responsable, des membres, des demandes en attente */
+const COMMS=[
+ {id:'sport',name:'Commission sportive',desc:"Organise les championnats par équipes, les tournois du club et le suivi des compétiteurs.",resp:'me',mem:['me','thomas','ines'],req:[]},
+ {id:'anim',name:'Commission animation',desc:"Prépare les soirées, la fête du club, les tournois internes et la buvette.",resp:'julie',mem:['julie','emma','hugo'],req:['paul']},
+ {id:'jeunes',name:'Commission jeunes',desc:"Accompagne l'école de tennis, les plateaux et les stages des moins de 18 ans.",resp:'sarah',mem:['sarah','julie'],req:[]},
+ {id:'padelc',name:'Commission padel',desc:"Gère le planning des pistes, les tournois P25 à P250 et le projet des nouvelles pistes.",resp:'mehdi',mem:['mehdi','paul','nathan'],req:[]}
+];
+const NOTIFS=[{by:'paul',txt:'souhaite rejoindre la commission animation',t:'Il y a 3 h',n:1,go:{v:'comm',id:'anim'}},{by:'thomas',txt:'mène 2 jeux à 1 au 3e set contre A. Morel',t:'En direct',n:1,go:{v:'rec',id:'r1'}},{by:'club',txt:"a publié un événement : Doubles surprise et barbecue",t:'Il y a 1 h',n:1,go:{v:'post',id:'p0'}},{by:'ines',txt:'a signé une perf à 5/6 au Tournoi de Tulle',t:'Il y a 5 h',go:{v:'post',id:'p2'}},{by:'sarah',txt:'a écrit dans Adultes compétition',t:'Dim.',go:{v:'chan',id:'compet'}}];
 const REPORTS=[];
 
 /* État de l'appli. role : admin (bureau), cap (capitaine), mem (adhérent), kid (compte jeune de Léo) */
