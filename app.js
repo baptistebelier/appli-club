@@ -1,8 +1,8 @@
 /* Rendu, actions, formulaires et simulation du direct */
 let lastKey='',lastFoot='',slT,toastT;
 function slide(c){const m=$('main');m.classList.remove('pg-r','pg-l','sg-r','sg-l');void m.offsetWidth;m.classList.add(c);clearTimeout(slT);slT=setTimeout(()=>m.classList.remove(c),320)}
-const ROLE={admin:'Bureau du club',cap:'Capitaine',mem:'Adhérent et parent',coach:'Enseignante',kid:'Compte jeune'};
-const TITLES={home:()=>[club().name,'Le mur du club'],chans:()=>['Groupes',club().name],agenda:()=>['Agenda',club().name],ecole:()=>['École','Cours et stages'],club:()=>['Le club','Saison '+S.season],me:()=>['Mon profil',ROLE[S.role]],
+const ROLE={wait:"Nouvel inscrit en attente de validation",admin:'Bureau du club',cap:'Capitaine',mem:'Adhérent et parent',coach:'Enseignante',kid:'Compte jeune'};
+const TITLES={home:()=>[club().name,'Le mur du club'],chans:()=>['Groupes',club().name],agenda:()=>['Agenda',club().name],teamarch:()=>{const [id,s]=view().id.split('|');return [teamName(grp(id)),'Saison '+s]},ecole:()=>['École','Cours et stages'],club:()=>['Le club','Saison '+S.season],me:()=>['Mon profil',ROLE[S.role]],
  admin:()=>[isAdmin()?'Gérer le club':S.role==='coach'?'Mes groupes':'Mon équipe','Édition'],list:()=>['Adhérents',club().name],reports:()=>['Signalements','Modération'],legal:()=>['Mentions',club().name],post:()=>['Publication',club().name],art:()=>['Actus',club().name],partners:()=>['Partenaires',club().name],archive:()=>['Archives','Saisons précédentes'],join:()=>['Adhérents',"Faire entrer le club"]};
 function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.scrollTop;let t,sub;
  if(TITLES[v.v])[t,sub]=TITLES[v.v]();
@@ -10,20 +10,21 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
  else if(v.v==='rec'){const r=recs.find(r=>r.id===v.id);t=teamName(grp(r.tid))+' – '+r.opp;sub=r.comp}
  else if(v.v==='grp'){const g=grp(v.id);t=g.name;sub=g.sub}
  else if(v.v==='team'){const g=grp(v.id);t=teamName(g);sub=champOf(g).name}
- else if(v.v==='champ'){t=CHAMPS.find(c=>c.id===v.id).name;sub='Championnat'}
+ else if(v.v==='champ'){t=(CHAMPS.find(c=>c.id===v.id)||OLDC.find(c=>c.id===v.id)||{name:'Championnat'}).name;sub='Championnat'}
  else if(v.v==='comm'){t=COMMS.find(c=>c.id===v.id).name;sub=club().name}
  else{t=M[v.id].n;sub='Profil'}
  if(key!==lastKey){$('top').classList.remove('hide');lastY=0;turnY=0}
- $('top').innerHTML=(S.stack.length?`<button class="ib" data-a="back" aria-label="Retour">${ic('back')}</button>`:`<span class="crest ${club().logo?'logo':''}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>`)+`<h1>${t}<span class="sub">${sub}</span></h1>${v.v==='chan'?muteBtn(chans.find(c=>c.id===v.id)):''}<button class="ib" data-a="notifs" aria-label="Notifications">${ic('bell')}${NOTIFS.some(n=>n.n&&nVis(n))?'<span class="dot"></span>':''}</button>`;
+ $('top').innerHTML=(S.stack.length?`<button class="ib" data-a="back" aria-label="Retour">${ic('back')}</button>`:`<span class="crest ${club().logo?'logo':''}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>`)+`<h1>${t}<span class="sub">${sub}</span></h1>${v.v==='chan'?muteBtn(chans.find(c=>c.id===v.id)):''}<button class="ib" data-a="notifs" aria-label="Notifications">${ic('bell')}${!pending()&&NOTIFS.some(n=>n.n&&nVis(n))?'<span class="dot"></span>':''}</button>`;
  const strips='.seg,.chips,.stories',sx=key===lastKey?[...main.querySelectorAll(strips)].map(e=>e.scrollLeft):[];
- main.innerHTML=V[v.v](v.id);
+ main.innerHTML=pending()&&!lockOk(v)?lockView(v):V[v.v](v.id);
  main.querySelectorAll(strips).forEach((e,i)=>{if(sx[i])e.scrollLeft=sx[i]});
  const foot=$('foot'),tabs=$('tabs'),liveRec=v.v==='rec'&&recs.find(r=>r.id===v.id).st==='live',fk=key+(liveRec?'L':'');
  if(v.v==='chan'||liveRec){foot.hidden=false;tabs.hidden=true;
   if(fk!==lastFoot){const c=v.v==='chan'?chans.find(c=>c.id===v.id):null;S.img=null;S.reply=null;
    foot.innerHTML=c&&c.ro&&!isAdmin()?'<div class="muted small" style="text-align:center;padding:8px">Seul le club publie dans ce groupe.</div>':`<div class="att" id="att" hidden></div><form class="composer" id="composer"><label class="attach" aria-label="Joindre une photo">${ic('image')}<input type="file" id="m-img" accept="image/*"></label><input type="text" id="msg-input" autocomplete="off" placeholder="${c?(c.ro?'Publier au nom du club':'Écrire dans '+esc(c.name)):"Encourager l'équipe en direct"}" aria-label="Message"><button class="send" aria-label="Envoyer">${ic('send')}</button></form>`}}
- else{foot.hidden=true;tabs.hidden=false;const un=chans.reduce((a,c)=>a+(c.mute||!chanOk(c)?0:c.un),0),tb=(k,i,l)=>`<button data-a="tab" data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${ic(i)}${l}${k==='chans'&&un?`<span class="cnt">${un}</span>`:''}</button>`;
+ else{foot.hidden=true;tabs.hidden=false;const un=pending()?0:chans.reduce((a,c)=>a+(c.mute||!chanOk(c)?0:c.un),0),tb=(k,i,l)=>`<button data-a="tab" data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${ic(i)}${l}${k==='chans'&&un?`<span class="cnt">${un}</span>`:''}</button>`;
   tabs.innerHTML=tb('home','home','Accueil')+tb('chans','chat','Groupes')+tb('agenda','cal','Agenda')+`<button class="plus" data-a="plus" aria-label="Publier ou ajouter">${ic('plus')}</button>`+tb('ecole','school','École')+tb('club','club','Club')+tb('me','user','Profil');tabs.insertAdjacentHTML('afterbegin','<span class="pill" id="tpill" aria-hidden="true"></span>');pillTo(tabs.querySelector('[aria-current]'),true)}
+ if(pending()&&!lockOk(v))foot.hidden=true;
  $('phone').classList.toggle('notabs',tabs.hidden);
  main.scrollTop=keep&&key===lastKey?y:(v.v==='chan'?main.scrollHeight:0);
  if(S.dir){slide((key!==lastKey?'pg-':'sg-')+(S.dir>0?'r':'l'));S.dir=0}
@@ -31,7 +32,10 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
 
 /* Message de confirmation en haut ; après une suppression, il propose « Annuler » pendant 5 secondes */
 let undoFn=null;
-function toast(msg,undo){clearTimeout(toastT);$('layer').querySelectorAll('.toast').forEach(e=>e.remove());const d=document.createElement('div');d.className='toast';d.setAttribute('role','status');d.innerHTML=`<span>${esc(msg)}</span>${undo?'<button class="undo" data-a="undo">Annuler</button>':''}`;$('layer').appendChild(d);undoFn=undo||null;toastT=setTimeout(()=>{d.remove();undoFn=null},undo?5000:3000)}
+/* Toutes les fenêtres venues du haut (confirmations, notifications, direct, trophées) partagent la même pile : elles s'empilent, jamais l'une sur l'autre */
+function nstack(){let st=$('nstack');if(!st){st=document.createElement('div');st.id='nstack';st.className='nstack';$('phone').appendChild(st)}return st}
+function toast(msg,undo){const st=nstack();st.querySelectorAll('.tst .undo').forEach(u=>u.remove());const d=document.createElement('div');d.className='nban tst';d.setAttribute('role','status');d.innerHTML=`<span class="grow">${esc(msg)}</span>${undo?'<button class="undo" data-a="undo">Annuler</button>':''}`;
+ st.prepend(d);void d.offsetWidth;d.classList.add('on');undoFn=undo||null;d._t=setTimeout(()=>{banHide(d);if(undoFn===undo)undoFn=null},undo?5000:3200);[...st.querySelectorAll('.nban.on')].slice(4).forEach(x=>banHide(x))}
 function sheet(title,body,quiet){closeSheet();const d=document.createElement('div');d.className='back'+(quiet?'':' anim');d.id='sheet';d.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" tabindex="-1"><span class="grab" aria-hidden="true"></span><header><span class="h3">${title}</span><button class="ib" data-a="close" aria-label="Fermer">${ic('x')}</button></header>${body}</div>`;$('layer').appendChild(d);d.firstChild.focus({preventScroll:true})}
 function closeSheet(){const s=$('sheet');if(s)s.remove()}
 const menuSheet=(title,items)=>sheet(title,`<div class="body"><div class="menu">${items.filter(Boolean).map(i=>`<button class="${i[4]?'danger':''}" data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`);
@@ -50,33 +54,40 @@ function setTheme(i){S.club=i;const c=CLUBS[i],r=document.documentElement.style,
 function lookPrev(){const p=$('lk-prev');if(!p)return;const dark=$('lk-bg').value==='Sombre',b=BASE[dark],acc=$('lk-acc').value,dv=derive(acc,b.bg),on=onColor(dv.col),cr=contrast(dv.col,b.bg).toFixed(1);
  p.innerHTML=`<div class="lkp" style="background:${b.bg};color:${b.fg}"><span style="font-family:var(--f-display);font-style:italic;font-size:22px;text-transform:uppercase">Doubles <span style="color:${dv.col}">et barbecue</span></span><span style="background:${dv.col};color:${on};padding:8px 14px;border-radius:10px;font-weight:700">Je m'inscris</span><span style="color:${dv.col};font-family:var(--f-display);font-size:26px">6 · 4</span></div><p class="muted small" style="margin-top:6px">${dv.adj?`Aperçu : ta couleur est ajustée en ${dv.col} pour rester lisible sur ce fond (contraste ${cr}:1).`:`Aperçu : contraste ${cr}:1, lisible.`}</p>`}
 
-function notify(type,by,txt,go){if(!S.nset[type]||by===ME())return;NOTIFS.unshift({by,txt,t:"À l'instant",n:1,go});if(NOTIFS.length>30)NOTIFS.pop();banner(NOTIFS[0])}
+function notify(type,by,txt,go,quiet){if(!S.nset[type]||by===ME())return;NOTIFS.unshift({by,txt,t:"À l'instant",n:1,go});if(NOTIFS.length>30)NOTIFS.pop();if(!quiet)banner(NOTIFS[0])}
 /* Bandeau de notification qui descend du haut, puis remonte ; un toucher ouvre la cible, un glissé vers le haut le range */
 /* Plusieurs bandeaux s'empilent les uns sous les autres (3 au plus) ; ceux du direct sont rouges */
-function banner(n){if(S.blocked.has(n.by)||!nVis(n))return;let st=$('nstack');if(!st){st=document.createElement('div');st.id='nstack';st.className='nstack';$('phone').appendChild(st)}
+function banner(n){if(S.blocked.has(n.by)||!nVis(n)||(pending()&&!n.mine))return;const st=nstack();
  const r=n.go&&n.go.v==='rec'&&recs.find(x=>x.id===n.go.id),live=n.live||!!r,ttl=live?'Direct'+(r?' · '+teamName(grp(r.tid)):''):name(n.by);
- const b=document.createElement('button');b.className='nban'+(live?' live':'');b._n=n;
- b.innerHTML=`${live?`<span class="lvb">${ic('score')}</span>`:av(n.by,'sm')}<span class="grow"><span class="nm">${ttl}</span> ${live&&n.by!=='club'?name(n.by)+' ':''}${esc(n.txt)}</span><time>maintenant</time>`;b.setAttribute('aria-label','Notification : '+ttl+' '+n.txt);
+ const b=document.createElement('button');b.className='nban'+(live?' live':'')+(n.tier!=null?' troph':'');b._n=n;
+ b.innerHTML=n.head?`<span class="lvb ${n.kind||''}${n.tier!=null?' medal t'+n.tier:''}">${ic(n.kind==='win'||n.tier!=null?'trophy':'score')}</span><span class="grow"><span class="bk">${n.kick?esc(n.kick):`Direct · ${esc(n.team)} · ${esc(n.sc)}`}</span><span class="bh">${esc(n.head)}</span><span class="bd2">${esc(n.det)}</span></span>`
+  :`${live?`<span class="lvb">${ic('score')}</span>`:av(n.by,'sm')}<span class="grow"><span class="nm">${ttl}</span> ${live&&n.by!=='club'?name(n.by)+' ':''}${esc(n.txt)}</span><time>maintenant</time>`;b.setAttribute('aria-label','Notification : '+ttl+' '+n.txt);
  st.prepend(b);void b.offsetWidth;b.classList.add('on');b._t=setTimeout(()=>banHide(b),5000);
- [...st.querySelectorAll('.nban.on')].slice(3).forEach(x=>banHide(x))}
-function banHide(b){if(!b){document.querySelectorAll('.nban.on').forEach(x=>banHide(x));return}clearTimeout(b._t);b.classList.remove('on');b.style.transform='';setTimeout(()=>b.remove(),450)}
-function liveNote(r,txt){const n={by:'club',txt,t:"À l'instant",n:1,go:{v:'rec',id:r.id},live:1};NOTIFS.unshift(n);if(NOTIFS.length>30)NOTIFS.pop();banner(n)}
+ [...st.querySelectorAll('.nban.on')].slice(4).forEach(x=>banHide(x))}
+function banHide(b){if(!b){document.querySelectorAll('.nban.on').forEach(x=>banHide(x));return}clearTimeout(b._t);let p=b.previousElementSibling;while(p&&!p.classList.contains('on'))p=p.previousElementSibling;if(p)b.classList.add('out');b.classList.remove('on');b.style.transform='';setTimeout(()=>b.remove(),450)}
+/* Bandeau du direct : on voit tout de suite l'équipe, le score de la rencontre, ce qui vient de se passer et qui est concerné */
+const deX=x=>/^[aeiouyhéèêâîô]/i.test(x)?"d'"+x:'de '+x;
+const ours=m=>m.a?name(m.a):m.an||club().short;
+const setsTxt=m=>m.sets.filter(s=>s[0]+s[1]>0).map(s=>s.join('-')).join(' ');
+function liveNote(r,head,det,kind){const team=teamName(grp(r.tid)),sc=teamScore(r).join(' - '),n={by:'club',txt:`${team} · ${head} : ${det}`,head,det,kind,team,sc,t:"À l'instant",n:1,go:{v:'rec',id:r.id},live:1};NOTIFS.unshift(n);if(NOTIFS.length>30)NOTIFS.pop();banner(n)}
+const liveStart=(r,m)=>liveNote(r,`Début du ${m.l.toLowerCase()}`,`${ours(m)} contre ${m.b[0]}${m.court?' · '+m.court:''}`,'start');
 /* Une notification ciblée (changement de cours) n'apparaît que chez les élèves concernés et leurs parents */
-const nVis=n=>!n.to||n.to.includes(ME())||(M[ME()].kids||[]).some(k=>n.to.includes(k));
+let nVis=n=>!n.to||n.to.includes(ME())||(M[ME()].kids||[]).some(k=>n.to.includes(k));
 const msgList=ref=>{const [k,id]=ref.split(':');const o=k==='c'?chans.find(c=>c.id===id):recs.find(r=>r.id===id);return o?(k==='c'?o.msgs:o.chat):null};
 
 /* ---------- score en direct ---------- */
 function addGame(r,i,side){const m=r.ms[i];if(m.st!=='live')return;const k=m.sets.length-1,st=m.sets[k];st[side]++;S.flash=[i,side,k];
  const a=st[side],b=st[1-side];
  if(r.stb&&k===2?(a>=10&&a-b>=2):((a>=6&&a-b>=2)||a===7)){const w=[0,0];m.sets.forEach(s=>w[s[0]>s[1]?0:1]++);
-  if(w[side]===2){m.st='done';m.w=side;if(m.a&&side===0)notify(S.follow.has(m.a)?'follow':'team',m.a,`a gagné son match contre ${m.b[0]}`,{v:'rec',id:r.id});
-   if(r.ms.every(x=>x.st==='done')){if(S.scoring)toast('Tous les matchs sont terminés · vérifie les scores puis clôture la rencontre');else endRec(r)}
-   else{const msg=`${m.l} terminé · point pour ${side===0?club().short:r.opp} · ${teamScore(r).join(' - ')}`;if(S.scoring)toast(msg);else liveNote(r,msg);if(!S.scoring){const n=r.ms.find(x=>x.st==='soon');if(n){n.st='live';n.sets=[[0,0]]}}}}
+  if(w[side]===2){m.st='done';m.w=side;if(m.a&&side===0)notify(S.follow.has(m.a)?'follow':'team',m.a,`a gagné son match contre ${m.b[0]}`,{v:'rec',id:r.id},true);
+   liveNote(r,`${side===0?'Victoire':'Défaite'} ${deX(ours(m))}`,`${m.l} · ${side===0?'bat':'perd contre'} ${m.b[0]} ${setsTxt(m)}`,side===0?'win':'loss');
+   if(r.ms.every(x=>x.st==='done')){if(S.scoring)liveNote(r,'Tous les matchs sont terminés','Vérifie les scores puis clôture la rencontre','start');else endRec(r)}
+   else if(!S.scoring){const n=r.ms.find(x=>x.st==='soon');if(n){n.st='live';n.sets=[[0,0]];liveStart(r,n)}}}
   else m.sets.push([0,0])}}
 /* Fin de rencontre : le résultat part tout seul sur le mur et la discussion du direct s'efface */
 function endRec(r){const auto=!S.scoring,v=view(),inp=$('msg-input'),draft=inp&&v.v==='rec'&&v.id===r.id?inp.value.trim():'';r.st='done';delete r.chat;S.scoring=false;const s=teamScore(r);
  const pid='p'+Date.now();posts.unshift({id:pid,by:'club',t:"À l'instant",kind:'result',rec:r.id,likes:0,com:draft?[{by:ME(),x:draft}]:[]});notify('club','club',`a publié le résultat : ${teamName(grp(r.tid))} ${s[0]} à ${s[1]} contre ${r.opp}`,{v:'post',id:pid});
- if(!auto)toast(draft?`Rencontre terminée ${s[0]} à ${s[1]} · ton message est publié en commentaire du résultat`:`Rencontre terminée ${s[0]} à ${s[1]} · résultat publié sur le mur`)}
+ liveNote(r,`Fin de rencontre · ${s[0]>s[1]?'victoire':s[0]<s[1]?'défaite':'match nul'} ${s[0]} à ${s[1]}`,`Contre ${r.opp} · ${!auto&&draft?'ton message est publié en commentaire du résultat':'résultat publié sur le mur'}`,s[0]>s[1]?'win':s[0]<s[1]?'loss':'start')}
 /* Bandeau au-dessus du champ de message quand une photo est jointe */
 function showAtt(){const a=$('att');if(!a)return;a.hidden=!S.img&&!S.reply;a.innerHTML=(S.reply?`<span class="quote grow">Réponse à ${S.reply.by==='club'?club().short:first(S.reply.by)} : ${esc(S.reply.x).slice(0,70)}</span><button type="button" class="ib rnd" data-a="unreply" aria-label="Annuler la réponse">${ic('x')}</button>`:'')+(S.img?`<span class="ph" style="background-image:url(${S.img})"></span><span class="grow"><span class="nm">Photo jointe</span><br><span class="muted small">Elle partira avec ton message.</span></span><button type="button" class="ib rnd" data-a="unattach" aria-label="Retirer la photo">${ic('x')}</button>`:'')}
 /* Pendant le direct, on ne redessine que les scores affichés, pas tout l'écran */
@@ -149,7 +160,7 @@ const A={
  like(d){if(S.liked.has(d.id))S.liked.delete(d.id);else{S.liked.add(d.id);S.pop=d.id}render(true);S.pop=null},
  comments(d){sheet('Commentaires',commentsBody(posts.find(p=>p.id===d.id)))},
  follow(d){if(isMinor(d.id))return;const on=!S.follow.has(d.id);on?S.follow.add(d.id):S.follow.delete(d.id);render(true);toast(on?`Tu suis ${first(d.id)} : tu seras notifié de ses résultats et de ses messages`:`Tu ne suis plus ${first(d.id)}`)},
- notifs(){sheet('Notifications',`<div class="body">${NOTIFS.length?NOTIFS.map((n,i)=>{if(S.blocked.has(n.by)||!nVis(n))return '';const r=n.conv&&recs.find(x=>x.id===n.conv),c=r&&r.conv&&r.conv[ME()];return r&&r.st==='soon'&&r.lineup&&r.lineup[ME()]?`<div class="msg nrow">${av(n.by,'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time><span class="ctl" style="margin-top:8px"><button class="btn sm grow ${c==='ok'?'':'ghost'}" data-a="conv" data-r="${r.id}" data-s="ok">Je suis dispo</button><button class="btn sm grow ${c==='no'?'hot':'ghost'}" data-a="conv" data-r="${r.id}" data-s="no">Pas dispo</button></span><button class="nm" data-a="ngo" data-i="${i}" style="color:var(--accent)">Voir la rencontre</button></span></div>`:`<button class="msg nrow" data-a="ngo" data-i="${i}">${av(n.by,'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time></span>${n.n?'<span class="st no">Nouveau</span>':''}</button>`}).join(''):empty('bell','Aucune notification','Suis des adhérents pour être prévenu de leurs résultats.')}<div class="note">Tu choisis ce que tu reçois dans ton profil, rubrique « Mes notifications ».</div></div>`);NOTIFS.forEach(n=>n.n=0);render(true)},
+ notifs(){if(pending()){toast("Les notifications s'ouvriront quand le club aura validé ton accès");return}sheet('Notifications',`<div class="body">${NOTIFS.length?NOTIFS.map((n,i)=>{if(S.blocked.has(n.by)||!nVis(n))return '';const r=n.conv&&recs.find(x=>x.id===n.conv),c=r&&r.conv&&r.conv[ME()];return r&&r.st==='soon'&&r.lineup&&r.lineup[ME()]?`<div class="msg nrow">${av(n.by,'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time><span class="ctl" style="margin-top:8px"><button class="btn sm grow ${c==='ok'?'':'ghost'}" data-a="conv" data-r="${r.id}" data-s="ok">Je suis dispo</button><button class="btn sm grow ${c==='no'?'hot':'ghost'}" data-a="conv" data-r="${r.id}" data-s="no">Pas dispo</button></span><button class="nm" data-a="ngo" data-i="${i}" style="color:var(--accent)">Voir la rencontre</button></span></div>`:`<button class="msg nrow" data-a="ngo" data-i="${i}">${av(n.by,'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time></span>${n.n?'<span class="st no">Nouveau</span>':''}</button>`}).join(''):empty('bell','Aucune notification','Suis des adhérents pour être prévenu de leurs résultats.')}<div class="note">Tu choisis ce que tu reçois dans ton profil, rubrique « Mes notifications ».</div></div>`);NOTIFS.forEach(n=>n.n=0);render(true)},
  commAsk(d){const c=COMMS.find(c=>c.id===d.id),me=ME(),i=c.req.indexOf(me);if(i>=0){c.req.splice(i,1);render(true);toast('Demande annulée');return}c.req.push(me);render(true);toast('Demande envoyée · le responsable, les membres et le bureau sont prévenus')},
  commReq(d){const c=COMMS.find(c=>c.id===d.id),i=c.req.indexOf(d.u);if(i>=0)c.req.splice(i,1);if(d.ok&&!c.mem.includes(d.u))c.mem.push(d.u);NOTIFS.forEach(n=>{if(n.go&&n.go.v==='comm'&&n.go.id===c.id&&n.by===d.u)n.n=0});render(true);toast(d.ok?`${first(d.u)} rejoint la ${c.name.toLowerCase()} · prévenu`:`Demande de ${first(d.u)} refusée · prévenu`)},
  commLeave(d){const c=COMMS.find(c=>c.id===d.id),i=c.mem.indexOf(ME());if(i>=0)c.mem.splice(i,1);render(true);toast(`Tu as quitté la ${c.name.toLowerCase()}`)},
@@ -159,7 +170,7 @@ const A={
   if(ok)A.open(g);else toast("Ce contenu n'est plus disponible")},
  unattach(){S.img=null;showAtt();const i=$('m-img');if(i)i.value=''},
  unreply(){S.reply=null;showAtt()},
- undo(){const f=undoFn;undoFn=null;if(f){f();render(true);toast('Suppression annulée')}},
+ undo(){const f=undoFn;undoFn=null;document.querySelectorAll('.tst.on').forEach(x=>{if(x.querySelector('.undo'))banHide(x)});if(f){f();render(true);toast('Suppression annulée')}},
  cmenu(d){const p=posts.find(p=>p.id===d.id),c=p&&p.com[+d.i];if(!c)return;const mine=c.by===ME(),at=`data-id="${p.id}" data-i="${d.i}"`,items=[(mine||isAdmin())&&['trash','Supprimer le commentaire','cdel',at,1],!mine&&['flag','Signaler ce commentaire','creport',at],!mine&&c.by!=='club'&&['block','Bloquer '+first(c.by),'block',`data-id="${c.by}"`,1]].filter(Boolean);
   sheet('Commentaire',`<div class="body"><div class="reacts big">${['👍','❤️','😂','👏','🎾'].map(e=>`<button class="react ${c.my===e?'on':''}" data-a="creact" ${at} data-e="${e}" aria-label="Réagir avec ${e}">${e}</button>`).join('')}</div><div class="menu">${items.map(i=>`<button class="${i[4]?'danger':''}" data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`)},
  creact(d){const p=posts.find(p=>p.id===d.id),c=p&&p.com[+d.i];if(!c)return;c.re=c.re||{};const e=d.e,was=c.my;if(was){c.re[was]--;if(c.re[was]<=0)delete c.re[was]}if(was===e)c.my=null;else{c.re[e]=(c.re[e]||0)+1;c.my=e}sheet('Commentaires',commentsBody(p),true)},
@@ -177,7 +188,9 @@ const A={
  recTab(d){S.recTab=d.k;render(true)},
  planMine(){S.plan.mine=!S.plan.mine;render(true)},
  clubInfo(){const I2=CLUBINFO,num=a=>a.map(String);sheet('Infos du club',`<form class="body" id="info-form"><div class="two">${Sel('i-courts','Courts de tennis',num([0,1,2,3,4,5,6,7,8,9,10,12,15]),String(I2.courts))}${Sel('i-pistes','Pistes de padel',num([0,1,2,3,4,5,6,8]),String(I2.pistes))}</div>${F('i-house','Horaires du club-house','',I2.house)}${F('i-secr','Horaires du secrétariat','',I2.secr)}${F('i-addr','Adresse','',I2.addr)}<span class="lb">Tarifs</span>${FORM.map((f,i)=>`<div class="two">${O('i-fn'+i,'Formule','',f[0])}${O('i-fp'+i,'Prix','',f[2])}</div>`).join('')}${O('i-book','Lien de réservation des courts','https://…',I2.book)}${O('i-pay','Lien de paiement de la cotisation (HelloAsso…)','https://…',I2.pay)}${O('i-shop','Lien de la boutique','https://…',I2.shop)}<div class="fld"><span class="lb">Modules</span><label class="chk" for="i-actus"><input type="checkbox" id="i-actus" ${I2.mods.actus?'checked':''}>Actus (articles)</label><label class="chk" for="i-comm"><input type="checkbox" id="i-comm" ${I2.mods.comm?'checked':''}>Commissions</label><p class="muted small">Un petit club peut masquer les modules dont il n'a pas besoin.</p></div><button class="btn full">Enregistrer</button></form>`)},
- joinOk(d){const j=JOINREQ.splice(+d.i,1)[0],id='u'+Date.now();M[id]={n:j.n,r:'NC',team:'Nouvel adhérent',fol:0,g:'H',bd:'1990-01-01',res:[]};CLUBINFO.joined++;render(true);toast(`${j.n} a rejoint l'appli · prévenu par e-mail`)},
+ readh(){const me=ME();if(JOINREQ.some(j=>j.id===me))return;JOINREQ.push({id:me,n:M[me].n,mail:(M[me].n||'').toLowerCase().replace(/[^a-z]+/g,'.')+'@exemple.fr',via:"une reprise d'adhésion"});NOTIFS.unshift({by:me,txt:`a repris son adhésion et demande à retrouver l'accès à l'appli pour la saison ${S.season}`,t:"À l'instant",n:1,staff:1,go:{v:'join'}});render(true);toast('Demande envoyée · le bureau va réactiver ton accès')},
+ revalid(d){VALID[d.id]=S.season;NOTIFS.unshift({by:'club',txt:`a validé ton adhésion pour la saison ${S.season} : tout l'appli t'est de nouveau ouverte`,t:"À l'instant",n:1,to:[d.id],mine:1});render(true);toast(`${first(d.id)} retrouve l'accès à l'appli pour ${S.season}`)},
+ joinOk(d){const j0=JOINREQ[+d.i];if(j0&&j0.id&&M[j0.id]){JOINREQ.splice(+d.i,1);A.revalid({id:j0.id});return}const j=JOINREQ.splice(+d.i,1)[0],id='u'+Date.now();VALID[id]=S.season;M[id]={n:j.n,r:'NC',team:'Nouvel adhérent',fol:0,g:'H',bd:'1990-01-01',res:[]};CLUBINFO.joined++;render(true);toast(`${j.n} a rejoint l'appli · prévenu par e-mail`)},
  joinNo(d){const j=JOINREQ.splice(+d.i,1)[0];render(true);toast(`Demande de ${j.n} refusée`)},
  impSend(){const n=(S.imp||[]).length;S.invited=(S.invited||0)+n;S.imp=null;render(true);toast(`${n} invitation${n>1?'s':''} envoyée${n>1?'s':''} par e-mail`)},
  photoOk(d){M[d.id].photoOk=!M[d.id].photoOk;render(true);toast(M[d.id].photoOk?'Autorisation photo donnée':'Autorisation photo retirée')},
@@ -187,14 +200,16 @@ const A={
  att(d){const g=grp(d.id);g.att=g.att||{};const a=g.att[d.d]=g.att[d.d]||{},v=d.s==='1';a[d.u]=a[d.u]===v?undefined:v;render(true)},
  cancelCourse(d){const g=grp(d.id);g.cancel=g.cancel||[];const i=g.cancel.indexOf(d.d),off=i<0;if(off)g.cancel.push(d.d);else g.cancel.splice(i,1);NOTIFS.unshift({by:g.coach,txt:`${g.name} du ${fmtD(d.d)} : ${off?'cours annulé':'cours rétabli'}`,t:"À l'instant",n:1,go:{v:'ecole'},to:g.mem.slice()});render(true);toast(off?`Cours du ${fmtD(d.d)} annulé · ${g.mem.length} élève${g.mem.length>1?'s':''} et leurs parents notifiés`:'Cours rétabli · élèves et parents notifiés')},
  grpBulk(d){const g=grp(d.g),ids=d.ids.split(',').filter(Boolean);ids.forEach(x=>{if(!g.mem.includes(x))g.mem.push(x)});render(true);toast(`${ids.length} adhérent${ids.length>1?'s':''} ajouté${ids.length>1?'s':''} à ${g.name} et prévenu${ids.length>1?'s':''}`)},
- plus(){const st=isAdmin(),coach=S.role==='coach',mng=st||S.role==='cap',it=[['score','Ajouter un résultat','result'],S.role!=='kid'&&['search','Chercher une partie','newPost','data-k="play"'],st&&['info','Annonce','newPost','data-k="annonce"'],st&&['cal','Événement','newPost','data-k="event"'],coach&&['ball','Stage','newPost','data-k="stage"'],coach&&['school',"Groupe d'entraînement",'newPost','data-k="train"'],st&&['score','Tournoi','newPost','data-k="tournoi"'],st&&['poll','Sondage','newPost','data-k="poll"'],st&&['link','Publication avec lien','newPost','data-k="cta"'],st&&['club','Mettre en avant nos partenaires','newPost','data-k="ad"'],st&&CLUBINFO.mods.actus&&['news','Actu','newPost','data-k="article"']].filter(Boolean);
+ plus(){if(pending()){toast('Tu pourras publier dès que le club aura validé ton accès');return}const st=isAdmin(),coach=S.role==='coach',mng=st||S.role==='cap',it=[['score','Ajouter un résultat','result'],S.role!=='kid'&&['search','Chercher une partie','newPost','data-k="play"'],st&&['info','Annonce','newPost','data-k="annonce"'],st&&['cal','Événement','newPost','data-k="event"'],coach&&['ball','Stage','newPost','data-k="stage"'],coach&&['school',"Groupe d'entraînement",'newPost','data-k="train"'],st&&['score','Tournoi','newPost','data-k="tournoi"'],st&&['poll','Sondage','newPost','data-k="poll"'],st&&['link','Publication avec lien','newPost','data-k="cta"'],st&&['club','Mettre en avant nos partenaires','newPost','data-k="ad"'],st&&CLUBINFO.mods.actus&&['news','Actu','newPost','data-k="article"']].filter(Boolean);
   sheet('Publier',`<div class="body"><div class="menu">${it.map(i=>`<button data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div>${mng?`<button class="admlink" data-a="admin">${ic('gear')}${st?'Gérer le club':'Gérer mon équipe'}</button>`:''}</div>`)},
  newPost(d){const [t,b,cta]=forms(d.k,d.c);S.img=null;sheet(t,`<form class="body" id="adm-form" data-k="${d.k}" data-c="${d.c||''}">${b}<button class="btn full">${cta}</button></form>`)},
  /* publications : menu, modification, suppression, signalement */
  pmenu(d){const p=posts.find(p=>p.id===d.id),mine=p.by===ME(),adm=isAdmin(),ev=p.kind==='event'&&adm&&!p.done&&!p.arch,at=`data-id="${p.id}"`;
-  menuSheet('Options',[ev&&p.reg!=='ext'&&['users','Voir les inscrits','evList',at],ev&&p.reg!=='ext'&&['check',p.closed?'Rouvrir les inscriptions':'Clore les inscriptions','evClose',at],ev&&['image',"Terminer l'événement",'evDone',at],adm&&p.kind!=='ad'&&['flag',p.pin?'Détacher du haut du mur':'Épingler en haut du mur','pin',at],
+  const rr=p.kind==='result'&&recs.find(r=>r.id===p.rec),rg=rr&&grp(rr.tid),rok=rr&&(adm||(rg&&(rg.cap===ME()||rg.mem.includes(ME()))));
+  menuSheet('Options',[rok&&['image',rr.img?'Changer la photo de la rencontre':'Ajouter une photo','rimg',`data-id="${rr.id}"`],ev&&p.reg!=='ext'&&['users','Voir les inscrits','evList',at],ev&&p.reg!=='ext'&&['check',p.closed?'Rouvrir les inscriptions':'Clore les inscriptions','evClose',at],ev&&['image',"Terminer l'événement",'evDone',at],adm&&p.kind!=='ad'&&['flag',p.pin?'Détacher du haut du mur':'Épingler en haut du mur','pin',at],
    (mine||adm)&&['annonce','event','cta','poll','comm'].includes(p.kind)&&!p.arch&&['edit','Modifier','pedit',at],(mine||adm)&&['trash','Supprimer','pdel',at,1],
    !mine&&['flag','Signaler cette publication','preport',at],!mine&&p.by!=='club'&&['block','Bloquer '+first(p.by),'block',`data-id="${p.by}"`,1]])},
+ rimg(d){S.img=null;const r=recs.find(r=>r.id===d.id);if(!r)return;sheet('Photo de la rencontre',`<form class="body" id="rimg-form" data-id="${r.id}"><p class="muted small">${teamName(grp(r.tid))} contre ${r.opp} · la photo s'affiche avec le résultat sur le mur et dans le détail de la rencontre.</p><div class="fld"><label for="a-img">${r.img?'Choisir une autre photo':'Choisir une photo'}</label><input type="file" id="a-img" accept="image/*"><div class="prev" id="a-prev" ${r.img?`style="background-image:url(${r.img})"`:'hidden'}></div>${r.img?`<label class="chk" for="r-noimg"><input type="checkbox" id="r-noimg">Retirer la photo</label>`:''}</div><button class="btn full">Enregistrer</button></form>`)},
  pedit(d){S.img=null;const p=posts.find(p=>p.id===d.id),plain=s=>String(s||'').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
   sheet('Modifier',`<form class="body" id="edit-form" data-id="${p.id}">${p.kind==='poll'?F('e-title','Question','',plain(p.q)):F('e-title','Titre','',plain(p.title))+T('e-body','Texte','',plain(p.body))}${p.kind==='event'?F('e-place','Lieu','',plain(p.place)):''}${p.kind==='poll'?'':`<div class="fld"><label for="a-img">${p.img?'Remplacer la photo de couverture':'Ajouter une photo de couverture'}</label><input type="file" id="a-img" accept="image/*"><div class="prev" id="a-prev" ${p.img?`style="background-image:url(${p.img})"`:'hidden'}></div>${p.img?`<label class="chk" for="e-noimg"><input type="checkbox" id="e-noimg">Retirer la photo</label>`:''}</div>`}<button class="btn full">Enregistrer</button></form>`)},
  pdel(d){const i=posts.findIndex(p=>p.id===d.id);if(i<0)return;const p=posts.splice(i,1)[0];closeSheet();if(view().v==='post')S.stack.pop();render(true);toast('Publication supprimée',()=>posts.splice(i,0,p))},
@@ -225,10 +240,10 @@ const A={
  champ(d){S.champ=d.id;render(true)},
  scoring(){S.scoring=!S.scoring;render(true)},
  game(d){addGame(recs.find(r=>r.id===d.r),+d.i,+d.s);render(true);S.flash=null},
- ungame(d){const m=recs.find(r=>r.id===d.r).ms[+d.i],s=+d.s;let k=m.sets.length-1;
+ ungame(d){const r=recs.find(r=>r.id===d.r),m=r.ms[+d.i],s=+d.s;let k=m.sets.length-1;
   if(m.st==='live'&&k>0&&m.sets[k][0]===0&&m.sets[k][1]===0&&m.sets[k-1][s]>0){m.sets.pop();k--}
-  if(m.sets[k][s]>0){m.sets[k][s]--;if(m.st==='done'){m.st='live';delete m.w}toast('Jeu retiré · score corrigé chez tous les adhérents')}else toast('Aucun jeu à retirer pour ce joueur sur ce set');render(true)},
- start(d){const m=recs.find(r=>r.id===d.r).ms[+d.i];m.st='live';m.sets=[[0,0]];render(true);toast(`${m.l} lancé`)},
+  if(m.sets[k][s]>0){m.sets[k][s]--;const was=m.st==='done';if(was){m.st='live';delete m.w}liveNote(r,'Score corrigé · '+m.l,ours(m)+' contre '+m.b[0]+' · '+(setsTxt(m)||'0-0')+(was?' · le match reprend':''),'start')}else toast('Aucun jeu à retirer pour ce joueur sur ce set');render(true)},
+ start(d){const r=recs.find(r=>r.id===d.r),m=r.ms[+d.i];m.st='live';m.sets=[[0,0]];render(true);liveStart(r,m)},
  endrec(d){endRec(recs.find(r=>r.id===d.r));render(true)},
  startRec(d){const r=recs.find(r=>r.id===d.r),g=grp(r.tid),T2=g.mem.filter(p=>r.lineup&&r.lineup[p]==='T'),pad=recSport(r)==='Padel';
   if(!T2.length){toast("Choisis d'abord les titulaires de la rencontre");return}
@@ -259,6 +274,12 @@ const A={
  share(d){S.share[d.k]=!S.share[d.k];render(true);toast(S.share[d.k]?`${MYCT[d.k][1]} visible par les adhérents`:`${MYCT[d.k][1]} masqué`)},
  nset(d){S.nset[d.k]=!S.nset[d.k];render(true)},
  delRes(d){const l=M[ME()].res,i=+d.i,r=l.splice(i,1)[0],pi=posts.findIndex(p=>p.res===r),p=pi>=0?posts.splice(pi,1)[0]:null;render(true);toast('Résultat supprimé de ton palmarès',()=>{l.splice(i,0,r);if(p)posts.splice(pi,0,p)})},
+ teamFinal(d){const g=grp(d.id),f=g.final||{fmt:'Poule',pp:'1er',pn:6,tm:'stade',tp:'1er',ts:'Vainqueur',out:'Maintien',div:'',txt:''},P=PLACES.slice(0,16),num=Array.from({length:15},(_,i)=>String(i+2));
+  sheet('Résultat final',`<form class="body" id="tf-form" data-id="${g.id}"><p class="muted small">${teamName(g)} · ${champOf(g).name} · ${g.sub}</p>${Sel('tf-fmt','Formule du championnat',['Poule','Tableau final','Poule puis tableau final'],f.fmt)}
+  <div class="two" id="tf-p">${Sel('tf-pp','Place en poule',P,f.pp)}${Sel('tf-pn','Équipes dans la poule',num,String(f.pn))}</div>
+  <div id="tf-t"><div class="fld"><span class="lb">Classement au tableau final</span><div class="radio"><label for="tm-s"><input type="radio" name="tm" value="stade" id="tm-s" ${f.tm!=='place'?'checked':''}>Stade atteint</label><label for="tm-p"><input type="radio" name="tm" value="place" id="tm-p" ${f.tm==='place'?'checked':''}>Place précise</label></div></div><div id="tf-tsw">${Sel('tf-ts','Stade atteint',STAGES,f.ts)}</div><div id="tf-tpw">${Sel('tf-tp','Place finale',P,f.tp)}</div></div>
+  ${Sel('tf-out','Bilan de la saison',['Montée','Maintien','Descente'],f.out)}<div id="tf-d">${O('tf-div','Division de la saison prochaine (facultatif)','Régional 1',f.div)}</div>${O('tf-txt','Un mot pour le mur (facultatif)','Merci à tous les joueurs !',f.txt)}
+  <p class="muted small">Le résultat est publié sur le mur du club. Une montée ou une première place donne le trophée Champion aux joueurs qui ont disputé au moins un match.</p><button class="btn full">Publier le résultat</button></form>`);tfSync()},
  result(){menuSheet('Ajouter un résultat',[['score','Match de tennis','resultT'],['ball','Tournoi de padel','resultP']])},
  resultP(){const mates=Object.keys(M).filter(k=>k!=='club'&&k!==ME()&&M[k].role!=='Jeune'&&(M[k].pad||M[k].pl)).sort((a,b)=>M[a].n.localeCompare(M[b].n));
   sheet('Tournoi de padel',`<form class="body" id="pres-form"><div class="two">${Sel('pr-place','Place obtenue',PLACES)}${Sel('pr-cat','Catégorie',['P25','P50','P100','P250','P500','P1000'],'P100')}</div><div class="two">${Sel('pr-pub','Public',['Adultes','Jeunes','Seniors +'])}${O('pr-age',"Âge (facultatif)",'+45, 15-18 ans…')}</div><div class="two">${Dt('pr-d','Date du tournoi',1,TODAY)}${F('pr-club','Club organisateur','Padel Club Tulle')}</div>
@@ -268,7 +289,7 @@ const A={
  palm(d){S.palm=d.s;render(true)},
  delPres(d){const l=M[ME()].pres||[],i=+d.i,r=l.splice(i,1)[0],pi=posts.findIndex(p=>p.pres===r),p=pi>=0?posts.splice(pi,1)[0]:null;render(true);toast('Résultat supprimé de ton palmarès padel',()=>{l.splice(i,0,r);if(p)posts.splice(pi,0,p)})},
  resultT(){const opt=`<option value="">–</option>`+[0,1,2,3,4,5,6,7].map(n=>`<option>${n}</option>`).join(''),row=(n,l)=>`<div class="setrow"><span class="nm">${l}</span><select id="s${n}a" aria-label="${l}, tes jeux">${opt}</select><span>/</span><select id="s${n}b" aria-label="${l}, jeux de l'adversaire">${opt}</select></div>`;
-  sheet('Ajouter un résultat',`<form class="body" id="res-form">${F('r-opp','Adversaire','Prénom Nom')}<div class="two">${Sel('r-rank','Son classement',RANKS,'15/1')}${Sel('r-ctx','Compétition',['Tournoi','Championnat par équipes','Tournoi interne','Match amical'])}</div>${O('r-name','Nom du tournoi (facultatif)','Open de Brive')}
+  sheet('Ajouter un résultat',`<form class="body" id="res-form">${F('r-opp','Adversaire','Prénom Nom')}<div class="two">${Sel('r-rank','Son classement',RANKS,'15/1')}${Sel('r-ctx','Compétition',['Tournoi','Championnat par équipes','Tournoi interne','Match amical'])}</div>${O('r-name','Nom du tournoi (facultatif)','Open de Brive')}<div class="fld"><label class="chk" for="r-fin"><input type="checkbox" id="r-fin">C'était la finale du tournoi</label></div>
   <div class="fld"><span class="lb">Score · tes jeux / ceux de l'adversaire</span>${row(1,'1er set')}${row(2,'2e set')}${row(3,'3e set')}<span class="muted small">Laisse le 3e set vide si le match s'est joué en deux sets.</span></div><button class="btn full">${isMinor(ME())?'Publier (visible par ton groupe et tes parents)':'Publier et notifier mes '+M[ME()].fol+' abonnés'}</button></form>`)},
  rank(d){const tn=d.k==='tennis',me=M[ME()];sheet(tn?'Mon classement tennis':'Mon classement padel',`<form class="body" id="rank-form" data-k="${d.k}">`+(tn?`<div class="fld"><label for="r-new">Classement</label><select id="r-new">${RANKS.map(r=>`<option value="${r}" ${r===me.r?'selected':''}>${r==='NC'?'Non classé':r}</option>`).join('')}</select></div>`:`<div class="fld"><label for="r-pad">Classement national</label><input id="r-pad" inputmode="numeric" pattern="[0-9]*" placeholder="Laisse vide si non classé" value="${me.pad||''}" autocomplete="off"></div><div class="fld"><label for="r-pl">Niveau de jeu</label><select id="r-pl">${['Aucun',...LV].map((l,i)=>`<option ${(me.pl||0)===i?'selected':''}>${l}</option>`).join('')}</select><span class="muted small">${LVHELP}</span></div>`)+`<p class="muted small">Le classement n'est pas relié à Ten'Up : tu le mets à jour toi-même, et tes abonnés sont prévenus.</p><button class="btn full">Enregistrer</button></form>`)},
  editMe(){const me=M.me,sx=me.g==='F'?'Femme':'Homme';
@@ -279,7 +300,7 @@ const A={
 };
 
 /* ---------- événements du navigateur ---------- */
-document.addEventListener('click',e=>{const nb=e.target.closest('.nban');if(nb){const i=NOTIFS.indexOf(nb._n);banHide(nb);if(i>=0){NOTIFS[i].n=0;A.ngo({i})}return}const lp=e.target.closest('[data-lp]');if(lp&&!e.target.closest('[data-a]')){if(e.detail===0)A[lp.dataset.lp](lp.dataset,lp);return}const el=e.target.closest('[data-a]');if(el){if(el.disabled)return;A[el.dataset.a](el.dataset,el);return}if(e.target.id==='sheet')closeSheet()});
+document.addEventListener('click',e=>{const nb=e.target.closest('.nban');if(nb&&nb._n&&!e.target.closest('[data-a]')){const i=NOTIFS.indexOf(nb._n);banHide(nb);if(i>=0){NOTIFS[i].n=0;A.ngo({i})}return}const lp=e.target.closest('[data-lp]');if(lp&&!e.target.closest('[data-a]')){if(e.detail===0)A[lp.dataset.lp](lp.dataset,lp);return}const el=e.target.closest('[data-a]');if(el){if(el.disabled)return;A[el.dataset.a](el.dataset,el);return}if(e.target.id==='sheet')closeSheet()});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 /* Feuilles du bas : on les ferme aussi en les glissant vers le bas */
@@ -289,6 +310,18 @@ document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-lp]
 document.addEventListener('pointermove',e=>{if(lpT&&Math.abs(e.clientX-lpX)+Math.abs(e.clientY-lpY)>10){clearTimeout(lpT);lpT=null}});
 ['pointerup','pointercancel'].forEach(t=>document.addEventListener(t,()=>{clearTimeout(lpT);lpT=null}));
 document.addEventListener('contextmenu',e=>{const el=e.target.closest('[data-lp]');if(el){e.preventDefault();clearTimeout(lpT);lpT=null;A[el.dataset.lp](el.dataset,el)}});
+/* Nouvelle saison : tout repart de zéro. On ne garde que les archives (résultats des équipes, articles, événements passés), les profils, les trophées et les points */
+function newSeason(old){if(typeof freezeTrophies==='function')freezeTrophies();
+ GROUPS.filter(g=>g.type==='team').forEach(g=>OLDG.push(g));CHAMPS.forEach(c=>OLDC.push(c));GROUPS.length=0;CHAMPS.length=0;
+ for(let i=recs.length-1;i>=0;i--)if(!recs[i].arch)recs.splice(i,1);
+ for(let i=posts.length-1;i>=0;i--)if(!posts[i].arch)posts.splice(i,1);
+ for(let i=chans.length-1;i>=0;i--){const c=chans[i];if(c.g!=='club')chans.splice(i,1);else{c.msgs=[];c.un=0}}
+ Object.keys(M).forEach(k=>{M[k].res=[];M[k].pres=[]});
+ NOTIFS.length=0;NOTIFS.push({by:'club',txt:`ouvre la saison ${S.season} : bienvenue à tous !`,t:"À l'instant",n:1});S.liked.clear();S.scoring=false}
+/* Formulaire du résultat final : on n'affiche que les champs utiles */
+function tfSync(){const fm=val0('tf-fmt'),tm=document.querySelector('#tf-form input[name="tm"]:checked'),pl=tm&&tm.value==='place';if(!$('tf-p'))return;$('tf-p').hidden=fm==='Tableau final';$('tf-t').hidden=fm==='Poule';$('tf-tsw').hidden=pl;$('tf-tpw').hidden=!pl;$('tf-d').hidden=val0('tf-out')==='Maintien'}
+const val0=id=>{const x=$(id);return x?x.value:''};
+document.addEventListener('change',e=>{if(e.target.closest('#tf-form'))tfSync()});
 let shY=null;
 document.addEventListener('touchstart',e=>{const h=e.target.closest('.sheet header,.grab');shY=h?e.touches[0].clientY:null},{passive:true});
 document.addEventListener('touchmove',e=>{if(shY===null)return;const dy=e.touches[0].clientY-shY,s=document.querySelector('#sheet .sheet');if(s&&dy>0)s.style.transform=`translateY(${dy}px)`},{passive:true});
@@ -318,14 +351,14 @@ document.addEventListener('change',e=>{const el=e.target,prev=u=>{const p=$('a-p
  if(el.id==='rec-ph'&&el.files[0])shrink(el.files[0],u=>{recs.find(r=>r.id===el.dataset.r).img=u;render(true);toast('Photo ajoutée · la publication du mur est à jour')})});
 
 document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=id=>{const x=$(id);return x?x.value.trim():''},g=id=>esc(val(id)),home=msg=>{closeSheet();S.tab='home';S.stack=[];render();toast(msg)};
- if(f.id==='composer'){const inp=$('msg-input'),x=inp.value.trim(),img=S.img;if(!x&&!img)return;const v=view(),c=v.v==='chan'?chans.find(c=>c.id===v.id):null,list=v.v==='rec'?recs.find(r=>r.id===v.id).chat:c.msgs;if(!list)return;
+ if(f.id==='composer'){const inp=$('msg-input'),x=inp.value.trim(),img=S.img;if(!x&&!img)return;const v=view(),c=v.v==='chan'?chans.find(c=>c.id===v.id):null,list=v.v==='rec'?recs.find(r=>r.id===v.id).chat:c&&c.msgs;if(!list)return;
   list.push({by:c&&c.ro&&isAdmin()?'club':ME(),x,img,t:"À l'instant",rep:S.reply||undefined});S.img=null;S.reply=null;showAtt();inp.value='';S.sent=true;render(true);S.sent=false;$('main').scrollTop=$('main').scrollHeight;inp.focus();return}
  if(f.id==='com-form'){const x=val('com-input');if(!x)return;const p=posts.find(p=>p.id===f.dataset.id);p.com.push({by:ME(),x});sheet('Commentaires',commentsBody(p),true);const l=$('com-list');l.scrollTop=l.scrollHeight;render(true);return}
  if(f.id==='edit-form'){const p=posts.find(p=>p.id===f.dataset.id);if(p.kind==='poll')p.q=g('e-title');else{p.title=g('e-title');p.body=g('e-body');if($('e-place'))p.place=g('e-place');if($('e-noimg')&&$('e-noimg').checked)delete p.img;if(S.img)p.img=S.img;S.img=null}closeSheet();render(true);toast('Publication modifiée');return}
  if(f.id==='done-form'){const i=posts.findIndex(p=>p.id===f.dataset.id),p=posts[i],n=Math.min(S.imgs.length,10);p.done={txt:g('d-txt'),photos:S.imgs.slice(0,10)};S.imgs=[];p.t="À l'instant";posts.splice(i,1);posts.unshift(p);home(`Événement terminé · publié sur le mur${n?' avec '+n+' photo'+(n>1?'s':''):''}`);return}
  if(f.id==='start-form'){const r=recs.find(r=>r.id===f.dataset.r),gr=grp(r.tid),T2=gr.mem.filter(p=>r.lineup[p]==='T'),pad=recSport(r)==='Padel',last=p=>M[p].n.split(' ').slice(1).join(' ')||M[p].n;
   r.ms=pad?Array.from({length:Math.ceil(T2.length/2)},(_,i)=>({l:'Double '+(i+1),an:T2.slice(i*2,i*2+2).map(last).join(' / '),b:[val('so-'+i)||'Paire adverse '+(i+1),''],sets:[],st:'soon'})):T2.map((p,i)=>({l:'Simple '+(i+1),a:p,b:[val('so-'+i)||'Adversaire '+(i+1),''],sets:[],st:'soon'})).concat(T2.length>=2?[{l:'Double',an:T2.slice(0,2).map(last).join(' / '),b:[val('so-d')||'Paire adverse',''],sets:[],st:'soon'}]:[]);
-  r.stb=val('so-stb').startsWith('Super');r.ms.slice(0,2).forEach(m=>{m.st='live';m.sets=[[0,0]]});r.st='live';r.chat=[];S.scoring=true;closeSheet();render();toast('Rencontre lancée · les adhérents suivent le score en direct');return}
+  r.stb=val('so-stb').startsWith('Super');r.ms.slice(0,2).forEach(m=>{m.st='live';m.sets=[[0,0]]});r.st='live';r.chat=[];S.scoring=true;closeSheet();render();liveNote(r,`Début de la rencontre contre ${r.opp}`,r.ms.filter(m=>m.st==='live').map(m=>`${m.l} : ${ours(m)}`).join(' · '),'start');return}
  if(f.id==='me-form'){const me=M.me;me.n=val('e-name')||me.n;me.g=val('e-g')==='Femme'?'F':'H';if(val('e-bd'))me.bd=val('e-bd');MYCT.tel[2]=val('e-tel');MYCT.mail[2]=val('e-mail');MYCT.soc[1]=val('e-net');MYCT.soc[2]=val('e-soc');closeSheet();render(true);toast('Informations mises à jour');return}
  if(f.id==='kid-form'){const id='k'+Date.now(),gr=GROUPS.find(x=>x.name===val('k-grp'));M[id]={n:g('k-name'),r:'NC',role:'Jeune',team:gr.name,fol:0,g:val('k-g')==='Fille'?'F':'H',bd:val('k-bd'),parent:'me',photoOk:false,res:[]};M.me.kids.push(id);gr.mem.push(id);closeSheet();render(true);toast(`Compte jeune créé · ${first(id)} rejoint ${gr.name}`);return}
  if(f.id==='look-form'){const c=club(),acc=$('lk-acc').value,dark=val('lk-bg')==='Sombre',dv=derive(acc,BASE[dark].bg);['bg','card','card2','line','fg','muted'].forEach(k=>delete c[k]);Object.assign(c,{name:val('lk-name')||c.name,short:(val('lk-short')||c.short).slice(0,4).toUpperCase(),accent:dv.col,dark});if(S.img)c.logo=S.img;S.img=null;setTheme(S.club);closeSheet();render(true);
@@ -336,8 +369,16 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
  if(f.id==='kdel-form'){closeSheet();toast(`Demande enregistrée : le compte de ${first(f.dataset.k)} sera supprimé sous 30 jours`);return}
  if(f.id==='del-form'){closeSheet();toast('Demande enregistrée. Dans la vraie appli, ton compte serait supprimé sous 30 jours.');return}
  if(f.id==='season-form'){const y1=+val('y1'),y2=+val('y2'),old=S.season;if(y2!==y1+1){toast('Une saison couvre deux années qui se suivent');return}
+  const inv=typeof seasonTrophies==='function'?seasonTrophies(old):0;GROUPS.forEach(gr=>{if(gr.final){(gr.hist=gr.hist||[]).push(gr.final);delete gr.final}});
   let n=0;arts.forEach(a=>{if(!a.arch){a.arch=old;n++}});recs.forEach(r=>{if(!r.arch&&r.st==='done'){r.arch=old;n++}});posts.forEach(p=>{if(!p.arch&&p.kind==='event'){p.arch=old;n++}});
-  S.season=y1+'-'+y2;S.arch={s:old,t:'arts'};closeSheet();S.tab='club';S.clubTab='club';S.stack=[{v:'archive'}];render();toast(`Saison ${old} clôturée · ${n} éléments archivés · saison ${S.season} lancée`);return}
+  S.season=y1+'-'+y2;newSeason(old);S.arch={s:old,t:'arts'};closeSheet();S.tab='club';S.clubTab='club';S.stack=[{v:'archive'}];render();toast(`Saison ${old} clôturée · ${n} éléments archivés${inv?` · trophée Invaincu pour ${inv} joueur${inv>1?'s':''}`:''} · saison ${S.season} lancée : le mur, les groupes, les équipes et les palmarès repartent de zéro · chaque adhérent doit faire revalider son accès`);return}
+ if(f.id==='rimg-form'){const r=recs.find(r=>r.id===f.dataset.id);if($('r-noimg')&&$('r-noimg').checked){delete r.img;closeSheet();render(true);toast('Photo retirée');return}if(!S.img){toast('Choisis une photo');return}r.img=S.img;S.img=null;closeSheet();render(true);toast('Photo ajoutée au résultat de la rencontre');return}
+ if(f.id==='tf-form'){const gr=grp(f.dataset.id),fm=val('tf-fmt'),tm=f.querySelector('input[name="tm"]:checked').value,F2={season:S.season,fmt:fm,pp:val('tf-pp'),pn:+val('tf-pn'),tm,tp:val('tf-tp'),ts:val('tf-ts'),out:val('tf-out'),div:val('tf-out')==='Maintien'?'':val('tf-div'),txt:val('tf-txt'),from:gr.sub,champ:champOf(gr).name};
+  if(fm!=='Tableau final'&&PLACES.indexOf(F2.pp)+1>F2.pn){toast("La place en poule dépasse le nombre d'équipes");return}
+  gr.final=F2;const i=posts.findIndex(p=>p.kind==='teamfinal'&&p.tid===gr.id&&!p.arch);if(i>=0)posts.splice(i,1);
+  posts.unshift({id:'p'+Date.now(),by:'club',t:"À l'instant",kind:'teamfinal',tid:gr.id,final:F2,sport:champOf(gr).sport,likes:0,com:[]});
+  const won=F2.out==='Montée'||(fm!=='Tableau final'&&F2.pp==='1er'&&fm==='Poule')||(fm!=='Poule'&&(tm==='place'?F2.tp==='1er':F2.ts==='Vainqueur')),nc=won&&typeof teamChampion==='function'?teamChampion(gr):0;
+  home(`Championnat clôturé · résultat publié sur le mur${nc?` · trophée Champion pour ${nc} joueur${nc>1?'s':''}`:''}`);return}
  if(f.id==='rank-form'){const me=M[ME()],tn=f.dataset.k==='tennis';let title,body;
   if(tn){const o=me.r,n=val('r-new');if(o===n){closeSheet();return}me.r=n;title=`Classement tennis <em>${n==='NC'?'non classé':n}</em>`;body=`${first(ME())} passe de ${o} à ${n}.`}
   else{const num=val('r-pad').replace(/\D/g,''),lv=val('r-pl'),np=num?+num:null,nl=lv==='Aucun'?null:LV.indexOf(lv)+1;if(np===(me.pad||null)&&nl===(me.pl||null)){closeSheet();return}me.pad=np;me.pl=nl;title=`Classement padel <em>${np?'n° '+np:'non classé'}</em>`;body=np?`${first(ME())} est désormais n° ${np} au classement padel${nl?', niveau '+nl:''}.`:`${first(ME())} n'est pas classé en padel${nl?', niveau '+nl:''}.`}
@@ -354,7 +395,7 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
   let mine=0,theirs=0;sets.forEach(s=>s[0]>s[1]?mine++:theirs++);
   if(sets.length===2&&mine===1){toast('Un set partout : ajoute le 3e set');return}
   if(sets.length===3&&(sets[0][0]>sets[0][1])===(sets[1][0]>sets[1][1])){toast('Le match était déjà gagné en deux sets : retire le 3e');return}
-  const w=mine>theirs?1:0,or=val('r-rank'),perf=!!w&&rIdx(or)>rIdx(me.r),nm=val('r-name'),r={w,opp:val('r-opp'),or,sc:sets.map(s=>s.join('-')).join(' '),ctx:val('r-ctx')+(nm?' · '+nm:''),perf};
+  const w=mine>theirs?1:0,or=val('r-rank'),perf=!!w&&rIdx(or)>rIdx(me.r),nm=val('r-name'),r={w,opp:val('r-opp'),or,sc:sets.map(s=>s.join('-')).join(' '),ctx:val('r-ctx')+(nm?' · '+nm:''),perf,fin:!!($('r-fin')&&$('r-fin').checked)};
   me.res.unshift(r);posts.unshift({id:'p'+Date.now(),by:ME(),t:"À l'instant",kind:'perf',res:r,likes:0,com:[]});home(perf?`Perf à ${or} publiée · ${me.fol} abonnés notifiés`:`Résultat publié · ${me.fol} abonnés notifiés`);return}
  if(f.id==='adm-form'){const k=f.dataset.k,cid=f.dataset.c,V2=$('v-pub')?readVis():{vis:[],rule:null,sport:$('v-sport')&&val('v-sport')!=='Tennis et padel'?val('v-sport'):''},img=S.img,base={id:'p'+Date.now(),by:'club',t:"À l'instant",likes:0,com:[],sport:V2.sport,vis:V2.vis,rule:V2.rule};
   if(k==='annonce'){posts.unshift({...base,kind:'annonce',title:g('a-title'),body:g('a-body'),img});S.img=null;home(V2.vis.length?'Annonce publiée · adhérents concernés notifiés':'Annonce publiée · tous les adhérents notifiés');return}
@@ -382,7 +423,7 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
   if(k==='team'||k==='train'){const id='g'+Date.now(),nm=g('a-title');
    const o=k==='team'?{id,type:k,champ:cid,name:nm,gen:val('a-gen'),sub:g('a-sub'),cap:val('a-cap'),mem:[val('a-cap')]}:{id,type:k,name:nm,sport:val('t-sport'),day:DAYS.indexOf(val('t-day')),h:val('a-h1'),dur:val('t-dur'),coach:val('t-coach'),defLoc:val('t-loc'),gen:val('a-gen'),lo:val('v-lo'),hi:val('v-hi'),sub:val('t-day')+' '+val('a-h1')+' · '+val('t-dur')+' · '+first(val('t-coach')),mem:[]};
    GROUPS.push(o);chans.push({id,g:k,sport:k==='team'?champOf(o).sport:o.sport,name:k==='team'?teamName(o):nm,desc:o.sub,un:0,msgs:[{by:'club',x:'Canal ouvert. Bienvenue à tous !',t:"À l'instant"}]});closeSheet();S.dir=1;S.stack.push({v:k==='team'?'team':'grp',id});render();toast(`${nm} créé · son canal de discussion est ouvert`);return}
-  if(k==='fixture'){const tm=grp(cid);recs.push({id:'r'+Date.now(),d:val('a-d1'),h:val('a-h1'),tid:cid,opp:g('a-opp'),comp:tm.sub+(val('a-comp')?' · '+g('a-comp'):''),when:fmtD(val('a-d1'))+' · '+val('a-h1')+' · '+val('a-loc').toLowerCase(),st:'soon',lineup:{},conv:{}});closeSheet();render(true);toast("Rencontre ajoutée au calendrier · l'équipe est prévenue");return}
+  if(k==='fixture'){const tm=grp(cid);if(tm.final){closeSheet();toast("Ce championnat est clôturé : impossible d'ajouter une rencontre");return}recs.push({id:'r'+Date.now(),d:val('a-d1'),h:val('a-h1'),tid:cid,opp:g('a-opp'),comp:tm.sub+(val('a-comp')?' · '+g('a-comp'):''),when:fmtD(val('a-d1'))+' · '+val('a-h1')+' · '+val('a-loc').toLowerCase(),st:'soon',lineup:{},conv:{}});closeSheet();render(true);toast("Rencontre ajoutée au calendrier · l'équipe est prévenue");return}
   if(k==='play'){const pad=val('p-sport')==='Padel',fmt=pad?'Double':val('a-fmt'),others=adults().filter(x=>x!==ME());let lo,hi,n,txt;
    if(pad){const a=LV.indexOf(val('l-lo'))+1,b=LV.indexOf(val('l-hi'))+1;lo=Math.min(a,b);hi=Math.max(a,b);n=others.filter(x=>M[x].pl>=lo&&M[x].pl<=hi).length;txt='de niveau '+lo+' à '+hi}
    else{const a=rIdx(val('v-lo')),b=rIdx(val('v-hi')),i0=Math.min(a,b),i1=Math.max(a,b);lo=RANKS[i0];hi=RANKS[i1];n=others.filter(x=>rIdx(M[x].r)>=i0&&rIdx(M[x].r)<=i1).length;txt='de '+lo+' à '+hi}
@@ -390,7 +431,7 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
 
 /* ---------- la démo vit : le direct avance, des messages arrivent ---------- */
 setInterval(()=>{if(S.scoring)return;const r=recs.find(r=>r.sim&&r.st==='live');if(!r)return;const lives=r.ms.map((m,i)=>m.st==='live'?i:-1).filter(i=>i>=0),v=view(),here=()=>['home','recs'].includes(v.v)||(v.v==='rec'&&v.id===r.id);
- if(!lives.length){if(r.ms.every(x=>x.st==='done'))endRec(r);else{const n=r.ms.find(x=>x.st==='soon');n.st='live';n.sets=[[0,0]]}liveRefresh(r);return}
+ if(!lives.length){if(r.ms.every(x=>x.st==='done'))endRec(r);else{const n=r.ms.find(x=>x.st==='soon');n.st='live';n.sets=[[0,0]];liveStart(r,n)}liveRefresh(r);return}
  addGame(r,lives[Math.floor(Math.random()*lives.length)],Math.random()<.58?0:1);liveRefresh(r);S.flash=null},6500);
 let simN=0;
 setInterval(()=>{if(simN>=8)return;const v=view(),pool=chans.filter(c=>!c.ro&&chanOk(c)&&!(v.v==='chan'&&v.id===c.id)),who2=adults().filter(x=>x!=='me'&&!S.blocked.has(x));if(!pool.length||!who2.length)return;
@@ -401,12 +442,12 @@ setInterval(()=>{if(simN>=8)return;const v=view(),pool=chans.filter(c=>!c.ro&&ch
 /* Il faut remonter d'au moins 160 px (ou revenir tout en haut) pour le faire revenir : le rebond en bas de page ne le rappelle plus */
 /* Le bandeau flotte au-dessus de la page : il glisse sans changer la taille de la zone qui défile, donc le défilement reste collé au doigt */
 var lastY=0,turnY=0;
-function topPad(){const t=$('top'),m=$('main');m.style.paddingTop=t.offsetHeight+'px';m.style.setProperty('--segt',t.classList.contains('hide')?'0px':t.offsetHeight+'px')}
+function topPad(){const t=$('top'),m=$('main');m.style.paddingTop=t.offsetHeight+'px';m.style.setProperty('--segt',t.classList.contains('hide')?'calc(env(safe-area-inset-top,0px) - '+t.offsetHeight+'px)':'0px')}
 $('main').addEventListener('scroll',()=>{const m=$('main'),max=m.scrollHeight-m.clientHeight,y=Math.min(Math.max(m.scrollTop,0),max),t=$('top'),hid=t.classList.contains('hide');
- if(y>lastY){turnY=y;if(y>80&&!hid){t.classList.add('hide');m.style.setProperty('--segt','0px')}}
- else if(y<lastY&&hid&&(turnY-y>160||y<30)){t.classList.remove('hide');m.style.setProperty('--segt',t.offsetHeight+'px')}
+ if(y>lastY){turnY=y;if(y>80&&!hid){t.classList.add('hide');m.style.setProperty('--segt','calc(env(safe-area-inset-top,0px) - '+t.offsetHeight+'px)')}}
+ else if(y<lastY&&hid&&(turnY-y>160||y<30)){t.classList.remove('hide');m.style.setProperty('--segt','0px')}
  lastY=y},{passive:true});
-new ResizeObserver(topPad).observe($('top'));
+new ResizeObserver(topPad).observe($('top'),{box:'border-box'});
 /* Glisser le doigt le long de la barre du bas pour choisir sa page, comme Instagram */
 /* Curseur translucide derrière l'onglet actif ; il suit le doigt quand on glisse */
 let pillPos=null;
