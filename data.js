@@ -19,7 +19,7 @@ const LV=[1,2,3,4,5,6,7,8,9,10].map(n=>'Niveau '+n);
 const DAYS=['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],DA=['Dim.','Lun.','Mar.','Mer.','Jeu.','Ven.','Sam.'],MO=['janv','févr','mars','avr','mai','juin','juil','août','sept','oct','nov','déc'];
 const HOURS=[];for(let h=7;h<=23;h++)HOURS.push(h+' h',h+' h 30');
 const hMin=h=>{const m=String(h||'').match(/(\d+) h(?: (\d+))?/);return m?+m[1]*60+(+m[2]||0):0};
-function fmtD(iso,short){if(!iso)return '';const [y,m,d]=iso.split('-').map(Number);return (short?'':DA[new Date(y,m-1,d).getDay()]+' ')+d+' '+MO[m-1]}
+function fmtD(iso,short){if(!iso)return '';const [y,m,d]=iso.split('-').map(Number);return (short?'':DA[new Date(y,m-1,d).getDay()]+' ')+d+' '+MO[m-1]+(y!==+TODAY.slice(0,4)?' '+y:'')}
 function isoIn(n,from){const [y0,m0,d0]=(from||TODAY).split('-').map(Number),d=new Date(y0,m0-1,d0);d.setDate(d.getDate()+n);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 const rIdx=r=>RANKS.indexOf(r);
 
@@ -46,6 +46,11 @@ const M={
  julie:{n:'Julie Perrin',r:'30/1',role:'Parent',team:'Parent de Zoé',fol:9,g:'F',bd:'1983-07-01',res:[]},
  leo:{n:'Léo Roux',r:'30/3',role:'Jeune',team:'Galaxie U12 compétition',fol:6,g:'H',bd:'2015-03-09',parent:'me',res:[{w:1,opp:'T. Blanc',or:'30/2',sc:'6-4 6-3',ctx:'Tournoi jeunes de Tulle',perf:1}]}
 };
+/* Palmarès padel : des places en tournoi, avec un partenaire du club ou extérieur */
+M.me.pres=[{place:'3e',cat:'P100',pub:'Adultes',age:'',d:'2026-09-27',club:'Padel Club Tulle',pid:'nathan'},{place:'1er',cat:'P25',pub:'Adultes',age:'',d:'2026-09-06',club:'TPC Les Tilleuls',pid:'paul'}];
+M.paul.pres=[{place:'2e',cat:'P250',pub:'Adultes',age:'',d:'2026-10-04',club:'Padel Arena Limoges',ext:'Julien Masson'},{place:'1er',cat:'P25',pub:'Adultes',age:'',d:'2026-09-06',club:'TPC Les Tilleuls',pid:'me'}];
+M.nathan.pres=[{place:'3e',cat:'P100',pub:'Adultes',age:'',d:'2026-09-27',club:'Padel Club Tulle',pid:'me'}];
+M.mehdi.pres=[{place:'1er',cat:'P500',pub:'Adultes',age:'',d:'2026-09-20',club:'Padel Center Bordeaux',ext:'Lucas Ferrer'}];
 /* Coordonnées : affichées seulement si l'adhérent a donné son accord (numéros et adresses fictifs) */
 const CT={sarah:{tel:'06 39 98 12 04',mail:'sarah.benali@exemple.fr',soc:['Instagram','@sarah.coach.tennis']},hugo:{tel:'06 39 98 44 10',mail:'hugo.martin@exemple.fr'},thomas:{tel:'06 39 98 27 51',soc:['Instagram','@tom.leroy']},ines:{mail:'ines.faure@exemple.fr',soc:['TikTok','@ines.plays']},nathan:{tel:'06 39 98 63 18'},emma:{soc:['Facebook','Emma Garcia']},marc:{tel:'06 39 98 70 33',mail:'marc.dubois@exemple.fr'},mehdi:{tel:'06 39 98 81 47'}};
 const MYCT={tel:['phone','Téléphone','06 39 98 05 21'],mail:['mail','E-mail','camille.roux@exemple.fr'],soc:['at','Instagram','@camille.rx']};
@@ -61,9 +66,9 @@ const GROUPS=[
  {id:'eqd',type:'team',champ:'c1',name:'Équipe 1',gen:'Femmes',sub:'Régional 3',cap:'ines',mem:['ines','emma','sarah','julie']},
  {id:'pad1',type:'team',champ:'c2',name:'Padel 1',gen:'Hommes',sub:'Départemental',cap:'paul',mem:['paul','nathan','antoine','mehdi']},
  {id:'tu12',type:'team',champ:'c3',name:'U12',gen:'Mixte',sub:'Départemental',cap:'sarah',mem:['leo']},
- {id:'compet',type:'train',day:2,h:'19 h',dur:'1 h 30',sport:'Tennis',coach:'sarah',name:'Adultes compétition',sub:'Mardi 19 h · 1 h 30 · Sarah',mem:['me','ines','thomas','nathan']},
- {id:'padp',type:'train',day:4,h:'18 h 30',dur:'1 h',sport:'Padel',coach:'mehdi',gen:'Mixte',name:'Padel perfectionnement',sub:'Jeudi 18 h 30 · 1 h · Mehdi',mem:['paul','nathan','emma']},
- {id:'u12',type:'train',day:3,h:'14 h',dur:'1 h 30',sport:'Tennis',coach:'sarah',name:'Galaxie U12 compétition',sub:'Mercredi 14 h · 1 h 30 · Sarah',mem:['leo']}
+ {id:'compet',type:'train',defLoc:'Extérieur',loc:{'2026-10-13':'En salle'},resp:{'2026-10-13':{ines:'ok',thomas:'ok',nathan:'no'}},day:2,h:'19 h',dur:'1 h 30',sport:'Tennis',coach:'sarah',name:'Adultes compétition',sub:'Mardi 19 h · 1 h 30 · Sarah',mem:['me','ines','thomas','nathan']},
+ {id:'padp',type:'train',defLoc:'En salle',day:4,h:'18 h 30',dur:'1 h',sport:'Padel',coach:'mehdi',gen:'Mixte',name:'Padel perfectionnement',sub:'Jeudi 18 h 30 · 1 h · Mehdi',mem:['paul','nathan','emma']},
+ {id:'u12',type:'train',defLoc:'Extérieur',day:3,h:'14 h',dur:'1 h 30',sport:'Tennis',coach:'sarah',name:'Galaxie U12 compétition',sub:'Mercredi 14 h · 1 h 30 · Sarah',mem:['leo']}
 ];
 
 const posts=[
@@ -147,14 +152,16 @@ const NOTIFS=[{by:'paul',txt:'souhaite rejoindre la commission animation',t:'Il 
 const REPORTS=[];
 
 /* État de l'appli. role : admin (bureau), cap (capitaine), mem (adhérent), kid (compte jeune de Léo) */
-const S={tab:'home',stack:[],club:0,role:'admin',liked:new Set(),follow:new Set(['ines','sarah','thomas']),blocked:new Set(),
+const S={ecTab:'mine',tab:'home',stack:[],club:0,role:'admin',liked:new Set(),follow:new Set(['ines','sarah','thomas']),blocked:new Set(),
  chanTab:'club',recTab:'now',clubTab:'actus',champ:'c1',scoring:false,flash:null,pop:null,sent:false,dir:0,img:null,imgs:[],grpAll:false,
  share:{tel:true,mail:false,soc:true},nset:{club:true,follow:true,chan:true,team:true,play:true},
- plan:{mode:'events',d:TODAY,cat:{ens:1,ani:1,eq:1},sp:{Tennis:1,Padel:1}},list:{sort:'tennis',f:'all',q:''},season:'2026-2027',arch:{s:'',t:'arts'}};
+ plan:{mode:'events',d:TODAY,cat:{ens:1,ani:1,eq:1},sp:{Tennis:1,Padel:1}},list:{sort:'tennis',f:'all',q:''},palm:'tennis',season:'2026-2027',arch:{s:'',t:'arts'}};
 
 const club=()=>CLUBS[S.club];
-const ME=()=>S.role==='kid'?'leo':'me';
-const isAdmin=()=>S.role==='admin';
+const ME=()=>S.role==='kid'?'leo':S.role==='coach'?'sarah':'me';
+/* L'enseignant a les pouvoirs du bureau, sauf les commissions ; le bureau seul gère les commissions */
+const isAdmin=()=>S.role==='admin'||S.role==='coach';
+const isBureau=()=>S.role==='admin';
 const canTeam=g=>isAdmin()||(S.role==='cap'&&g&&g.cap==='me');
 const name=id=>id==='club'?club().name:M[id].n;
 const first=id=>name(id).split(' ')[0];
@@ -166,3 +173,19 @@ const teamName=g=>g.name+(g.gen&&g.gen!=='Mixte'?' '+g.gen:'');
 function teamScore(r){if(r.fin)return r.fin;let a=0,b=0;(r.ms||[]).forEach(m=>{if(m.st==='done')m.w===0?a++:b++});return[a,b]}
 /* Un set est valide s'il se termine 6-0 à 6-4, 7-5 ou 7-6 */
 const setOk=(a,b)=>{const hi=Math.max(a,b),lo=Math.min(a,b);return (hi===6&&lo<=4)||(hi===7&&(lo===5||lo===6))};
+/* Infos du club modifiables par le bureau, demandes d'adhésion, échelle des niveaux padel */
+const CLUBINFO={courts:6,pistes:2,members:412,joined:318,house:'Tous les jours, 9 h – 21 h',secr:'Mer. et sam., 14 h – 18 h',addr:'12 allée des Tilleuls',shop:'https://www.riseandmove.fr',book:'',pay:'',code:'TPC-4821',mods:{actus:true,comm:true}};
+const JOINREQ=[{n:'Lucie Marchand',mail:'lucie.marchand@exemple.fr',via:'le code du club'},{n:'Olivier Fabre',mail:'olivier.fabre@exemple.fr',via:"un lien d'invitation"}];
+const LVHELP="Échelle du club : 1-2 débutant · 3-4 loisir · 5-6 intermédiaire · 7-8 confirmé · 9-10 compétition. Le niveau est validé par les enseignants padel.";
+const isMinor=id=>!!(M[id]&&M[id].role==='Jeune');
+Object.assign(I,{sound:'<path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11"/>',mute:'<path d="M4 9h4l5-4v14l-5-4H4zM16 9l5 6M21 9l-5 6"/>'});
+M.leo.photoOk=false;
+S.share={tel:false,mail:false,soc:false};S.plan.mine=false;S.reply=null;
+chans[1].msgs[0].re={'👍':4,'❤️':2};
+posts.find(p=>p.id==='p6').close='2026-10-20';
+grp('pad1').mem.push('me');recs.find(r=>r.id==='r3').lineup.me='R';
+Object.assign(I,{school:'<path d="M2 9l10-5 10 5-10 5zM6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'});
+posts.splice(2,0,{id:'p15',by:'sarah',t:'Il y a 4 h',kind:'event',stage:true,reg:'int',sport:'Tennis',d:'2026-10-26',d2:'2026-10-30',h1:'9 h',h2:'12 h',date:'Du 26 au 30 oct · 9 h – 12 h',place:'Courts 1 à 4',title:'Stage de la Toussaint <em>jeunes</em>',body:"Cinq matinées de technique et de matchs pour les 8-14 ans, encadrées par Sarah.",yes:9,maybe:2,cap:16,my:null,ins:[],likes:7,com:[]});
+posts.find(p=>p.id==='p1').com[0].re={'👏':3};
+NOTIFS.unshift({by:'sarah',txt:'Adultes compétition de ce soir : le cours a lieu en salle (pluie annoncée)',t:'Il y a 2 h',n:1,go:{v:'ecole'},to:['me','ines','thomas','nathan']});
+NOTIFS.unshift({by:'paul',txt:'te convoque comme remplaçant : Padel 1 – AS Padel Objat, dim. 18 oct',t:'Il y a 20 min',n:1,go:{v:'rec',id:'r3'},conv:'r3'});
