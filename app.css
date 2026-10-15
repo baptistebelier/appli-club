@@ -573,3 +573,5 @@ details.more .fld input,details.more .fld select{background:var(--card)}
 .rlink .nm svg{width:16px;height:16px;transform:rotate(180deg)}
 .av.fr1{margin:2px}.av.fr2{margin:4px}.av.fr3{margin:5px}.av.fr4{margin:6px}.av.fr5{margin:9px}
 .nban.out{transform:scale(.96)!important}
+/* le logo du club remplit tout le cadre arrondi du bandeau */
+.crest.logo{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
