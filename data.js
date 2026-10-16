@@ -152,9 +152,9 @@ const NOTIFS=[{by:'paul',txt:'souhaite rejoindre la commission animation',t:'Il 
 const REPORTS=[];
 
 /* État de l'appli. role : admin (bureau), cap (capitaine), mem (adhérent), kid (compte jeune de Léo) */
-const S={ecTab:'mine',tab:'home',stack:[],club:0,role:'admin',liked:new Set(),follow:new Set(['ines','sarah','thomas']),blocked:new Set(),
+const S={ecTab:'mine',ag:'all',tab:'home',stack:[],club:0,role:'admin',liked:new Set(),follow:new Set(['ines','sarah','thomas']),blocked:new Set(),
  chanTab:'club',recTab:'now',clubTab:'actus',champ:'c1',scoring:false,flash:null,pop:null,sent:false,dir:0,img:null,imgs:[],grpAll:false,
- share:{tel:true,mail:false,soc:true},nset:{club:true,follow:true,chan:true,team:true,play:true},
+ share:{tel:true,mail:false,soc:true},nset:{club:true,follow:true,chan:true,team:true,live:false,play:true},
  plan:{mode:'events',d:TODAY,cat:{ens:1,ani:1,eq:1},sp:{Tennis:1,Padel:1}},list:{sort:'tennis',f:'all',q:''},palm:'tennis',season:'2026-2027',arch:{s:'',t:'arts'}};
 
 const club=()=>CLUBS[S.club];
@@ -196,5 +196,10 @@ const pending=()=>S.role!=='admin'&&S.role!=='coach'&&VALID[ME()]!==S.season;
 /* Résultats finaux des équipes, saisons passées */
 GROUPS.find(g=>g.id==='eq1').hist=[{season:'2025-2026',fmt:'Poule',pp:'3e',pn:6,tm:'stade',ts:'',tp:'',out:'Maintien',div:'',from:'Régional 2',champ:'Championnat de France par équipes',txt:'Maintien assuré lors de la dernière journée.'}];
 GROUPS.find(g=>g.id==='eqd').hist=[{season:'2025-2026',fmt:'Poule puis tableau final',pp:'1er',pn:5,tm:'stade',ts:'Demi-finaliste',tp:'',out:'Montée',div:'Régional 3',from:'Départemental 1',champ:'Championnat de France par équipes',txt:''}];
-NOTIFS.unshift({by:'sarah',txt:'Adultes compétition de ce soir : le cours a lieu en salle (pluie annoncée)',t:'Il y a 2 h',n:1,go:{v:'ecole'},to:['me','ines','thomas','nathan']});
+NOTIFS.unshift({by:'sarah',txt:'Adultes compétition de ce soir : le cours a lieu en salle (pluie annoncée)',t:'Il y a 2 h',n:1,go:{v:'agenda',ag:'cours'},to:['me','ines','thomas','nathan']});
 NOTIFS.unshift({by:'paul',txt:'te convoque comme remplaçant : Padel 1 – AS Padel Objat, dim. 18 oct',t:'Il y a 20 min',n:1,go:{v:'rec',id:'r3'},conv:'r3'});
+/* Chaque groupe d'entraînement et chaque équipe a toujours son groupe de discussion (rattrape les groupes qui n'en avaient pas) */
+function ensureGroupChans(){GROUPS.forEach(g=>{if((g.type!=='train'&&g.type!=='team')||chans.some(c=>c.id===g.id))return;const co=champOf(g);
+ chans.push({id:g.id,g:g.type,sport:g.type==='team'?(co&&co.sport):g.sport,name:g.type==='team'?teamName(g):g.name,desc:g.sub,kid:g.mem.some(isMinor)?1:0,un:0,
+  msgs:[{by:g.type==='train'?(g.coach||'club'):(g.cap||'club'),x:g.type==='train'?`Bienvenue dans le groupe ${g.name} ! Les infos des cours passeront ici.`:'Bienvenue dans le groupe de l\'équipe ! Compos et convocations passeront ici.',t:'Lun.'}]})})}
+ensureGroupChans();

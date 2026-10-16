@@ -30,5 +30,9 @@
 <script src="sons.js"></script>
 <script src="trophees.js"></script>
 <script src="app.js"></script>
+<script>
+/* Service worker : appli hors connexion + notifications push (voir sw.js). Sans support, l'appli marche normalement. */
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
 </body>
 </html>

@@ -1,6 +1,7 @@
 /* ---------- Sons de l'appli : synthétisés dans le navigateur (aucun fichier audio), courts et discrets ---------- */
 let AC=null,NZ=null;
-try{S.sound=localStorage.getItem('club-sound')!=='0'}catch(e){S.sound=true}
+/* Sons désactivés par défaut : il faut les activer dans le profil */
+try{S.sound=localStorage.getItem('club-sound')==='1'}catch(e){S.sound=false}
 function actx(){if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;AC=new C()}if(AC.state==='suspended')AC.resume();return AC}
 /* iPhone : le son ne peut démarrer qu'après un premier toucher */
 document.addEventListener('pointerdown',()=>{if(S.sound)actx()},{passive:true});

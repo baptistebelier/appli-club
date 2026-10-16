@@ -2,7 +2,7 @@
 let lastKey='',lastFoot='',slT,toastT;
 function slide(c){const m=$('main');m.classList.remove('pg-r','pg-l','sg-r','sg-l');void m.offsetWidth;m.classList.add(c);clearTimeout(slT);slT=setTimeout(()=>m.classList.remove(c),320)}
 const ROLE={wait:"Nouvel inscrit en attente de validation",admin:'Bureau du club',cap:'Capitaine',mem:'Adhérent et parent',coach:'Enseignante',kid:'Compte jeune'};
-const TITLES={home:()=>[club().name,'Le mur du club'],chans:()=>['Groupes',club().name],agenda:()=>['Agenda',club().name],teamarch:()=>{const [id,s]=view().id.split('|');return [teamName(grp(id)),'Saison '+s]},ecole:()=>['École','Cours et stages'],club:()=>['Le club','Saison '+S.season],me:()=>['Mon profil',ROLE[S.role]],
+const TITLES={home:()=>[club().name,'Le mur du club'],chans:()=>['Groupes',club().name],agenda:()=>['Agenda','Cours, équipes et événements'],teamarch:()=>{const [id,s]=view().id.split('|');return [teamName(grp(id)),'Saison '+s]},ecole:()=>['École','Cours et stages'],club:()=>['Le club','Saison '+S.season],me:()=>['Mon profil',ROLE[S.role]],
  admin:()=>[isAdmin()?'Gérer le club':S.role==='coach'?'Mes groupes':'Mon équipe','Édition'],list:()=>['Adhérents',club().name],reports:()=>['Signalements','Modération'],legal:()=>['Mentions',club().name],post:()=>['Publication',club().name],art:()=>['Actus',club().name],partners:()=>['Partenaires',club().name],archive:()=>['Archives','Saisons précédentes'],join:()=>['Adhérents',"Faire entrer le club"]};
 function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.scrollTop;let t,sub;
  if(TITLES[v.v])[t,sub]=TITLES[v.v]();
@@ -14,7 +14,7 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
  else if(v.v==='comm'){t=COMMS.find(c=>c.id===v.id).name;sub=club().name}
  else{t=M[v.id].n;sub='Profil'}
  if(key!==lastKey){$('top').classList.remove('hide');lastY=0;turnY=0}
- $('top').innerHTML=(S.stack.length?`<button class="ib" data-a="back" aria-label="Retour">${ic('back')}</button>`:`<span class="crest ${club().logo?'logo':''}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>`)+`<h1>${t}<span class="sub">${sub}</span></h1>${v.v==='chan'?muteBtn(chans.find(c=>c.id===v.id)):''}<button class="ib" data-a="notifs" aria-label="Notifications">${ic('bell')}${!pending()&&NOTIFS.some(n=>n.n&&nVis(n))?'<span class="dot"></span>':''}</button>`;
+ $('top').innerHTML=(S.stack.length?`<button class="ib" data-a="back" aria-label="Retour">${ic('back')}</button>`:`<span class="crest ${club().logo?'logo':''}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>`)+`<h1>${t}<span class="sub">${sub}</span></h1>${v.v==='chan'?muteBtn(chans.find(c=>c.id===v.id)):''}${(isAdmin()||S.role==='cap')&&!pending()?`<button class="ib" data-a="admin" aria-label="${isAdmin()?'Gérer le club':'Gérer mon équipe'}">${ic('gear')}</button>`:''}<button class="ib" data-a="notifs" aria-label="Notifications">${ic('bell')}${!pending()&&NOTIFS.some(n=>n.n&&nVis(n))?'<span class="dot"></span>':''}</button>`;
  const strips='.seg,.chips,.stories',sx=key===lastKey?[...main.querySelectorAll(strips)].map(e=>e.scrollLeft):[];
  main.innerHTML=pending()&&!lockOk(v)?lockView(v):V[v.v](v.id);
  main.querySelectorAll(strips).forEach((e,i)=>{if(sx[i])e.scrollLeft=sx[i]});
@@ -23,9 +23,12 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
   if(fk!==lastFoot){const c=v.v==='chan'?chans.find(c=>c.id===v.id):null;S.img=null;S.reply=null;
    foot.innerHTML=c&&c.ro&&!isAdmin()?'<div class="muted small" style="text-align:center;padding:8px">Seul le club publie dans ce groupe.</div>':`<div class="att" id="att" hidden></div><form class="composer" id="composer"><label class="attach" aria-label="Joindre une photo">${ic('image')}<input type="file" id="m-img" accept="image/*"></label><input type="text" id="msg-input" autocomplete="off" placeholder="${c?(c.ro?'Publier au nom du club':'Écrire dans '+esc(c.name)):"Encourager l'équipe en direct"}" aria-label="Message"><button class="send" aria-label="Envoyer">${ic('send')}</button></form>`}}
  else{foot.hidden=true;tabs.hidden=false;const un=pending()?0:chans.reduce((a,c)=>a+(c.mute||!chanOk(c)?0:c.un),0),tb=(k,i,l)=>`<button data-a="tab" data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${ic(i)}${l}${k==='chans'&&un?`<span class="cnt">${un}</span>`:''}</button>`;
-  tabs.innerHTML=tb('home','home','Accueil')+tb('chans','chat','Groupes')+tb('agenda','cal','Agenda')+`<button class="plus" data-a="plus" aria-label="Publier ou ajouter">${ic('plus')}</button>`+tb('ecole','school','École')+tb('club','club','Club')+tb('me','user','Profil');tabs.insertAdjacentHTML('afterbegin','<span class="pill" id="tpill" aria-hidden="true"></span>');pillTo(tabs.querySelector('[aria-current]'),true)}
+  tabs.innerHTML=tb('home','home','Accueil')+tb('chans','chat','Groupes')+tb('agenda','cal','Agenda')+tb('ecole','school','École')+tb('club','club','Club')+tb('me','user','Profil');tabs.insertAdjacentHTML('afterbegin','<span class="pill" id="tpill" aria-hidden="true"></span>');pillTo(tabs.querySelector('[aria-current]'),true)}
  if(pending()&&!lockOk(v))foot.hidden=true;
  $('phone').classList.toggle('notabs',tabs.hidden);
+ /* Bouton flottant « Ajouter du contenu » : sur le mur, seulement pour ceux qui peuvent publier */
+ let fab=$('addfab');if(!fab){fab=document.createElement('button');fab.id='addfab';fab.className='addfab';fab.dataset.a='plus';fab.innerHTML=`${ic('plus')}Ajouter du contenu`;$('phone').appendChild(fab)}
+ const showFab=v.v==='home'&&!S.stack.length&&canPublish()&&!pending()&&!tabs.hidden;fab.hidden=!showFab;$('phone').classList.toggle('fab',showFab);
  main.scrollTop=keep&&key===lastKey?y:(v.v==='chan'?main.scrollHeight:0);
  if(S.dir){slide((key!==lastKey?'pg-':'sg-')+(S.dir>0?'r':'l'));S.dir=0}
  lastKey=key;lastFoot=fk}
@@ -34,8 +37,9 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
 let undoFn=null;
 /* Toutes les fenêtres venues du haut (confirmations, notifications, direct, trophées) partagent la même pile : elles s'empilent, jamais l'une sur l'autre */
 function nstack(){let st=$('nstack');if(!st){st=document.createElement('div');st.id='nstack';st.className='nstack';$('phone').appendChild(st)}return st}
+/* Confirmations : courtes (2,6 s, 5 s avec « Annuler »), jamais plus de 2 à la fois, toujours sous l'éventuel bandeau de notification */
 function toast(msg,undo){const st=nstack();st.querySelectorAll('.tst .undo').forEach(u=>u.remove());const d=document.createElement('div');d.className='nban tst';d.setAttribute('role','status');d.innerHTML=`<span class="grow">${esc(msg)}</span>${undo?'<button class="undo" data-a="undo">Annuler</button>':''}`;
- st.prepend(d);void d.offsetWidth;d.classList.add('on');undoFn=undo||null;d._t=setTimeout(()=>{banHide(d);if(undoFn===undo)undoFn=null},undo?5000:3200);[...st.querySelectorAll('.nban.on')].slice(4).forEach(x=>banHide(x))}
+ const ban=st.querySelector('.nban:not(.tst)');if(ban)ban.after(d);else st.prepend(d);void d.offsetWidth;d.classList.add('on');undoFn=undo||null;d._t=setTimeout(()=>{banHide(d);if(undoFn===undo)undoFn=null},undo?5000:2600);[...st.querySelectorAll('.tst.on')].slice(2).forEach(x=>banHide(x))}
 function sheet(title,body,quiet){closeSheet();const d=document.createElement('div');d.className='back'+(quiet?'':' anim');d.id='sheet';d.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" tabindex="-1"><span class="grab" aria-hidden="true"></span><header><span class="h3">${title}</span><button class="ib" data-a="close" aria-label="Fermer">${ic('x')}</button></header>${body}</div>`;$('layer').appendChild(d);d.firstChild.focus({preventScroll:true})}
 function closeSheet(){const s=$('sheet');if(s)s.remove()}
 const menuSheet=(title,items)=>sheet(title,`<div class="body"><div class="menu">${items.filter(Boolean).map(i=>`<button class="${i[4]?'danger':''}" data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`);
@@ -50,27 +54,36 @@ function derive(acc,bg){let c=acc,t=0;const to=lum(bg)<.2?'#FFFFFF':'#000000';wh
 const BASE={true:{bg:'#0B0B0B',card:'#161616',card2:'#222222',line:'#2E2E2E',fg:'#F5F3EE',muted:'#A09C93'},false:{bg:'#F3F5FA',card:'#FFFFFF',card2:'#E4E9F3',line:'#D0D7E5',fg:'#0C1630',muted:'#5A647E'}};
 const HOT='#E0123C',PADEL='#2459E0';
 function setTheme(i){S.club=i;const c=CLUBS[i],r=document.documentElement.style,b=BASE[!!c.dark],acc=derive(c.accent,c.bg||b.bg).col;
- Object.keys(b).forEach(k=>r.setProperty('--'+k,c[k]||b[k]));r.setProperty('--accent',acc);r.setProperty('--on-accent',onColor(acc));r.setProperty('--hot',HOT);r.setProperty('--on-hot','#FFFFFF');r.setProperty('--padel',PADEL);r.setProperty('--stage',c.dark?'#050505':'#DDE2EC');r.colorScheme=c.dark?'dark':'light';try{localStorage.setItem('club-theme',i)}catch(e){}}
+ Object.keys(b).forEach(k=>r.setProperty('--'+k,c[k]||b[k]));r.setProperty('--accent',acc);
+ /* Rouge d'alerte utilisé comme couleur de texte (« Perf ! », « En jeu », « Supprimer ») : ajusté pour atteindre 4,5:1 sur la surface la plus défavorable du thème */
+ const sf=[c.bg||b.bg,c.card||b.card,c.card2||b.card2],to=c.dark?'#FFFFFF':'#000000';let ht=HOT,t=0;while(Math.min(...sf.map(x=>contrast(ht,x)))<4.7&&t<1){t=Math.min(1,t+.03);ht=mix(HOT,to,t)}r.setProperty('--hot-tx',ht);r.setProperty('--on-accent',onColor(acc));r.setProperty('--hot',HOT);r.setProperty('--on-hot','#FFFFFF');r.setProperty('--padel',PADEL);r.setProperty('--stage',c.dark?'#050505':'#DDE2EC');r.colorScheme=c.dark?'dark':'light';try{localStorage.setItem('club-theme',i)}catch(e){}}
 function lookPrev(){const p=$('lk-prev');if(!p)return;const dark=$('lk-bg').value==='Sombre',b=BASE[dark],acc=$('lk-acc').value,dv=derive(acc,b.bg),on=onColor(dv.col),cr=contrast(dv.col,b.bg).toFixed(1);
- p.innerHTML=`<div class="lkp" style="background:${b.bg};color:${b.fg}"><span style="font-family:var(--f-display);font-style:italic;font-size:22px;text-transform:uppercase">Doubles <span style="color:${dv.col}">et barbecue</span></span><span style="background:${dv.col};color:${on};padding:8px 14px;border-radius:10px;font-weight:700">Je m'inscris</span><span style="color:${dv.col};font-family:var(--f-display);font-size:26px">6 · 4</span></div><p class="muted small" style="margin-top:6px">${dv.adj?`Aperçu : ta couleur est ajustée en ${dv.col} pour rester lisible sur ce fond (contraste ${cr}:1).`:`Aperçu : contraste ${cr}:1, lisible.`}</p>`}
+ p.innerHTML=`${dv.adj?`<div class="lkadj"><span class="sw2" style="background:${acc}"></span><span class="arrow">→</span><span class="sw2" style="background:${dv.col}"></span><span class="grow small">Ta couleur sera légèrement ${lum(dv.col)>lum(acc)?'éclaircie':'assombrie'} pour rester lisible sur ce fond.</span></div>`:''}<div class="lkp" style="background:${b.bg};color:${b.fg}"><span style="font-family:var(--f-display);font-style:italic;font-size:22px;text-transform:uppercase">Doubles <span style="color:${dv.col}">et barbecue</span></span><span style="background:${dv.col};color:${on};padding:8px 14px;border-radius:10px;font-weight:700">Je m'inscris</span><span style="color:${dv.col};font-family:var(--f-display);font-size:26px">6 · 4</span></div><p class="muted small" style="margin-top:6px">${dv.adj?`Aperçu : ta couleur est ajustée en ${dv.col} pour rester lisible sur ce fond (contraste ${cr}:1).`:`Aperçu : contraste ${cr}:1, lisible.`}</p>`}
 
 function notify(type,by,txt,go,quiet){if(!S.nset[type]||by===ME())return;NOTIFS.unshift({by,txt,t:"À l'instant",n:1,go});if(NOTIFS.length>30)NOTIFS.pop();if(!quiet)banner(NOTIFS[0])}
 /* Bandeau de notification qui descend du haut, puis remonte ; un toucher ouvre la cible, un glissé vers le haut le range */
-/* Plusieurs bandeaux s'empilent les uns sous les autres (3 au plus) ; ceux du direct sont rouges */
-function banner(n){if(S.blocked.has(n.by)||!nVis(n)||(pending()&&!n.mine))return;const st=nstack();
+/* Un seul bandeau visible à la fois : les suivants s'accumulent derrière avec un compteur « +N » qui ouvre la liste des notifications. Ceux du direct sont rouges */
+function banner(n){if(S.blocked.has(n.by)||!nVis(n)||(pending()&&!n.mine))return;const st=nstack(),cur=st.querySelector('.nban.on:not(.tst)');
+ if(cur){cur._q=(cur._q||0)+1;let c=cur.querySelector('.bq');if(!c){c=document.createElement('span');c.className='bq';c.setAttribute('role','button');c.setAttribute('tabindex','0');cur.appendChild(c)}c.textContent='+'+cur._q;c.setAttribute('aria-label',cur._q+' autre'+(cur._q>1?'s':'')+' notification'+(cur._q>1?'s':'')+' : ouvrir la liste');cur.classList.add('stk');clearTimeout(cur._t);cur._t=setTimeout(()=>banHide(cur),5000);return}
  const r=n.go&&n.go.v==='rec'&&recs.find(x=>x.id===n.go.id),live=n.live||!!r,ttl=live?'Direct'+(r?' · '+teamName(grp(r.tid)):''):name(n.by);
  const b=document.createElement('button');b.className='nban'+(live?' live':'')+(n.tier!=null?' troph':'');b._n=n;
  b.innerHTML=n.head?`<span class="lvb ${n.kind||''}${n.tier!=null?' medal t'+n.tier:''}">${ic(n.kind==='win'||n.tier!=null?'trophy':'score')}</span><span class="grow"><span class="bk">${n.kick?esc(n.kick):`Direct · ${esc(n.team)} · ${esc(n.sc)}`}</span><span class="bh">${esc(n.head)}</span><span class="bd2">${esc(n.det)}</span></span>`
   :`${live?`<span class="lvb">${ic('score')}</span>`:av(n.by,'sm')}<span class="grow"><span class="nm">${ttl}</span> ${live&&n.by!=='club'?name(n.by)+' ':''}${esc(n.txt)}</span><time>maintenant</time>`;b.setAttribute('aria-label','Notification : '+ttl+' '+n.txt);
- st.prepend(b);void b.offsetWidth;b.classList.add('on');b._t=setTimeout(()=>banHide(b),5000);
- [...st.querySelectorAll('.nban.on')].slice(4).forEach(x=>banHide(x))}
+ st.prepend(b);void b.offsetWidth;b.classList.add('on');b._t=setTimeout(()=>banHide(b),5000)}
 function banHide(b){if(!b){document.querySelectorAll('.nban.on').forEach(x=>banHide(x));return}clearTimeout(b._t);let p=b.previousElementSibling;while(p&&!p.classList.contains('on'))p=p.previousElementSibling;if(p)b.classList.add('out');b.classList.remove('on');b.style.transform='';setTimeout(()=>b.remove(),450)}
 /* Bandeau du direct : on voit tout de suite l'équipe, le score de la rencontre, ce qui vient de se passer et qui est concerné */
 const deX=x=>/^[aeiouyhéèêâîô]/i.test(x)?"d'"+x:'de '+x;
 const ours=m=>m.a?name(m.a):m.an||club().short;
 const setsTxt=m=>m.sets.filter(s=>s[0]+s[1]>0).map(s=>s.join('-')).join(' ');
-function liveNote(r,head,det,kind){const team=teamName(grp(r.tid)),sc=teamScore(r).join(' - '),n={by:'club',txt:`${team} · ${head} : ${det}`,head,det,kind,team,sc,t:"À l'instant",n:1,go:{v:'rec',id:r.id},live:1};NOTIFS.unshift(n);if(NOTIFS.length>30)NOTIFS.pop();banner(n)}
-const liveStart=(r,m)=>liveNote(r,`Début du ${m.l.toLowerCase()}`,`${ours(m)} contre ${m.b[0]}${m.court?' · '+m.court:''}`,'start');
+/* Qui reçoit quoi pendant un direct (réglage « Convocations et scores de mon équipe ») :
+   - 'rec'   début et fin de rencontre : tous les adhérents qui ont gardé le réglage ;
+   - 'match' détail match par match : joueurs de la compo, capitaine, bureau, parents d'un joueur, adhérents qui suivent le joueur, ou ceux qui ont activé « Détail des matchs en direct » ;
+   - 'cap'   consignes de saisie : capitaine de l'équipe et bureau seulement. */
+function liveFor(r,scope,m){if(!S.nset.team)return false;const g=grp(r.tid),me=ME();if(scope==='cap')return canTeam(g);if(scope!=='match')return true;
+ if(S.nset.live||canTeam(g))return true;const compo=new Set([...Object.keys(r.lineup||{}),...(r.ms||[]).map(x=>x.a).filter(Boolean)]),kids=M[me].kids||[];
+ return compo.has(me)||kids.some(k=>compo.has(k))||!!(m&&m.a&&(S.follow.has(m.a)||kids.includes(m.a)))}
+function liveNote(r,head,det,kind,scope,m){if(!liveFor(r,scope||'rec',m))return;const team=teamName(grp(r.tid)),sc=teamScore(r).join(' - '),n={by:'club',txt:`${team} · ${head} : ${det}`,head,det,kind,team,sc,t:"À l'instant",n:1,go:{v:'rec',id:r.id},live:1};NOTIFS.unshift(n);if(NOTIFS.length>30)NOTIFS.pop();banner(n)}
+const liveStart=(r,m)=>liveNote(r,`Début du ${m.l.toLowerCase()}`,`${ours(m)} contre ${m.b[0]}${m.court?' · '+m.court:''}`,'start','match',m);
 /* Une notification ciblée (changement de cours) n'apparaît que chez les élèves concernés et leurs parents */
 let nVis=n=>!n.to||n.to.includes(ME())||(M[ME()].kids||[]).some(k=>n.to.includes(k));
 const msgList=ref=>{const [k,id]=ref.split(':');const o=k==='c'?chans.find(c=>c.id===id):recs.find(r=>r.id===id);return o?(k==='c'?o.msgs:o.chat):null};
@@ -79,15 +92,17 @@ const msgList=ref=>{const [k,id]=ref.split(':');const o=k==='c'?chans.find(c=>c.
 function addGame(r,i,side){const m=r.ms[i];if(m.st!=='live')return;const k=m.sets.length-1,st=m.sets[k];st[side]++;S.flash=[i,side,k];
  const a=st[side],b=st[1-side];
  if(r.stb&&k===2?(a>=10&&a-b>=2):((a>=6&&a-b>=2)||a===7)){const w=[0,0];m.sets.forEach(s=>w[s[0]>s[1]?0:1]++);
-  if(w[side]===2){m.st='done';m.w=side;if(m.a&&side===0)notify(S.follow.has(m.a)?'follow':'team',m.a,`a gagné son match contre ${m.b[0]}`,{v:'rec',id:r.id},true);
-   liveNote(r,`${side===0?'Victoire':'Défaite'} ${deX(ours(m))}`,`${m.l} · ${side===0?'bat':'perd contre'} ${m.b[0]} ${setsTxt(m)}`,side===0?'win':'loss');
-   if(r.ms.every(x=>x.st==='done')){if(S.scoring)liveNote(r,'Tous les matchs sont terminés','Vérifie les scores puis clôture la rencontre','start');else endRec(r)}
+  if(w[side]===2){m.st='done';m.w=side;if(m.a&&side===0&&S.follow.has(m.a)&&!liveFor(r,'match',m))notify('follow',m.a,`a gagné son match contre ${m.b[0]}`,{v:'rec',id:r.id},true);
+   liveNote(r,`${side===0?'Victoire':'Défaite'} ${deX(ours(m))}`,`${m.l} · ${side===0?'bat':'perd contre'} ${m.b[0]} ${setsTxt(m)}`,side===0?'win':'loss','match',m);
+   if(r.ms.every(x=>x.st==='done')){if(S.scoring)liveNote(r,'Tous les matchs sont terminés','Vérifie les scores puis clôture la rencontre','start','cap');else endRec(r)}
    else if(!S.scoring){const n=r.ms.find(x=>x.st==='soon');if(n){n.st='live';n.sets=[[0,0]];liveStart(r,n)}}}
   else m.sets.push([0,0])}}
 /* Fin de rencontre : le résultat part tout seul sur le mur et la discussion du direct s'efface */
 function endRec(r){const auto=!S.scoring,v=view(),inp=$('msg-input'),draft=inp&&v.v==='rec'&&v.id===r.id?inp.value.trim():'';r.st='done';delete r.chat;S.scoring=false;const s=teamScore(r);
  const pid='p'+Date.now();posts.unshift({id:pid,by:'club',t:"À l'instant",kind:'result',rec:r.id,likes:0,com:draft?[{by:ME(),x:draft}]:[]});notify('club','club',`a publié le résultat : ${teamName(grp(r.tid))} ${s[0]} à ${s[1]} contre ${r.opp}`,{v:'post',id:pid});
- liveNote(r,`Fin de rencontre · ${s[0]>s[1]?'victoire':s[0]<s[1]?'défaite':'match nul'} ${s[0]} à ${s[1]}`,`Contre ${r.opp} · ${!auto&&draft?'ton message est publié en commentaire du résultat':'résultat publié sur le mur'}`,s[0]>s[1]?'win':s[0]<s[1]?'loss':'start')}
+ liveNote(r,`Fin de rencontre · ${s[0]>s[1]?'victoire':s[0]<s[1]?'défaite':'match nul'} ${s[0]} à ${s[1]}`,`Contre ${r.opp} · ${draft?'ton message est publié en commentaire du résultat':'résultat publié sur le mur'}`,s[0]>s[1]?'win':s[0]<s[1]?'loss':'start');
+ /* Le brouillon tapé dans le chat du direct n'est jamais perdu : il part en commentaire du résultat, et on le dit */
+ if(draft)setTimeout(()=>toast('La rencontre est terminée : ton message a été publié en commentaire du résultat'),50)}
 /* Bandeau au-dessus du champ de message quand une photo est jointe */
 function showAtt(){const a=$('att');if(!a)return;a.hidden=!S.img&&!S.reply;a.innerHTML=(S.reply?`<span class="quote grow">Réponse à ${S.reply.by==='club'?club().short:first(S.reply.by)} : ${esc(S.reply.x).slice(0,70)}</span><button type="button" class="ib rnd" data-a="unreply" aria-label="Annuler la réponse">${ic('x')}</button>`:'')+(S.img?`<span class="ph" style="background-image:url(${S.img})"></span><span class="grow"><span class="nm">Photo jointe</span><br><span class="muted small">Elle partira avec ton message.</span></span><button type="button" class="ib rnd" data-a="unattach" aria-label="Retirer la photo">${ic('x')}</button>`:'')}
 /* Pendant le direct, on ne redessine que les scores affichés, pas tout l'écran */
@@ -166,6 +181,8 @@ const A={
  commLeave(d){const c=COMMS.find(c=>c.id===d.id),i=c.mem.indexOf(ME());if(i>=0)c.mem.splice(i,1);render(true);toast(`Tu as quitté la ${c.name.toLowerCase()}`)},
  delPartner(d){const i=PARTNERS.findIndex(x=>x.id===d.id);if(i<0)return;const x=PARTNERS.splice(i,1)[0],ads=posts.filter(p=>p.kind==='ad').map(p=>[p,p.partners.slice()]);ads.forEach(([p])=>p.partners=p.partners.filter(y=>y!==d.id));render(true);toast('Partenaire retiré',()=>{PARTNERS.splice(i,0,x);ads.forEach(([p,l])=>p.partners=l)})},
  ngo(d){const n=NOTIFS[+d.i],g=n&&n.go;closeSheet();if(!n)return;if(!g){if(n.by!=='club')A.member({id:n.by});return}
+  if(g.v==='ecole'||(g.v==='agenda'&&g.ag==='cours')){S.ecTab='mine';A.tab({t:'ecole'});return}
+  if(g.v==='agenda'){A.tab({t:'agenda'});return}
   const ok=g.v==='rec'?recs.some(r=>r.id===g.id):g.v==='post'?posts.some(p=>p.id===g.id&&(canSee(p)||p.arch)):g.v==='chan'?chans.some(c=>c.id===g.id&&chanOk(c)):true;
   if(ok)A.open(g);else toast("Ce contenu n'est plus disponible")},
  unattach(){S.img=null;showAtt();const i=$('m-img');if(i)i.value=''},
@@ -174,7 +191,7 @@ const A={
  cmenu(d){const p=posts.find(p=>p.id===d.id),c=p&&p.com[+d.i];if(!c)return;const mine=c.by===ME(),at=`data-id="${p.id}" data-i="${d.i}"`,items=[(mine||isAdmin())&&['trash','Supprimer le commentaire','cdel',at,1],!mine&&['flag','Signaler ce commentaire','creport',at],!mine&&c.by!=='club'&&['block','Bloquer '+first(c.by),'block',`data-id="${c.by}"`,1]].filter(Boolean);
   sheet('Commentaire',`<div class="body"><div class="reacts big">${['👍','❤️','😂','👏','🎾'].map(e=>`<button class="react ${c.my===e?'on':''}" data-a="creact" ${at} data-e="${e}" aria-label="Réagir avec ${e}">${e}</button>`).join('')}</div><div class="menu">${items.map(i=>`<button class="${i[4]?'danger':''}" data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`)},
  creact(d){const p=posts.find(p=>p.id===d.id),c=p&&p.com[+d.i];if(!c)return;c.re=c.re||{};const e=d.e,was=c.my;if(was){c.re[was]--;if(c.re[was]<=0)delete c.re[was]}if(was===e)c.my=null;else{c.re[e]=(c.re[e]||0)+1;c.my=e}sheet('Commentaires',commentsBody(p),true)},
- loc(d){const g=grp(d.g);g.loc=g.loc||{};const nl=locOf(g,d.d)==='En salle'?'Extérieur':'En salle';g.loc[d.d]=nl;NOTIFS.unshift({by:g.coach,txt:`${g.name} du ${fmtD(d.d)} : le cours aura lieu ${nl==='En salle'?'en salle':'en extérieur'}`,t:"À l'instant",n:1,go:{v:'ecole'},to:g.mem.slice()});render(true);toast(`Cours du ${fmtD(d.d)} ${nl==='En salle'?'en salle':'en extérieur'} · ${g.mem.length} élève${g.mem.length>1?'s':''} et leurs parents notifiés`)},
+ loc(d){const g=grp(d.g);g.loc=g.loc||{};const nl=locOf(g,d.d)==='En salle'?'Extérieur':'En salle';g.loc[d.d]=nl;NOTIFS.unshift({by:g.coach,txt:`${g.name} du ${fmtD(d.d)} : le cours aura lieu ${nl==='En salle'?'en salle':'en extérieur'}`,t:"À l'instant",n:1,go:{v:'agenda',ag:'cours'},to:g.mem.slice()});render(true);toast(`Cours du ${fmtD(d.d)} ${nl==='En salle'?'en salle':'en extérieur'} · ${g.mem.length} élève${g.mem.length>1?'s':''} et leurs parents notifiés`)},
  cresp(d){const g=grp(d.g);g.resp=g.resp||{};const r=g.resp[d.d]=g.resp[d.d]||{};r[d.u]=r[d.u]===d.s?'':d.s;if(r[d.u]!=='no'&&g.abs&&g.abs[d.d])g.abs[d.d]=g.abs[d.d].filter(x=>x!==d.u);render(true);toast(r[d.u]==='ok'?"Présence confirmée · l'enseignant est prévenu":r[d.u]==='no'?"Absence signalée · l'enseignant est prévenu":'Réponse retirée')},
  cdel(d){const p=posts.find(p=>p.id===d.id),i=+d.i,c=p.com.splice(i,1)[0];closeSheet();render(true);toast('Commentaire supprimé',()=>p.com.splice(i,0,c))},
  creport(d){const p=posts.find(p=>p.id===d.id),c=p.com[+d.i];REPORTS.push({kind:'com',author:c.by,by:ME(),excerpt:esc(c.x),com:c,pid:p.id});closeSheet();toast('Signalement envoyé au bureau du club')},
@@ -193,15 +210,16 @@ const A={
  joinOk(d){const j0=JOINREQ[+d.i];if(j0&&j0.id&&M[j0.id]){JOINREQ.splice(+d.i,1);A.revalid({id:j0.id});return}const j=JOINREQ.splice(+d.i,1)[0],id='u'+Date.now();VALID[id]=S.season;M[id]={n:j.n,r:'NC',team:'Nouvel adhérent',fol:0,g:'H',bd:'1990-01-01',res:[]};CLUBINFO.joined++;render(true);toast(`${j.n} a rejoint l'appli · prévenu par e-mail`)},
  joinNo(d){const j=JOINREQ.splice(+d.i,1)[0];render(true);toast(`Demande de ${j.n} refusée`)},
  impSend(){const n=(S.imp||[]).length;S.invited=(S.invited||0)+n;S.imp=null;render(true);toast(`${n} invitation${n>1?'s':''} envoyée${n>1?'s':''} par e-mail`)},
+ kidVis(d){M[d.id].resVis=d.v;render(true);toast(d.v==='club'?`Les résultats de ${first(d.id)} sont visibles par tout le club`:`Les résultats de ${first(d.id)} ne sont visibles que de son groupe et de ses encadrants`)},
  photoOk(d){M[d.id].photoOk=!M[d.id].photoOk;render(true);toast(M[d.id].photoOk?'Autorisation photo donnée':'Autorisation photo retirée')},
  absence(d){const k=d.id,ss=nextSessions(k,3);if(!ss.length){toast('Aucun cours à venir');return}sheet('Signaler une absence',`<form class="body" id="abs-form" data-k="${k}"><div class="fld"><label for="abs-s">Cours</label><select id="abs-s">${ss.map(s=>`<option value="${s.g.id}|${s.iso}">${s.g.name} · ${fmtD(s.iso)} · ${s.g.h}</option>`).join('')}</select></div>${O('abs-why','Motif (facultatif)','Malade, voyage scolaire…')}<button class="btn full">Prévenir l'enseignant</button></form>`)},
  parent2(d){sheet('Inviter le second parent',`<form class="body" id="p2-form" data-k="${d.id}"><div class="fld"><label for="p2-mail">E-mail du second parent</label><input id="p2-mail" type="email" required autocomplete="off"></div><p class="muted small">Il recevra une invitation pour suivre ${first(d.id)} avec les mêmes droits que toi.</p><button class="btn full">Envoyer l'invitation</button></form>`)},
  kidDel(d){sheet('Supprimer le compte de '+first(d.id),`<form class="body" id="kdel-form" data-k="${d.id}"><div class="note">Le compte, les résultats et les inscriptions de ${first(d.id)} seront supprimés sous 30 jours. Ses messages resteront affichés sous le nom « Ancien membre ».</div><div class="fld"><label class="chk" for="kdel-ok"><input type="checkbox" id="kdel-ok" required>Je confirme, en tant que représentant légal.</label></div><button class="btn full hot">Supprimer le compte</button></form>`)},
  att(d){const g=grp(d.id);g.att=g.att||{};const a=g.att[d.d]=g.att[d.d]||{},v=d.s==='1';a[d.u]=a[d.u]===v?undefined:v;render(true)},
- cancelCourse(d){const g=grp(d.id);g.cancel=g.cancel||[];const i=g.cancel.indexOf(d.d),off=i<0;if(off)g.cancel.push(d.d);else g.cancel.splice(i,1);NOTIFS.unshift({by:g.coach,txt:`${g.name} du ${fmtD(d.d)} : ${off?'cours annulé':'cours rétabli'}`,t:"À l'instant",n:1,go:{v:'ecole'},to:g.mem.slice()});render(true);toast(off?`Cours du ${fmtD(d.d)} annulé · ${g.mem.length} élève${g.mem.length>1?'s':''} et leurs parents notifiés`:'Cours rétabli · élèves et parents notifiés')},
+ cancelCourse(d){const g=grp(d.id);g.cancel=g.cancel||[];const i=g.cancel.indexOf(d.d),off=i<0;if(off)g.cancel.push(d.d);else g.cancel.splice(i,1);NOTIFS.unshift({by:g.coach,txt:`${g.name} du ${fmtD(d.d)} : ${off?'cours annulé':'cours rétabli'}`,t:"À l'instant",n:1,go:{v:'agenda',ag:'cours'},to:g.mem.slice()});render(true);toast(off?`Cours du ${fmtD(d.d)} annulé · ${g.mem.length} élève${g.mem.length>1?'s':''} et leurs parents notifiés`:'Cours rétabli · élèves et parents notifiés')},
  grpBulk(d){const g=grp(d.g),ids=d.ids.split(',').filter(Boolean);ids.forEach(x=>{if(!g.mem.includes(x))g.mem.push(x)});render(true);toast(`${ids.length} adhérent${ids.length>1?'s':''} ajouté${ids.length>1?'s':''} à ${g.name} et prévenu${ids.length>1?'s':''}`)},
- plus(){if(pending()){toast('Tu pourras publier dès que le club aura validé ton accès');return}const st=isAdmin(),coach=S.role==='coach',mng=st||S.role==='cap',it=[['score','Ajouter un résultat','result'],S.role!=='kid'&&['search','Chercher une partie','newPost','data-k="play"'],st&&['info','Annonce','newPost','data-k="annonce"'],st&&['cal','Événement','newPost','data-k="event"'],coach&&['ball','Stage','newPost','data-k="stage"'],coach&&['school',"Groupe d'entraînement",'newPost','data-k="train"'],st&&['score','Tournoi','newPost','data-k="tournoi"'],st&&['poll','Sondage','newPost','data-k="poll"'],st&&['link','Publication avec lien','newPost','data-k="cta"'],st&&['club','Mettre en avant nos partenaires','newPost','data-k="ad"'],st&&CLUBINFO.mods.actus&&['news','Actu','newPost','data-k="article"']].filter(Boolean);
-  sheet('Publier',`<div class="body"><div class="menu">${it.map(i=>`<button data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div>${mng?`<button class="admlink" data-a="admin">${ic('gear')}${st?'Gérer le club':'Gérer mon équipe'}</button>`:''}</div>`)},
+ plus(){if(pending()){toast('Tu pourras publier dès que le club aura validé ton accès');return}const st=isAdmin(),coach=S.role==='coach',mng=st||S.role==='cap',it=[['score','Ajouter un résultat','result'],S.role!=='kid'&&['search','Chercher une partie','newPost','data-k="play"'],st&&['info','Annonce','newPost','data-k="annonce"'],st&&['cal','Événement','newPost','data-k="event"'],coach&&['ball','Stage','newPost','data-k="stage"'],coach&&['school',"Groupe d'entraînement",'newPost','data-k="train"'],st&&['score','Tournoi','newPost','data-k="tournoi"'],st&&['poll','Sondage','newPost','data-k="poll"'],st&&['link','Publication avec lien','newPost','data-k="cta"'],st&&['club','Mettre en avant nos partenaires','newPost','data-k="ad"'],st&&CLUBINFO.mods.actus&&['news','Actu','newPost','data-k="article"'],...myComms().map(c=>['flag','Promouvoir · '+c.name,'newPost',`data-k="commpromo" data-c="${c.id}"`])].filter(Boolean);
+  sheet('Publier',`<div class="body"><div class="menu">${it.map(i=>`<button data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`)},
  newPost(d){const [t,b,cta]=forms(d.k,d.c);S.img=null;sheet(t,`<form class="body" id="adm-form" data-k="${d.k}" data-c="${d.c||''}">${b}<button class="btn full">${cta}</button></form>`)},
  /* publications : menu, modification, suppression, signalement */
  pmenu(d){const p=posts.find(p=>p.id===d.id),mine=p.by===ME(),adm=isAdmin(),ev=p.kind==='event'&&adm&&!p.done&&!p.arch,at=`data-id="${p.id}"`;
@@ -217,19 +235,20 @@ const A={
  block(d){S.blocked.add(d.id);S.follow.delete(d.id);closeSheet();render(true);toast(`${first(d.id)} est bloqué : tu ne vois plus ses publications ni ses messages`)},
  unblock(d){S.blocked.delete(d.id);render(true);toast(`${first(d.id)} est débloqué`)},
  umenu(d){menuSheet(name(d.id),[['flag','Signaler ce profil','toast','data-msg="Signalement envoyé au bureau du club"'],S.blocked.has(d.id)?['check','Débloquer','unblock',`data-id="${d.id}"`]:['block','Bloquer '+first(d.id),'block',`data-id="${d.id}"`,1]])},
- mmenu(d){const l=msgList(d.ref),m=l&&l[+d.i];if(!m)return;const mine=m.by===ME(),at=`data-ref="${d.ref}" data-i="${d.i}"`,items=[['com','Répondre','reply',at],(mine||isAdmin())&&['trash','Supprimer le message','mdel',at,1],!mine&&['flag','Signaler ce message','mreport',at],!mine&&m.by!=='club'&&['block','Bloquer '+first(m.by),'block',`data-id="${m.by}"`,1]].filter(Boolean);
+ mmenu(d){try{localStorage.setItem('club-lp-help','1')}catch(e){}const h=$('lp-help');if(h)h.remove();const l=msgList(d.ref),m=l&&l[+d.i];if(!m)return;const mine=m.by===ME(),at=`data-ref="${d.ref}" data-i="${d.i}"`,items=[['com','Répondre','reply',at],(mine||isAdmin())&&['trash','Supprimer le message','mdel',at,1],!mine&&['flag','Signaler ce message','mreport',at],!mine&&m.by!=='club'&&['block','Bloquer '+first(m.by),'block',`data-id="${m.by}"`,1]].filter(Boolean);
   sheet('Message',`<div class="body"><div class="reacts big">${['👍','❤️','😂','👏','🎾'].map(e=>`<button class="react ${m.my===e?'on':''}" data-a="react" ${at} data-e="${e}" aria-label="Réagir avec ${e}">${e}</button>`).join('')}</div><div class="menu">${items.map(i=>`<button class="${i[4]?'danger':''}" data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`)},
  mdel(d){const l=msgList(d.ref);if(!l)return;const i=+d.i,m=l.splice(i,1)[0];closeSheet();render(true);toast('Message supprimé',()=>l.splice(i,0,m))},
  mreport(d){const l=msgList(d.ref),m=l[+d.i];REPORTS.push({kind:'msg',author:m.by,by:ME(),excerpt:esc(m.x||'Photo'),msg:m,ref:d.ref});closeSheet();toast('Signalement envoyé au bureau du club')},
  repDel(d){const r=REPORTS.splice(+d.i,1)[0];if(r.kind==='post'){const i=posts.findIndex(p=>p.id===r.post);if(i>=0)posts.splice(i,1)}else if(r.kind==='com'){const p=posts.find(p=>p.id===r.pid),i=p?p.com.indexOf(r.com):-1;if(i>=0)p.com.splice(i,1)}else{const l=msgList(r.ref),i=l?l.indexOf(r.msg):-1;if(i>=0)l.splice(i,1)}render(true);toast('Contenu supprimé')},
  repIgn(d){REPORTS.splice(+d.i,1);render(true);toast('Signalement classé')},
- photo(d,el){const u=el.style.backgroundImage.replace(/^url\(["']?|["']?\)$/g,'');closeSheet();const b=document.createElement('div');b.className='back anim';b.id='sheet';b.style.alignItems='center';b.style.background='#000';b.innerHTML=`<img src="${u}" alt="" data-a="close" style="width:100%;max-height:100%;object-fit:contain">`;$('layer').appendChild(b)},
+ photo(d,el){const u=el.style.backgroundImage.replace(/^url\(["']?|["']?\)$/g,'');closeSheet();const b=document.createElement('div');b.className='back anim viewer';b.id='sheet';b.innerHTML=`<button class="ib vclose" data-a="close" aria-label="Fermer la photo">${ic('x')}</button><img class="pz" src="${u}" alt="Photo en plein écran" draggable="false">`;$('layer').appendChild(b);pinchZoom(b.querySelector('.pz'))},
  /* événements, sondages, parties */
  rsvp(d){const p=posts.find(p=>p.id===d.id);p.my=p.my===d.r?null:d.r;render(true);toast(p.kind==='comm'?(p.my?'Noté · le responsable de la commission est prévenu':'Réponse retirée'):p.my==='yes'?'Tu es inscrit · le club est prévenu':p.my==='maybe'?'Noté en peut-être':p.my==='wait'?"Tu es sur la liste d'attente · prévenu si une place se libère":'Inscription retirée')},
  evClose(d){const p=posts.find(p=>p.id===d.id);p.closed=!p.closed;closeSheet();render(true);toast(p.closed?'Inscriptions closes · les inscrits sont conservés':'Inscriptions rouvertes')},
  evList(d){const p=posts.find(p=>p.id===d.id),l=(p.ins||[]).concat(p.my==='yes'?[ME()]:[]),rest=Math.max(0,(p.yes||0)-(p.ins||[]).length),txt=l.map(name).join('\n');
   sheet('Inscrits',`<div class="body"><span class="kicker">${(p.yes||0)+(p.my==='yes'?1:0)} inscrits · ${(p.maybe||0)+(p.my==='maybe'?1:0)} peut-être</span><div>${l.map(i=>`<div class="item">${av(i,'sm')}<span class="grow"><span class="nm">${name(i)}</span> ${bd(i,p.sport)}</span></div>`).join('')}${rest?`<p class="muted small" style="padding-top:10px">et ${rest} autres adhérents (non détaillés dans cette démo).</p>`:''}</div><button class="btn full ghost" data-a="copy" data-txt="${esc(txt)}">Copier la liste des noms</button></div>`)},
- copy(d){(navigator.clipboard?navigator.clipboard.writeText(d.txt):Promise.reject()).then(()=>toast('Liste copiée')).catch(()=>toast('Copie impossible ici : sélectionne les noms à la main'))},
+ setupGo(d){closeSheet();S.stack=[];if(d.k==='champ'){S.tab='club';S.clubTab='teams';S.recTab='champ'}else{S.tab='ecole';S.ecTab='manage'}render()},
+ copy(d){if(/Rejoins/.test(d.txt||''))(S.setup=S.setup||{}).inv=true;(navigator.clipboard?navigator.clipboard.writeText(d.txt):Promise.reject()).then(()=>toast('Liste copiée')).catch(()=>toast('Copie impossible ici : sélectionne les noms à la main'))},
  evDone(d){S.imgs=[];sheet("Terminer l'événement",`<form class="body" id="done-form" data-id="${d.id}"><div class="note">L'événement repasse en haut du mur avec le badge « Terminé », ton commentaire et les photos. Les commentaires des adhérents sont conservés, y compris dans les archives.</div><div class="fld"><label for="d-txt">Le mot du club (facultatif)</label><textarea id="d-txt" placeholder="Merci aux 60 participants, bravo aux vainqueurs…"></textarea></div><div class="fld"><label for="d-ph">Photos (10 maximum)</label><input type="file" id="d-ph" accept="image/*" multiple><div class="gal" id="d-prev"></div></div><button class="btn full">Terminer et publier sur le mur</button></form>`)},
  vote(d){const p=posts.find(p=>p.id===d.id);p.my=p.my===+d.i?null:+d.i;render(true)},
  play(d){const p=posts.find(p=>p.id===d.id),y=p.play,arr=d.r==='in'?y.in:y.wait,i=arr.indexOf(ME());i>=0?arr.splice(i,1):arr.push(ME());render(true);
@@ -242,7 +261,7 @@ const A={
  game(d){addGame(recs.find(r=>r.id===d.r),+d.i,+d.s);render(true);S.flash=null},
  ungame(d){const r=recs.find(r=>r.id===d.r),m=r.ms[+d.i],s=+d.s;let k=m.sets.length-1;
   if(m.st==='live'&&k>0&&m.sets[k][0]===0&&m.sets[k][1]===0&&m.sets[k-1][s]>0){m.sets.pop();k--}
-  if(m.sets[k][s]>0){m.sets[k][s]--;const was=m.st==='done';if(was){m.st='live';delete m.w}liveNote(r,'Score corrigé · '+m.l,ours(m)+' contre '+m.b[0]+' · '+(setsTxt(m)||'0-0')+(was?' · le match reprend':''),'start')}else toast('Aucun jeu à retirer pour ce joueur sur ce set');render(true)},
+  if(m.sets[k][s]>0){m.sets[k][s]--;const was=m.st==='done';if(was){m.st='live';delete m.w}liveNote(r,'Score corrigé · '+m.l,ours(m)+' contre '+m.b[0]+' · '+(setsTxt(m)||'0-0')+(was?' · le match reprend':''),'start','match',m)}else toast('Aucun jeu à retirer pour ce joueur sur ce set');render(true)},
  start(d){const r=recs.find(r=>r.id===d.r),m=r.ms[+d.i];m.st='live';m.sets=[[0,0]];render(true);liveStart(r,m)},
  endrec(d){endRec(recs.find(r=>r.id===d.r));render(true)},
  startRec(d){const r=recs.find(r=>r.id===d.r),g=grp(r.tid),T2=g.mem.filter(p=>r.lineup&&r.lineup[p]==='T'),pad=recSport(r)==='Padel';
@@ -300,7 +319,7 @@ const A={
 };
 
 /* ---------- événements du navigateur ---------- */
-document.addEventListener('click',e=>{const nb=e.target.closest('.nban');if(nb&&nb._n&&!e.target.closest('[data-a]')){const i=NOTIFS.indexOf(nb._n);banHide(nb);if(i>=0){NOTIFS[i].n=0;A.ngo({i})}return}const lp=e.target.closest('[data-lp]');if(lp&&!e.target.closest('[data-a]')){if(e.detail===0)A[lp.dataset.lp](lp.dataset,lp);return}const el=e.target.closest('[data-a]');if(el){if(el.disabled)return;A[el.dataset.a](el.dataset,el);return}if(e.target.id==='sheet')closeSheet()});
+document.addEventListener('click',e=>{const nb=e.target.closest('.nban');if(nb&&e.target.closest('.bq')){banHide(nb);A.notifs();return}if(nb&&nb._n&&!e.target.closest('[data-a]')){const i=NOTIFS.indexOf(nb._n);banHide(nb);if(i>=0){NOTIFS[i].n=0;A.ngo({i})}return}const lp=e.target.closest('[data-lp]');if(lp&&!e.target.closest('[data-a]')){if(e.detail===0)A[lp.dataset.lp](lp.dataset,lp);return}const el=e.target.closest('[data-a]');if(el){if(el.disabled)return;A[el.dataset.a](el.dataset,el);return}if(e.target.id==='sheet')closeSheet()});
 document.addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 /* Feuilles du bas : on les ferme aussi en les glissant vers le bas */
@@ -322,6 +341,34 @@ function newSeason(old){if(typeof freezeTrophies==='function')freezeTrophies();
 function tfSync(){const fm=val0('tf-fmt'),tm=document.querySelector('#tf-form input[name="tm"]:checked'),pl=tm&&tm.value==='place';if(!$('tf-p'))return;$('tf-p').hidden=fm==='Tableau final';$('tf-t').hidden=fm==='Poule';$('tf-tsw').hidden=pl;$('tf-tpw').hidden=!pl;$('tf-d').hidden=val0('tf-out')==='Maintien'}
 const val0=id=>{const x=$(id);return x?x.value:''};
 document.addEventListener('change',e=>{if(e.target.closest('#tf-form'))tfSync()});
+/* Visionneuse de photos : seul endroit où l'on peut zoomer, à deux doigts (comme WhatsApp). Double-tap : zoom ×2,5 ; toucher simple sans zoom : fermer */
+function pinchZoom(img){const P=new Map();let s=1,x=0,y=0,s0=1,d0=0,x0=0,y0=0,moved=false,lastTap=0;
+ const apply=()=>{img.style.transform=`translate(${x}px,${y}px) scale(${s})`};
+ const dist=()=>{const [a,b]=[...P.values()];return Math.hypot(a.x-b.x,a.y-b.y)};
+ img.addEventListener('pointerdown',e=>{img.setPointerCapture(e.pointerId);P.set(e.pointerId,{x:e.clientX,y:e.clientY});moved=false;if(P.size===2){s0=s;d0=dist()}else{x0=e.clientX-x;y0=e.clientY-y}});
+ img.addEventListener('pointermove',e=>{if(!P.has(e.pointerId))return;P.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(P.size===2){s=Math.min(4,Math.max(1,s0*dist()/d0));moved=true;apply()}else if(s>1){x=e.clientX-x0;y=e.clientY-y0;moved=true;apply()}});
+ const up=e=>{P.delete(e.pointerId);if(P.size)return;if(s<=1.02){s=1;x=0;y=0;apply()}
+  if(!moved){const now=Date.now();if(now-lastTap<300){s=s>1?1:2.5;x=0;y=0;img.style.transition='transform .2s';apply();setTimeout(()=>img.style.transition='',220);lastTap=0}else{lastTap=now;setTimeout(()=>{if(lastTap===now&&s===1)closeSheet()},310)}}};
+ img.addEventListener('pointerup',up);img.addEventListener('pointercancel',up);
+ img.addEventListener('wheel',e=>{e.preventDefault();s=Math.min(4,Math.max(1,s*(e.deltaY<0?1.15:.87)));if(s===1){x=0;y=0}apply()},{passive:false})}
+/* Clavier (comme WhatsApp) : on garde le clavier natif ; l'appli se cale sur la partie visible de l'écran (visualViewport),
+   donc la barre de saisie reste collée juste au-dessus du clavier, sans saut ni vide. La liste reste sur le dernier message. */
+const VV=window.visualViewport;
+function vvFit(){const p=$('phone');if(!VV||!p)return;const a=document.activeElement,typing=!!a&&/^(INPUT|TEXTAREA)$/.test(a.tagName)&&a.type!=='file',kb=Math.max(0,window.innerHeight-VV.height),open=typing&&kb>80;
+ const was=p.classList.contains('kb');p.classList.toggle('kb',open);
+ if(open){p.style.height=VV.height+'px';p.style.top=VV.offsetTop+'px'}else{p.style.height='';p.style.top='';if(was)window.scrollTo(0,0)}
+ if(open&&!was)toEnd()}
+function toEnd(){const v=view(),m=$('main'),cl=$('com-list');if(m&&(v.v==='chan'||v.v==='rec'))m.scrollTop=m.scrollHeight;if(cl)cl.scrollTop=cl.scrollHeight}
+if(VV){VV.addEventListener('resize',vvFit);VV.addEventListener('scroll',vvFit)}
+document.addEventListener('focusout',()=>setTimeout(vvFit,60));
+/* Après l'envoi d'un message ou d'un commentaire, le clavier se ferme */
+document.addEventListener('submit',e=>{const id=e.target.id;if(id==='composer'||id==='com-form')setTimeout(()=>{const a=document.activeElement;if(a&&a.blur)a.blur()},0)});
+/* Toucher la liste des messages (hors barre de saisie) ferme le clavier */
+document.addEventListener('pointerdown',e=>{const a=document.activeElement;if(!a||!/^(INPUT|TEXTAREA)$/.test(a.tagName)||!a.closest('.composer'))return;if(e.target.closest('#main,#com-list')&&!e.target.closest('.composer'))a.blur()},true);
+/* Qui peut publier sur le mur : bureau, enseignants, membres d'une commission */
+const myComms=()=>COMMS.filter(c=>c.mem.includes(ME())||c.resp===ME());
+const canPublish=()=>isAdmin()||myComms().length>0;
 let shY=null;
 document.addEventListener('touchstart',e=>{const h=e.target.closest('.sheet header,.grab');shY=h?e.touches[0].clientY:null},{passive:true});
 document.addEventListener('touchmove',e=>{if(shY===null)return;const dy=e.touches[0].clientY-shY,s=document.querySelector('#sheet .sheet');if(s&&dy>0)s.style.transform=`translateY(${dy}px)`},{passive:true});
@@ -361,9 +408,9 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
   r.stb=val('so-stb').startsWith('Super');r.ms.slice(0,2).forEach(m=>{m.st='live';m.sets=[[0,0]]});r.st='live';r.chat=[];S.scoring=true;closeSheet();render();liveNote(r,`Début de la rencontre contre ${r.opp}`,r.ms.filter(m=>m.st==='live').map(m=>`${m.l} : ${ours(m)}`).join(' · '),'start');return}
  if(f.id==='me-form'){const me=M.me;me.n=val('e-name')||me.n;me.g=val('e-g')==='Femme'?'F':'H';if(val('e-bd'))me.bd=val('e-bd');MYCT.tel[2]=val('e-tel');MYCT.mail[2]=val('e-mail');MYCT.soc[1]=val('e-net');MYCT.soc[2]=val('e-soc');closeSheet();render(true);toast('Informations mises à jour');return}
  if(f.id==='kid-form'){const id='k'+Date.now(),gr=GROUPS.find(x=>x.name===val('k-grp'));M[id]={n:g('k-name'),r:'NC',role:'Jeune',team:gr.name,fol:0,g:val('k-g')==='Fille'?'F':'H',bd:val('k-bd'),parent:'me',photoOk:false,res:[]};M.me.kids.push(id);gr.mem.push(id);closeSheet();render(true);toast(`Compte jeune créé · ${first(id)} rejoint ${gr.name}`);return}
- if(f.id==='look-form'){const c=club(),acc=$('lk-acc').value,dark=val('lk-bg')==='Sombre',dv=derive(acc,BASE[dark].bg);['bg','card','card2','line','fg','muted'].forEach(k=>delete c[k]);Object.assign(c,{name:val('lk-name')||c.name,short:(val('lk-short')||c.short).slice(0,4).toUpperCase(),accent:dv.col,dark});if(S.img)c.logo=S.img;S.img=null;setTheme(S.club);closeSheet();render(true);
+ if(f.id==='look-form'){(S.setup=S.setup||{}).look=true;const c=club(),acc=$('lk-acc').value,dark=val('lk-bg')==='Sombre',dv=derive(acc,BASE[dark].bg);['bg','card','card2','line','fg','muted'].forEach(k=>delete c[k]);Object.assign(c,{name:val('lk-name')||c.name,short:(val('lk-short')||c.short).slice(0,4).toUpperCase(),accent:dv.col,dark});if(S.img)c.logo=S.img;S.img=null;setTheme(S.club);closeSheet();render(true);
   toast(dv.adj?`Appliqué avec la couleur ajustée ${dv.col} pour rester lisible`:`Appli aux couleurs de ${c.name}`);return}
- if(f.id==='info-form'){const I2=CLUBINFO;I2.courts=+val('i-courts');I2.pistes=+val('i-pistes');I2.house=g('i-house');I2.secr=g('i-secr');I2.addr=g('i-addr');FORM.forEach((x,i)=>{x[0]=g('i-fn'+i)||x[0];x[2]=g('i-fp'+i)||x[2]});I2.book=esc(toUrl(val('i-book')));I2.pay=esc(toUrl(val('i-pay')));I2.shop=esc(toUrl(val('i-shop')));I2.mods={actus:$('i-actus').checked,comm:$('i-comm').checked};closeSheet();render(true);toast('Infos du club mises à jour');return}
+ if(f.id==='info-form'){(S.setup=S.setup||{}).info=true;const I2=CLUBINFO;I2.courts=+val('i-courts');I2.pistes=+val('i-pistes');I2.house=g('i-house');I2.secr=g('i-secr');I2.addr=g('i-addr');FORM.forEach((x,i)=>{x[0]=g('i-fn'+i)||x[0];x[2]=g('i-fp'+i)||x[2]});I2.book=esc(toUrl(val('i-book')));I2.pay=esc(toUrl(val('i-pay')));I2.shop=esc(toUrl(val('i-shop')));I2.mods={actus:$('i-actus').checked,comm:$('i-comm').checked};closeSheet();render(true);toast('Infos du club mises à jour');return}
  if(f.id==='abs-form'){const [gid,iso]=val('abs-s').split('|'),gr=grp(gid),k=f.dataset.k;gr.abs=gr.abs||{};gr.abs[iso]=gr.abs[iso]||[];if(!gr.abs[iso].includes(k))gr.abs[iso].push(k);gr.resp=gr.resp||{};(gr.resp[iso]=gr.resp[iso]||{})[k]='no';closeSheet();render(true);toast(`Absence signalée · ${name(gr.coach)} est prévenu${M[gr.coach].g==='F'?'e':''}`);return}
  if(f.id==='p2-form'){closeSheet();toast(`Invitation envoyée à ${val('p2-mail')}`);return}
  if(f.id==='kdel-form'){closeSheet();toast(`Demande enregistrée : le compte de ${first(f.dataset.k)} sera supprimé sous 30 jours`);return}
@@ -422,7 +469,7 @@ document.addEventListener('submit',e=>{e.preventDefault();const f=e.target,val=i
   if(k==='champ'){const id='c'+Date.now();CHAMPS.push({id,name:g('a-title'),sport:val('a-sport'),age:val('a-age'),season:g('a-season')||'Saison '+S.season});closeSheet();S.dir=1;S.stack.push({v:'champ',id});render();toast('Championnat créé · ajoute ses équipes');return}
   if(k==='team'||k==='train'){const id='g'+Date.now(),nm=g('a-title');
    const o=k==='team'?{id,type:k,champ:cid,name:nm,gen:val('a-gen'),sub:g('a-sub'),cap:val('a-cap'),mem:[val('a-cap')]}:{id,type:k,name:nm,sport:val('t-sport'),day:DAYS.indexOf(val('t-day')),h:val('a-h1'),dur:val('t-dur'),coach:val('t-coach'),defLoc:val('t-loc'),gen:val('a-gen'),lo:val('v-lo'),hi:val('v-hi'),sub:val('t-day')+' '+val('a-h1')+' · '+val('t-dur')+' · '+first(val('t-coach')),mem:[]};
-   GROUPS.push(o);chans.push({id,g:k,sport:k==='team'?champOf(o).sport:o.sport,name:k==='team'?teamName(o):nm,desc:o.sub,un:0,msgs:[{by:'club',x:'Canal ouvert. Bienvenue à tous !',t:"À l'instant"}]});closeSheet();S.dir=1;S.stack.push({v:k==='team'?'team':'grp',id});render();toast(`${nm} créé · son canal de discussion est ouvert`);return}
+   GROUPS.push(o);chans.push({id,g:k,sport:k==='team'?champOf(o).sport:o.sport,name:k==='team'?teamName(o):nm,desc:o.sub,kid:(o.mem||[]).some(isMinor)?1:0,un:0,msgs:[{by:'club',x:'Canal ouvert. Bienvenue à tous !',t:"À l'instant"}]});closeSheet();S.dir=1;S.stack.push({v:k==='team'?'team':'grp',id});render();toast(`${nm} créé · son canal de discussion est ouvert`);return}
   if(k==='fixture'){const tm=grp(cid);if(tm.final){closeSheet();toast("Ce championnat est clôturé : impossible d'ajouter une rencontre");return}recs.push({id:'r'+Date.now(),d:val('a-d1'),h:val('a-h1'),tid:cid,opp:g('a-opp'),comp:tm.sub+(val('a-comp')?' · '+g('a-comp'):''),when:fmtD(val('a-d1'))+' · '+val('a-h1')+' · '+val('a-loc').toLowerCase(),st:'soon',lineup:{},conv:{}});closeSheet();render(true);toast("Rencontre ajoutée au calendrier · l'équipe est prévenue");return}
   if(k==='play'){const pad=val('p-sport')==='Padel',fmt=pad?'Double':val('a-fmt'),others=adults().filter(x=>x!==ME());let lo,hi,n,txt;
    if(pad){const a=LV.indexOf(val('l-lo'))+1,b=LV.indexOf(val('l-hi'))+1;lo=Math.min(a,b);hi=Math.max(a,b);n=others.filter(x=>M[x].pl>=lo&&M[x].pl<=hi).length;txt='de niveau '+lo+' à '+hi}
@@ -468,3 +515,54 @@ document.addEventListener('touchmove',e=>{if(banY===null)return;const d=Math.min
 document.addEventListener('touchend',e=>{if(banY===null)return;const d=e.changedTouches[0].clientY-banY,b=banEl;banY=null;banEl=null;if(d<-25){e.preventDefault();banHide(b)}else{b.style.transform='';b._t=setTimeout(()=>banHide(b),3000)}});
 let saved=0;try{saved=+localStorage.getItem('club-theme')||0}catch(e){}
 setTheme(CLUBS[saved]?saved:0);render();
+
+/* ---------- Ouvrir un écran depuis une adresse (notification push, lien partagé) ----------
+   Formats : #/rec/r1  #/chan/general  #/post/p1  #/agenda/cours  #/notifs  #/me */
+function openFromUrl(u){const m=String(u||'').match(/#\/([a-z]+)(?:\/([^/?#]+))?/i);if(!m)return false;const [,v,id]=m;closeSheet();
+ if(v==='ecole'||(v==='agenda'&&id==='cours')){S.ecTab=id&&id!=='cours'?id:'mine';A.tab({t:'ecole'});return true}
+ if(v==='agenda'){A.tab({t:'agenda'});return true}
+ if(['home','chans','club','me'].includes(v)){A.tab({t:v});return true}
+ if(v==='notifs'){A.tab({t:'home'});A.notifs();return true}
+ const ok=v==='rec'?recs.some(r=>r.id===id):v==='post'?posts.some(p=>p.id===id):v==='chan'?chans.some(c=>c.id===id&&chanOk(c)):false;
+ if(ok){S.tab=v==='chan'?'chans':'home';S.stack=[{v,id}];render();return true}return false}
+if(location.hash)openFromUrl(location.hash);
+if('serviceWorker' in navigator)navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.type==='open')openFromUrl(e.data.url)});
+
+/* ---------- Notifications push : abonnement (préparé, en attente du serveur) ----------
+   À BRANCHER CÔTÉ SERVEUR :
+   1. Générer une paire de clés VAPID (ex. « npx web-push generate-vapid-keys ») et coller la clé PUBLIQUE ci-dessous.
+   2. Envoyer l'abonnement retourné par pushSubscribe() (sub.toJSON()) à l'API du club, avec l'identifiant de l'adhérent,
+      par exemple POST /api/push/subscribe { memberId, club, subscription } (voir le TODO dans pushSubscribe).
+   3. Côté serveur, envoyer les notifications avec la clé PRIVÉE (bibliothèque web-push), au format attendu par sw.js :
+      {"title":"…","body":"…","url":"#/rec/r1","tag":"direct-r1"}.
+   Sans clé, ou si le navigateur ne connaît pas le push (iPhone hors appli installée, iOS < 16.4…), rien n'est bloqué. */
+const VAPID_PUBLIC_KEY='';
+const pushReady=()=>'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window;
+function b64ToU8(s){const p='='.repeat((4-s.length%4)%4),b=atob((s+p).replace(/-/g,'+').replace(/_/g,'/'));return Uint8Array.from([...b].map(c=>c.charCodeAt(0)))}
+async function pushSubscribe(){if(!VAPID_PUBLIC_KEY||!pushReady())return null;
+ try{if(await Notification.requestPermission()!=='granted')return null;const reg=await navigator.serviceWorker.ready;
+  const sub=(await reg.pushManager.getSubscription())||await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:b64ToU8(VAPID_PUBLIC_KEY)});
+  /* TODO serveur : await fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memberId:ME(),subscription:sub.toJSON()})}); */
+  return sub}catch(e){return null}}
+A.pushOn=async()=>{if(!pushReady()){toast(isIOS()&&!standalone()?"Sur iPhone, installe d'abord l'appli sur l'écran d'accueil pour recevoir les notifications":"Ce navigateur ne gère pas les notifications push");return}
+ if(!VAPID_PUBLIC_KEY){toast('Les notifications sur le téléphone arriveront quand le serveur du club sera branché');return}
+ const sub=await pushSubscribe();toast(sub?'Notifications activées sur ce téléphone':'Notifications non autorisées : tu peux changer ça dans les réglages du téléphone')};
+
+/* L'appli installable (index.html, avec manifeste) enregistre le service worker ; la version de démo n'en a pas */
+const isPWAPage=!!document.querySelector('link[rel="manifest"]');
+
+/* ---------- iPhone : écran guidé « Installer l'appli du club » au premier lancement dans Safari ---------- */
+const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const standalone=()=>navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+function installGuide(force){let later=false;try{later=localStorage.getItem('club-install-later')==='1'}catch(e){}if(!force&&(!isPWAPage||!isIOS()||standalone()||later))return;
+ closeSheet();const d=document.createElement('div');d.className='back anim install';d.id='sheet';d.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="Installer l'appli du club" tabindex="-1"><div class="body ig">
+ <span class="crest ig-crest ${club().logo?'logo':''}" ${club().logo?`style="background-image:url(${club().logo})"`:''}>${club().logo?'':club().short}</span>
+ <h2 class="h3">Installer l'appli du club</h2><p class="muted">Sur iPhone, les notifications (messages, convocations, scores en direct) n'arrivent que si l'appli est ajoutée à l'écran d'accueil. Ça prend dix secondes :</p>
+ <ol class="ig-steps"><li><span class="ig-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11H5v10h14V11h-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>Touche le bouton <b>Partager</b> en bas de Safari.</span></li>
+ <li><span class="ig-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span>Fais défiler et choisis <b>Sur l'écran d'accueil</b>.</span></li>
+ <li><span class="ig-ic">${ic('check')}</span><span>Touche <b>Ajouter</b>, puis ouvre l'appli depuis son icône.</span></li></ol>
+ <div class="ig-demo" aria-hidden="true"><span class="ig-bar"><i></i><i class="hl"></i><i></i></span><span class="ig-arrow">↓</span></div>
+ <button class="btn full ghost" data-a="installLater">Plus tard</button></div></div>`;$('layer').appendChild(d)}
+A.installLater=()=>{try{localStorage.setItem('club-install-later','1')}catch(e){}closeSheet()};
+A.installHelp=()=>installGuide(true);
+setTimeout(()=>installGuide(false),600);
