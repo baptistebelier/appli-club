@@ -21,7 +21,7 @@ function render(keep){const v=view(),key=v.v+(v.id||''),main=$('main'),y=main.sc
  const foot=$('foot'),tabs=$('tabs'),liveRec=v.v==='rec'&&recs.find(r=>r.id===v.id).st==='live',fk=key+(liveRec?'L':'');
  if(v.v==='chan'||liveRec){foot.hidden=false;tabs.hidden=true;
   if(fk!==lastFoot){const c=v.v==='chan'?chans.find(c=>c.id===v.id):null;S.img=null;S.reply=null;
-   foot.innerHTML=c&&c.ro&&!isAdmin()?'<div class="muted small" style="text-align:center;padding:8px">Seul le club publie dans ce groupe.</div>':`<div class="att" id="att" hidden></div><form class="composer" id="composer"><label class="attach" aria-label="Joindre une photo">${ic('image')}<input type="file" id="m-img" accept="image/*"></label><input type="text" id="msg-input" autocomplete="off" placeholder="${c?(c.ro?'Publier au nom du club':'Écrire dans '+esc(c.name)):"Encourager l'équipe en direct"}" aria-label="Message"><button class="send" aria-label="Envoyer">${ic('send')}</button></form>`}}
+   foot.innerHTML=c&&c.ro&&!isAdmin()?'<div class="muted small" style="text-align:center;padding:8px">Seul le club publie dans ce groupe.</div>':`<div class="att" id="att" hidden></div><form class="composer" id="composer"><label class="attach" aria-label="Joindre une photo">${ic('image')}<input type="file" id="m-img" accept="image/*"></label><textarea id="msg-input" class="ta" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="${c?(c.ro?'Publier au nom du club':'Écrire dans '+esc(c.name)):"Encourager l'équipe en direct"}" aria-label="Message"></textarea><button class="send" aria-label="Envoyer">${ic('send')}</button></form>`}}
  else{foot.hidden=true;tabs.hidden=false;const un=pending()?0:chans.reduce((a,c)=>a+(c.mute||!chanOk(c)?0:c.un),0),tb=(k,i,l)=>`<button data-a="tab" data-t="${k}" ${S.tab===k?'aria-current="page"':''}>${ic(i)}${l}${k==='chans'&&un?`<span class="cnt">${un}</span>`:''}</button>`;
   tabs.innerHTML=tb('home','home','Accueil')+tb('chans','chat','Groupes')+tb('agenda','cal','Agenda')+tb('ecole','school','École')+tb('club','club','Club')+tb('me','user','Profil');tabs.insertAdjacentHTML('afterbegin','<span class="pill" id="tpill" aria-hidden="true"></span>');pillTo(tabs.querySelector('[aria-current]'),true)}
  if(pending()&&!lockOk(v))foot.hidden=true;
@@ -43,7 +43,7 @@ function toast(msg,undo){const st=nstack();st.querySelectorAll('.tst .undo').for
 function sheet(title,body,quiet){closeSheet();const d=document.createElement('div');d.className='back'+(quiet?'':' anim');d.id='sheet';d.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}" tabindex="-1"><span class="grab" aria-hidden="true"></span><header><span class="h3">${title}</span><button class="ib" data-a="close" aria-label="Fermer">${ic('x')}</button></header>${body}</div>`;$('layer').appendChild(d);d.firstChild.focus({preventScroll:true})}
 function closeSheet(){const s=$('sheet');if(s)s.remove()}
 const menuSheet=(title,items)=>sheet(title,`<div class="body"><div class="menu">${items.filter(Boolean).map(i=>`<button class="${i[4]?'danger':''}" data-a="${i[2]}" ${i[3]||''}>${ic(i[0])}${i[1]}</button>`).join('')}</div></div>`);
-function commentsBody(p){const l=p.com.map((c,i)=>S.blocked.has(c.by)?'':`<div class="msg">${av(c.by,'sm')}<div class="grow"><div class="hd"><span class="nm">${name(c.by)}</span>${bd(c.by,postSport(p))}</div><button class="bub cbub" data-lp="cmenu" data-id="${p.id}" data-i="${i}">${esc(c.x)}</button>${c.re&&Object.keys(c.re).length?`<div class="reacts">${Object.entries(c.re).map(([e,n])=>`<button class="react ${c.my===e?'on':''}" data-a="creact" data-id="${p.id}" data-i="${i}" data-e="${e}" aria-label="Réaction ${e}, ${n}">${e} ${n}</button>`).join('')}</div>`:''}</div></div>`).join('');return `<div class="body" id="com-list">${l?'<p class="muted small" style="text-align:center">Reste appuyé sur un commentaire pour réagir, le signaler ou le supprimer.</p>'+l:empty('com','Aucun commentaire','Sois le premier à réagir.')}</div><div class="foot"><form class="composer" id="com-form" data-id="${p.id}"><input type="text" id="com-input" autocomplete="off" placeholder="Ajouter un commentaire" aria-label="Commentaire"><button class="send" aria-label="Publier">${ic('send')}</button></form></div>`}
+function commentsBody(p){const l=p.com.map((c,i)=>S.blocked.has(c.by)?'':`<div class="msg">${av(c.by,'sm')}<div class="grow"><div class="hd"><span class="nm">${name(c.by)}</span>${bd(c.by,postSport(p))}</div><button class="bub cbub" data-lp="cmenu" data-id="${p.id}" data-i="${i}">${esc(c.x)}</button>${c.re&&Object.keys(c.re).length?`<div class="reacts">${Object.entries(c.re).map(([e,n])=>`<button class="react ${c.my===e?'on':''}" data-a="creact" data-id="${p.id}" data-i="${i}" data-e="${e}" aria-label="Réaction ${e}, ${n}">${e} ${n}</button>`).join('')}</div>`:''}</div></div>`).join('');return `<div class="body" id="com-list">${l?'<p class="muted small" style="text-align:center">Reste appuyé sur un commentaire pour réagir, le signaler ou le supprimer.</p>'+l:empty('com','Aucun commentaire','Sois le premier à réagir.')}</div><div class="foot"><form class="composer" id="com-form" data-id="${p.id}"><textarea id="com-input" class="ta" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Ajouter un commentaire" aria-label="Commentaire"></textarea><button class="send" aria-label="Publier">${ic('send')}</button></form></div>`}
 
 /* Couleurs : le club choisit une seule couleur ; l'appli l'ajuste pour qu'elle reste lisible sur le fond et choisit le texte noir ou blanc au meilleur contraste. Le rouge d'alerte et le bleu padel sont fixes. */
 function lum(hex){const n=parseInt(hex.slice(1),16),c=[n>>16&255,n>>8&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});return .2126*c[0]+.7152*c[1]+.0722*c[2]}
@@ -369,6 +369,13 @@ document.addEventListener('pointerdown',e=>{const a=document.activeElement;if(!a
 /* Qui peut publier sur le mur : bureau, enseignants, membres d'une commission */
 const myComms=()=>COMMS.filter(c=>c.mem.includes(ME())||c.resp===ME());
 const canPublish=()=>isAdmin()||myComms().length>0;
+/* Champ de message multiligne (comme WhatsApp) : une zone de texte et non un champ « texte »,
+   ce qui évite la suggestion « Préremplir le contact » de Safari. Il grandit jusqu'à 5 lignes.
+   Téléphone : la touche Entrée va à la ligne, on envoie avec le bouton. Ordinateur : Entrée envoie, Maj+Entrée va à la ligne. */
+const taFit=t=>{t.style.height='auto';t.style.height=Math.min(t.scrollHeight,128)+'px'};
+document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('ta'))taFit(e.target)});
+document.addEventListener('keydown',e=>{const t=e.target;if(!t.classList||!t.classList.contains('ta')||e.key!=='Enter'||e.shiftKey||e.isComposing)return;if(matchMedia('(pointer:coarse)').matches)return;e.preventDefault();const f=t.closest('form');if(f)f.requestSubmit()});
+document.addEventListener('submit',e=>{const t=e.target.querySelector&&e.target.querySelector('.ta');if(t)setTimeout(()=>{t.style.height=''},0)});
 let shY=null;
 document.addEventListener('touchstart',e=>{const h=e.target.closest('.sheet header,.grab');shY=h?e.touches[0].clientY:null},{passive:true});
 document.addEventListener('touchmove',e=>{if(shY===null)return;const dy=e.touches[0].clientY-shY,s=document.querySelector('#sheet .sheet');if(s&&dy>0)s.style.transform=`translateY(${dy}px)`},{passive:true});
@@ -496,17 +503,28 @@ $('main').addEventListener('scroll',()=>{const m=$('main'),max=m.scrollHeight-m.
  lastY=y},{passive:true});
 new ResizeObserver(topPad).observe($('top'),{box:'border-box'});
 /* Glisser le doigt le long de la barre du bas pour choisir sa page, comme Instagram */
-/* Curseur translucide derrière l'onglet actif ; il suit le doigt quand on glisse */
+/* Curseur de la barre du bas (comme Instagram) : il suit le doigt pendant le glissé, puis se cale sur l'onglet le plus proche.
+   Il fait exactement la largeur d'un onglet : la marge entre le curseur et le bord de la barre est la même en haut, en bas et sur les côtés. */
 let pillPos=null;
-function pillTo(b,fromLast){const p=$('tpill');if(!p)return;if(!b){p.style.opacity='0';return}const w=b.offsetWidth+8,l=b.offsetLeft-4;
- if(fromLast&&pillPos){p.style.transition='none';p.style.transform=`translateX(${pillPos.l}px)`;p.style.width=pillPos.w+'px';void p.offsetWidth;p.style.transition=''}
- p.style.opacity='1';p.style.transform=`translateX(${l}px)`;p.style.width=w+'px';pillPos={l,w}}
-let tabSw=null;
-$('tabs').addEventListener('touchstart',e=>{const t=e.touches[0];tabSw={x:t.clientX,moved:false,el:null}},{passive:true});
-$('tabs').addEventListener('touchmove',e=>{if(!tabSw)return;const t=e.touches[0];if(Math.abs(t.clientX-tabSw.x)>12)tabSw.moved=true;if(!tabSw.moved)return;e.preventDefault();
- const el=document.elementFromPoint(t.clientX,$('tabs').getBoundingClientRect().top+30),b=el&&el.closest('#tabs button');if(b!==tabSw.el){$('tabs').querySelectorAll('.hov').forEach(x=>x.classList.remove('hov'));if(b){b.classList.add('hov');pillTo(b)}tabSw.el=b}},{passive:false});
-$('tabs').addEventListener('touchend',e=>{const s=tabSw;tabSw=null;$('tabs').querySelectorAll('.hov').forEach(x=>x.classList.remove('hov'));if(!s||!s.moved)return;e.preventDefault();if(s.el)A[s.el.dataset.a](s.el.dataset,s.el);if(!s.el||s.el.dataset.a!=='tab')pillTo($('tabs').querySelector('[aria-current]'))});
-$('tabs').addEventListener('touchcancel',()=>{tabSw=null;pillTo($('tabs').querySelector('[aria-current]'));$('tabs').querySelectorAll('.hov').forEach(x=>x.classList.remove('hov'))});
+const tabBtns=()=>[...$('tabs').querySelectorAll(':scope > button')];
+function pillSet(l,w,anim){const p=$('tpill');if(!p)return;p.style.transition=anim?'':'none';p.style.opacity='1';p.style.transform=`translateX(${l}px)`;p.style.width=w+'px';pillPos={l,w}}
+function pillTo(b,fromLast){const p=$('tpill');if(!p)return;if(!b){p.style.opacity='0';return}
+ if(fromLast&&pillPos){pillSet(pillPos.l,pillPos.w,false);void p.offsetWidth}
+ pillSet(b.offsetLeft,b.offsetWidth,true)}
+const nearestTab=x=>{let best=null,d=1e9;tabBtns().forEach(b=>{const dd=Math.abs(b.offsetLeft+b.offsetWidth/2-x);if(dd<d){d=dd;best=b}});return best};
+let tabSw=null,tabDragged=false;
+$('tabs').addEventListener('pointerdown',e=>{if(e.button>0)return;const t=$('tabs');tabSw={x0:e.clientX,left:t.getBoundingClientRect().left+t.clientLeft,moved:false,id:e.pointerId,el:null}});
+$('tabs').addEventListener('pointermove',e=>{const s=tabSw;if(!s||e.pointerId!==s.id)return;if(!s.moved&&Math.abs(e.clientX-s.x0)<8)return;const t=$('tabs'),bs=tabBtns();if(!bs.length)return;
+ if(!s.moved){s.moved=true;try{t.setPointerCapture(e.pointerId)}catch(_){}t.classList.add('drag')}
+ const w=bs[0].offsetWidth,pad=bs[0].offsetLeft,l=Math.min(t.clientWidth-pad-w,Math.max(pad,e.clientX-s.left-w/2));pillSet(l,w,false);
+ const b=nearestTab(l+w/2);if(b!==s.el){bs.forEach(x=>x.classList.remove('hov'));if(b)b.classList.add('hov');s.el=b}});
+function tabEnd(cancel){const s=tabSw,t=$('tabs');tabSw=null;t.classList.remove('drag');tabBtns().forEach(x=>x.classList.remove('hov'));if(!s||!s.moved)return;
+ tabDragged=true;setTimeout(()=>tabDragged=false,60);const b=!cancel&&s.el;
+ if(b){pillTo(b);if(b.getAttribute('aria-current')!=='page')setTimeout(()=>A[b.dataset.a](b.dataset,b),200)}else pillTo(t.querySelector('[aria-current]'))}
+$('tabs').addEventListener('pointerup',()=>tabEnd(false));
+$('tabs').addEventListener('pointercancel',()=>tabEnd(true));
+/* Après un glissé, le « clic » de fin de geste n'ouvre pas l'onglet une deuxième fois */
+$('tabs').addEventListener('click',e=>{if(tabDragged){e.stopPropagation();e.preventDefault()}},true);
 /* Glisser le bandeau de notification vers le haut pour le ranger */
 let banY=null;
 let banEl=null;
