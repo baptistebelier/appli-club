@@ -140,3 +140,12 @@
   .back .grab { display: none; }
   .back.viewer { padding: 0; }
 }
+
+/* ---------- bloc « Compte /RAM » en haut du profil ---------- */
+.ram-acc { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); box-shadow: 5px 5px 0 var(--ram-hard); }
+.ram-acc[hidden] { display: none; }
+.ram-acc .grow { min-width: 160px; display: flex; flex-direction: column; gap: 2px; }
+.ram-acc b { font-family: var(--f-sub); font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; color: var(--muted); }
+.ram-acc span { font-weight: 600; overflow-wrap: anywhere; }
+.ram-acc small { color: var(--muted); font-size: 12px; }
+.ram-acc-logo { height: 34px; width: auto; flex: none; }
