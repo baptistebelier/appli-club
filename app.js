@@ -507,13 +507,15 @@ new ResizeObserver(topPad).observe($('top'),{box:'border-box'});
    Il fait exactement la largeur d'un onglet : la marge entre le curseur et le bord de la barre est la même en haut, en bas et sur les côtés. */
 let pillPos=null;
 const tabBtns=()=>[...$('tabs').querySelectorAll(':scope > button')];
-function pillSet(l,w,anim){const p=$('tpill');if(!p)return;p.style.transition=anim?'':'none';p.style.opacity='1';p.style.transform=`translateX(${l}px)`;p.style.width=w+'px';pillPos={l,w}}
+/* Sur ordinateur (1024 px et plus), la barre devient un menu latéral : le curseur se déplace à la verticale */
+const sideNav=()=>matchMedia('(min-width:1024px)').matches;
+function pillSet(l,w,anim){const p=$('tpill');if(!p)return;p.style.transition=anim?'':'none';p.style.opacity='1';if(sideNav()){p.style.transform=`translateY(${l}px)`;p.style.height=w+'px';p.style.width=''}else{p.style.transform=`translateX(${l}px)`;p.style.width=w+'px';p.style.height=''}pillPos={l,w}}
 function pillTo(b,fromLast){const p=$('tpill');if(!p)return;if(!b){p.style.opacity='0';return}
  if(fromLast&&pillPos){pillSet(pillPos.l,pillPos.w,false);void p.offsetWidth}
- pillSet(b.offsetLeft,b.offsetWidth,true)}
+ if(sideNav())pillSet(b.offsetTop,b.offsetHeight,true);else pillSet(b.offsetLeft,b.offsetWidth,true)}
 const nearestTab=x=>{let best=null,d=1e9;tabBtns().forEach(b=>{const dd=Math.abs(b.offsetLeft+b.offsetWidth/2-x);if(dd<d){d=dd;best=b}});return best};
 let tabSw=null,tabDragged=false;
-$('tabs').addEventListener('pointerdown',e=>{if(e.button>0)return;const t=$('tabs');tabSw={x0:e.clientX,left:t.getBoundingClientRect().left+t.clientLeft,moved:false,id:e.pointerId,el:null}});
+$('tabs').addEventListener('pointerdown',e=>{if(e.button>0||sideNav())return;const t=$('tabs');tabSw={x0:e.clientX,left:t.getBoundingClientRect().left+t.clientLeft,moved:false,id:e.pointerId,el:null}});
 $('tabs').addEventListener('pointermove',e=>{const s=tabSw;if(!s||e.pointerId!==s.id)return;if(!s.moved&&Math.abs(e.clientX-s.x0)<8)return;const t=$('tabs'),bs=tabBtns();if(!bs.length)return;
  if(!s.moved){s.moved=true;try{t.setPointerCapture(e.pointerId)}catch(_){}t.classList.add('drag')}
  const w=bs[0].offsetWidth,pad=bs[0].offsetLeft,l=Math.min(t.clientWidth-pad-w,Math.max(pad,e.clientX-s.left-w/2));pillSet(l,w,false);
@@ -533,6 +535,8 @@ document.addEventListener('touchmove',e=>{if(banY===null)return;const d=Math.min
 document.addEventListener('touchend',e=>{if(banY===null)return;const d=e.changedTouches[0].clientY-banY,b=banEl;banY=null;banEl=null;if(d<-25){e.preventDefault();banHide(b)}else{b.style.transform='';b._t=setTimeout(()=>banHide(b),3000)}});
 let saved=0;try{saved=+localStorage.getItem('club-theme')||0}catch(e){}
 setTheme(CLUBS[saved]?saved:0);render();
+/* passage téléphone ↔ ordinateur (fenêtre redimensionnée) : le curseur se recale sur l'onglet actif */
+matchMedia('(min-width:1024px)').addEventListener('change',()=>{pillPos=null;pillTo($('tabs').querySelector('[aria-current]'))});
 
 /* ---------- Ouvrir un écran depuis une adresse (notification push, lien partagé) ----------
    Formats : #/rec/r1  #/chan/general  #/post/p1  #/agenda/cours  #/notifs  #/me */
