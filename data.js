@@ -158,6 +158,8 @@ const S={ecTab:'mine',ag:'all',tab:'home',stack:[],club:0,role:'admin',liked:new
  plan:{mode:'events',d:TODAY,cat:{ens:1,ani:1,eq:1},sp:{Tennis:1,Padel:1}},list:{sort:'tennis',f:'all',q:''},palm:'tennis',season:'2026-2027',arch:{s:'',t:'arts'}};
 
 const club=()=>CLUBS[S.club];
+/* logo /RAM Club lisible sur les couleurs du club : blanc sur fond sombre, noir sur fond clair */
+const ramLogo=()=>club().dark?'img/ram-club-blanc.png':'img/ram-club-noir.png';
 const ME=()=>S.role==='wait'?'lucas':S.role==='kid'?'leo':S.role==='coach'?'sarah':'me';
 /* L'enseignant a les pouvoirs du bureau, sauf les commissions ; le bureau seul gère les commissions */
 const isAdmin=()=>S.role==='admin'||S.role==='coach';
