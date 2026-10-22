@@ -1,6 +1,6 @@
 /* =========================================================================
    /RAM Club — charte /RAM JA (21/10/2026)
-   Même famille que le logiciel Padel JA : angles droits, ombres dures décalées,
+   Même famille que le logiciel /RAM JA : angles droits, ombres dures décalées,
    barre du bas flottante foncée avec curseur citron qui suit le doigt.
    Les couleurs restent celles du club (réglées dans app.js) : ce fichier ne
    change que les formes, les ombres et la navigation. Chargé après app.css.
@@ -23,7 +23,7 @@
 .btn:not(.ghost):active, .addfab:active, .ib.acc:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--accent2, var(--hot)); }
 .btn.ghost { box-shadow: inset 0 0 0 1.5px var(--line); }
 
-/* ---------- cartes : bord fin et ombre dure, comme les fiches de Padel JA ---------- */
+/* ---------- cartes : bord fin et ombre dure, comme les fiches de /RAM JA ---------- */
 .card { border: 1px solid var(--line); box-shadow: 5px 5px 0 var(--ram-hard); }
 .sheet { border-top: 3px solid var(--accent); }
 
@@ -32,7 +32,7 @@
 .ring { transform: rotate(-2deg); box-shadow: 4px 4px 0 var(--ram-hard); }
 .story:nth-child(even) .ring { transform: rotate(2deg); }
 
-/* ---------- barre du bas façon Padel JA ----------
+/* ---------- barre du bas façon /RAM JA ----------
    Plus foncée que les cartes pour bien ressortir, curseur citron carré avec ombre rose,
    et toute la barre grossit un peu pendant qu'on glisse le doigt dessus. */
 .tabs {
@@ -100,7 +100,7 @@
     flex: none; flex-direction: row; justify-content: flex-start; gap: 14px; min-height: 50px; padding: 0 16px;
     font-size: 17px; letter-spacing: .03em; color: var(--muted);
   }
-  .tabs button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
+  .tabs button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 9%, transparent); }
   .tabs button[aria-current="page"], .tabs button[aria-current="page"]:hover { color: var(--on-accent); background: transparent; }
   .tabs .cnt { position: static; margin-left: auto; }
   .tabs .pill { left: 14px !important; right: 14px; top: 0 !important; bottom: auto !important; width: auto !important; }
@@ -196,13 +196,22 @@
 .tabs.drag button[aria-current="page"] svg { color: var(--muted); }
 .tabs.drag button.hov svg { color: var(--on-accent); }
 
-/* ---------- fond de l'appli : motif fixe (points, quadrillage, diagonales ou uni), comme Padel JA ----------
+/* ---------- fond de l'appli : motif fixe (points, quadrillage, diagonales ou uni), comme /RAM JA ----------
    Le motif reste immobile pendant que le contenu défile ; il prend la couleur du texte du club, très atténuée. */
 .motif { position: absolute; inset: 0; pointer-events: none; z-index: 0; --mc: color-mix(in srgb, var(--fg) 8%, transparent); }
 :root[data-motif="dots"] .motif, :root:not([data-motif]) .motif { background: radial-gradient(var(--mc) 1px, transparent 1.3px) 0 0 / 7px 7px; }
 :root[data-motif="grid"] .motif { background: linear-gradient(var(--mc) 1px, transparent 1px) 0 0 / 56px 56px, linear-gradient(90deg, var(--mc) 1px, transparent 1px) 0 0 / 56px 56px; }
 :root[data-motif="stripes"] .motif { --mc: color-mix(in srgb, var(--fg) 4%, transparent); background: repeating-linear-gradient(-45deg, var(--mc) 0 3px, transparent 3px 26px); }
 :root[data-motif="plain"] .motif { background: none; }
+/* motifs /RAM (padel, tennis, padel et tennis) : tuiles sans couture en masque, colorées par le thème ;
+   ::before porte les pictogrammes (couleur du texte), ::after les traces d'accent (couleur d'accent du club) */
+:root[data-motif="ram-padel"] { --mk: url(motifs/w30/padel-base.png); --ma: url(motifs/w30/padel-accent.png); }
+:root[data-motif="ram-tennis"] { --mk: url(motifs/w30/tennis-base.png); --ma: url(motifs/w30/tennis-accent.png); }
+:root[data-motif="ram-mixte"] { --mk: url(motifs/w30/mixte-base.png); --ma: url(motifs/w30/mixte-accent.png); }
+:root[data-motif^="ram-"] .motif { background: none; }
+:root[data-motif^="ram-"] .motif::before, :root[data-motif^="ram-"] .motif::after { content: ''; position: absolute; inset: 0;
+  -webkit-mask: var(--mk) 0 0 / 800px 800px repeat; mask: var(--mk) 0 0 / 800px 800px repeat; background: color-mix(in srgb, var(--fg) 9%, transparent); }
+:root[data-motif^="ram-"] .motif::after { -webkit-mask-image: var(--ma); mask-image: var(--ma); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 #main, .foot { position: relative; z-index: 1; }
 .motifs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .motifs button { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border: 1.5px solid var(--line); background: var(--card2); font-family: var(--f-sub); font-weight: 600; font-size: 12px; color: var(--fg); }
@@ -211,6 +220,9 @@
 .motifs i.dots { background-image: radial-gradient(var(--mc) 1px, transparent 1.3px); background-size: 7px 7px; }
 .motifs i.grid { background-image: linear-gradient(var(--mc) 1px, transparent 1px), linear-gradient(90deg, var(--mc) 1px, transparent 1px); background-size: 14px 14px; }
 .motifs i.stripes { background-image: repeating-linear-gradient(-45deg, var(--mc) 0 2px, transparent 2px 9px); }
+.motifs i[class^="ram-"] { position: relative; overflow: hidden; }
+.motifs i[class^="ram-"]::before { content: ''; position: absolute; inset: 0; background: var(--mc); -webkit-mask: var(--mi) 0 0 / 320px 320px; mask: var(--mi) 0 0 / 320px 320px; }
+.motifs i.ram-padel { --mi: url(motifs/w30/padel-base.png); } .motifs i.ram-tennis { --mi: url(motifs/w30/tennis-base.png); } .motifs i.ram-mixte { --mi: url(motifs/w30/mixte-base.png); }
 
 /* ---------- retour en arrière en glissant depuis le bord gauche ---------- */
 #main.swipe-back, #top.swipe-back, .foot.swipe-back { transition: none !important; }
@@ -260,7 +272,7 @@
    latéral : pas de doublon dans la barre du haut.
    ========================================================================= */
 .toplogo { display: block; flex: none; height: 38px; width: auto; max-width: 128px; object-fit: contain; object-position: left center; margin-right: 4px; }
-@media (min-width: 1024px) { .toplogo { display: none; } }
+@media (min-width: 1024px) { .toplogo { display: none; } .modebtn { display: none; } }
 /* aperçus des logos dans « Apparence du club » : sur fond sombre et sur fond clair */
 .lkl { display: flex; align-items: center; justify-content: center; height: 72px; margin-top: 8px; padding: 10px; border: 1px solid var(--line); }
 .lkl.dk { background: #0B0B0B; }
@@ -322,7 +334,7 @@ html, body { background: var(--bg); }
 .thero .grow > .muted.small { display: block; }   /* points et trophées sur deux lignes distinctes */
 
 /* =========================================================================
-   Onglets sur ordinateur, comme la fiche tournoi de Padel JA (22/10/2026) :
+   Onglets sur ordinateur, comme la fiche tournoi de /RAM JA (22/10/2026) :
    une rangée d'onglets carrés posée sur une grande carte ; l'onglet actif
    prend la couleur du club, un trait de la même couleur le relie à la carte.
    ========================================================================= */
@@ -340,9 +352,26 @@ html, body { background: var(--bg); }
 .stories { padding-top: 20px; }
 /* liste des groupes de discussion : tous dans la même carte (ordinateur), séparés par un trait */
 .lis > .li:last-child { border-bottom: 0; }
+/* téléphone et tablette : même carte opaque, ton sur ton, que sur ordinateur (le motif ne passe plus derrière le texte) */
+@media (max-width: 1023px) {
+  .lis { background: var(--card); border: 1px solid var(--line); box-shadow: 4px 4px 0 var(--ram-hard); margin: 12px 0 18px; }
+  .lis > .li { border-bottom: 1px solid var(--line); }
+}
+/* palmarès : chaque résultat dans son propre cadre uni */
+.palm .res { background: var(--card); border: 1px solid var(--line); padding: 8px 12px; margin-bottom: 8px; box-shadow: 3px 3px 0 var(--ram-hard); }
+.palm .swipe { border-bottom: 0; margin-bottom: 8px; gap: 8px; }
+.palm .swipe .res { margin-bottom: 0; box-shadow: none; }
+/* ordinateur (souris) : pas de glissement, la corbeille est toujours visible au bout de la ligne */
+@media (hover: hover) and (pointer: fine) {
+  .palm .swipe { overflow: visible; gap: 0; box-shadow: 3px 3px 0 var(--ram-hard); }
+  .palm .swipe .res { flex: 1 1 auto; min-width: 0; }
+  .palm .swipe .del { flex: 0 0 48px; border-radius: 0; background: var(--card); color: var(--muted); border: 1px solid var(--line); border-left: 0; cursor: pointer; transition: background .15s, color .15s; }
+  .palm .swipe .del:hover { background: var(--hot); color: var(--on-hot); }
+  .palm .swipehint { display: none; }
+}
 
 /* =========================================================================
-   VERSION ORDINATEUR, direction artistique de Padel JA (22/10/2026)
+   VERSION ORDINATEUR, direction artistique de /RAM JA (22/10/2026)
    - menu principal : colonne étroite et sombre, logo /RAM Club en haut,
      pictogramme au-dessus du libellé, sans contour ;
    - pages à onglets (Groupes, Agenda, École, Club) : sous-menu latéral plus
@@ -391,8 +420,8 @@ html, body { background: var(--bg); }
     color: color-mix(in srgb, var(--fg) 72%, transparent); background: transparent; position: relative; z-index: 0;
   }
   #main > .seg button svg { width: 21px; height: 21px; flex: none; }
-  #main > .seg button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 6%, transparent); }
-  /* onglet actif : bandeau de la couleur du club légèrement penché, comme dans Padel JA */
+  #main > .seg button:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 9%, transparent); }
+  /* onglet actif : bandeau de la couleur du club légèrement penché, comme dans /RAM JA */
   #main > .seg button[aria-selected="true"] { color: var(--on-accent); background: transparent; }
   #main > .seg button[aria-selected="true"]::before { content: ''; position: absolute; inset: 3px 4px; background: var(--accent); transform: rotate(-1.5deg); box-shadow: 3px 3px 0 var(--accent2, var(--hot)); z-index: -1; }
   #main > .seg + * { border-top: 1px solid var(--line); margin-top: 18px; }
@@ -404,11 +433,26 @@ html, body { background: var(--bg); }
   .back.side .grab { display: none; }
 }
 @keyframes ramSlideL { from { transform: translateX(100%); } to { transform: none; } }
+/* fermeture du volet latéral : il ressort par la droite */
+@media (min-width: 1024px) {
+  .back.side.out { animation: ramFadeOut .22s ease-in forwards; pointer-events: none; }
+  .back.side.out .sheet { animation: ramSlideOut .22s cubic-bezier(.4, 0, .9, .6) forwards !important; }
+}
+@keyframes ramSlideOut { to { transform: translateX(100%); } }
+@keyframes ramFadeOut { to { opacity: 0; } }
+/* ordinateur : le sous-menu glisse en entrant (page qui en a un) et en sortant (page qui n'en a pas) */
+@media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+  #main > .seg.seg-in { animation: ramSegIn .26s cubic-bezier(.2, .8, .2, 1); }
+  #main > .seg.seg-out { animation: ramSegOut .24s cubic-bezier(.4, 0, .9, .6) forwards; pointer-events: none; }
+}
+@media (min-width: 1024px) { #main > .seg.seg-out { pointer-events: none; } }
+@keyframes ramSegIn { from { transform: translateX(-100%); } }
+@keyframes ramSegOut { to { transform: translateX(-100%); } }
 /* téléphone et tablette : le logo du club n'est affiché que sur les écrans principaux */
 .toplogo.sub { display: none; }
 
 /* =========================================================================
-   VERSION ORDINATEUR — mêmes menus que Padel JA, mesure pour mesure (23/10/2026)
+   VERSION ORDINATEUR — mêmes menus que /RAM JA, mesure pour mesure (23/10/2026)
    Menu principal 84 px : logo en haut, éléments 68 × 58 px, pictogramme sur le
    libellé ; élément actif = bloc plein couleur d'accent, ombre dure décalée.
    En bas : mode jour / nuit, profil, sortie.
@@ -426,8 +470,9 @@ html, body { background: var(--bg); }
   :root[style*="color-scheme: light"] .tabs { background: #16181F !important; }
   .tabs::before { left: calc(10px + env(safe-area-inset-left, 0px)); top: calc(16px + env(safe-area-inset-top, 0px)); width: 64px; height: 60px; }
   .tabs button[data-t="me"] { display: none; }
+  /* .rbot est hors de la barre d'onglets : sans display:flex ici, ses icônes restaient collées à gauche */
   .tabs button, .rbot button {
-    flex-direction: column; justify-content: center; gap: 4px; width: 68px; min-height: 58px; padding: 7px 2px; border: 0; position: relative;
+    display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 4px; width: 68px; min-height: 58px; padding: 7px 2px; border: 0; position: relative;
     font: 600 10.5px/1.15 var(--f-body); letter-spacing: 0; text-transform: none; text-align: center; color: rgba(255, 255, 255, .66); background: transparent; box-shadow: none;
     transition: background .15s, color .15s;
   }
@@ -469,9 +514,71 @@ html, body { background: var(--bg); }
     -webkit-mask-image: none; mask-image: none; }
   #main > .seg button { flex: 1 0 auto; justify-content: center; }
 }
-/* téléphone : une barre de 4 onglets ou plus tient sans défiler (texte seul, un peu resserré) */
+/* téléphone : chaque onglet garde son petit pictogramme ; s'ils ne tiennent pas tous, la barre défile au doigt */
 @media (max-width: 480px) {
-  #main > .seg:has(button:nth-of-type(4)) { gap: 6px; padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
-  #main > .seg:has(button:nth-of-type(4)) button { flex: 1 1 auto; min-width: 0; padding: 0 6px; gap: 0; font-size: 15px; }
-  #main > .seg:has(button:nth-of-type(4)) button svg { display: none; }
+  #main > .seg { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; scrollbar-width: none; gap: 6px;
+    padding-left: max(12px, env(safe-area-inset-left, 0px)); padding-right: max(12px, env(safe-area-inset-right, 0px)); }
+  #main > .seg button { flex: 1 0 auto; padding: 0 12px; gap: 6px; scroll-snap-align: start; }
+  #main > .seg button svg { display: inline-block; width: 16px; height: 16px; flex: none; }
+}
+
+/* =========================================================================
+   STYLE DE L'INTERFACE (Profil › Affichage), comme /RAM JA :
+   street dosé par défaut, épuré (sans ombres dures ni inclinaisons), full street (plus marqué)
+   ========================================================================= */
+:root[data-style="epure"] { --ram-hard: transparent; }
+:root[data-style="epure"] :is(.top h1, .crest, .ring, .story:nth-child(even) .ring, .tilt, .poster .big, .datepill, .stamp) { transform: none !important; }
+:root[data-style="epure"] :is(.tilt, .poster .big, .stamp, .bd.done, .segt b) { font-style: normal; }
+:root[data-style="epure"] #main > .seg button[aria-selected="true"], :root[data-style="epure"] #main > .seg button[aria-selected="true"]::before { transform: none !important; box-shadow: none !important; }
+:root[data-style="epure"] :is(.crest, .tabs button[aria-current="page"], .rbot button[aria-current="page"], .motifs button[aria-pressed="true"], .btn, .addfab) { box-shadow: none !important; }
+:root[data-style="street"] { --ram-hard: rgba(0, 0, 0, .8); }
+:root[data-style="street"][style*="color-scheme: light"] { --ram-hard: rgba(0, 0, 0, .28); }
+:root[data-style="street"] .top h1 { transform: rotate(-2.5deg); }
+:root[data-style="street"] .kicker { display: inline-block; transform: rotate(-1.5deg); }
+:root[data-style="street"] :is(.card, .lis, .palm .res, #main > .seg + *) { box-shadow: 7px 7px 0 var(--ram-hard) !important; }
+:root[data-style="street"] .btn:not(.ghost) { box-shadow: 4px 4px 0 var(--accent2, var(--hot)); }
+
+/* téléphone et tablette : le contenu des pages à onglets (Agenda, École, Club…) dans un cadre uni ton sur ton,
+   comme sur ordinateur et comme la liste des groupes ; le motif ne passe plus derrière le texte */
+@media (max-width: 1023px) {
+  #main > .seg + .pad { background: var(--card); border: 1px solid var(--line); box-shadow: 4px 4px 0 var(--ram-hard); margin: 12px 10px 24px; }
+  #main > .seg + .pad .card { box-shadow: 3px 3px 0 var(--ram-hard); }
+}
+
+/* ordinateur : « Ajouter du contenu » devient un bouton carré « + », en bas, juste à droite du menu latéral
+   (et du sous-menu quand la page en a un) */
+@media (min-width: 1024px) {
+  .addfab { left: calc(var(--side) + 18px + env(safe-area-inset-left, 0px)) !important; right: auto !important; bottom: calc(22px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 58px !important; height: 58px; min-height: 58px !important; padding: 0 !important; border-radius: 0 !important; justify-content: center; z-index: 7; }
+  .phone.hassub .addfab { left: calc(var(--side) + var(--sub) + 18px + env(safe-area-inset-left, 0px)) !important; }
+  .addfab span { display: none; }
+  .addfab svg { width: 28px !important; height: 28px !important; }
+}
+
+/* équipes : fil chronologique des rencontres (en direct, à venir, résultats), séparé par mois */
+.tl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+.tl-sec { min-width: 0; }
+.tl-sec > .kicker { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tl-sec > .kicker svg { width: 16px; height: 16px; }
+.tl-sec.tl-live > .kicker { color: var(--hot); }
+.tl-month { display: flex; align-items: center; gap: 10px; margin: 14px 0 8px; font-family: var(--f-sub); font-weight: 700; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.tl-month::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.tl-sec > .tl-month:first-of-type { margin-top: 0; }
+
+/* ---------- Soin du 23/10 ---------- */
+/* Bénévoles : le bouton passe sous la phrase quand la place manque,
+   au lieu d'écraser « Tu veux aider à l'organisation ? » en colonne d'un mot par ligne */
+.volu > .grow { flex: 1 1 190px; min-width: 0; }
+.volu > .btn { flex: 1 1 auto; white-space: normal; }
+
+/* Bouton « Ajouter du contenu » sur téléphone et tablette : un carré « + » à droite,
+   au-dessus de la barre d'onglets, qui ne masque plus le bas des publications.
+   Le libellé reste lu par les lecteurs d'écran (aria-label). */
+@media (max-width: 1023px) {
+  .addfab { left: auto !important; right: max(16px, env(safe-area-inset-right, 0px)) !important;
+    width: 58px; height: 58px; min-height: 58px; padding: 0; border-radius: 0; gap: 0;
+    box-shadow: 4px 4px 0 var(--accent2, var(--hot)); }
+  .addfab span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .addfab svg { width: 28px; height: 28px; }
+  .fab #main { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
 }
