@@ -1,0 +1,55 @@
+# Miroir automatique de /RAM Club
+# La seule source du code est le dossier club/ du dépôt padel-ja.
+# Ce dépôt ne sert qu'à publier la démo sur GitHub Pages : il se met à jour tout seul.
+# Ne modifie pas les fichiers ici à la main : ils seraient écrasés à la prochaine synchro.
+name: Miroir depuis padel-ja
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"   # toutes les 3 heures
+  workflow_dispatch:         # bouton « Run workflow » pour lancer à la main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: miroir
+  cancel-in-progress: true
+
+jobs:
+  miroir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer ce dépôt
+        uses: actions/checkout@v4
+
+      - name: Récupérer padel-ja
+        env:
+          # Facultatif : si padel-ja redevient privé, crée un secret PADEL_JA_TOKEN
+          # (jeton GitHub avec lecture sur padel-ja) dans Settings > Secrets > Actions.
+          TOKEN: ${{ secrets.PADEL_JA_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/baptistebelier/padel-ja.git" /tmp/padel-ja
+          else
+            git clone --depth 1 https://github.com/baptistebelier/padel-ja.git /tmp/padel-ja
+          fi
+          echo "SOURCE_SHA=$(git -C /tmp/padel-ja rev-parse --short HEAD)" >> "$GITHUB_ENV"
+
+      - name: Copier club/ (sauf les pages qui ont besoin du serveur)
+        run: |
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name .github ! -name README.md -exec rm -rf {} +
+          cp -a /tmp/padel-ja/club/. ./
+          rm -f connexion.html presentation.html
+
+      - name: Publier si quelque chose a changé
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Déjà à jour."
+            exit 0
+          fi
+          git config user.name "miroir-padel-ja"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "Miroir de padel-ja/club (${SOURCE_SHA})"
+          git push

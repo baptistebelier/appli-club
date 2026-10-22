@@ -31,7 +31,7 @@ const RARES=[
  {id:'coach',cl:1,n:'Pédagogue',d:'Enseigner au club',r:2,i:'school',ok:id=>GROUPS.some(g=>g.coach===id)},
  {id:'champion',cl:1,n:'Champion',d:"Monter de division ou finir 1er avec son équipe, en ayant joué au moins un match. Donné automatiquement quand le capitaine clôture le championnat",r:3,i:'trophy',m:1,ok:()=>false},
  {id:'invaincu',cl:1,n:'Invaincu',d:"Finir la saison sans perdre un match par équipe. Vérifié automatiquement à la clôture de la saison",r:3,i:'shield',m:1,ok:()=>false},
- {id:'bureau',cl:1,n:'Au bureau',d:'Être élu au bureau du club',r:3,i:'club',ok:id=>id===ME()&&S.role==='admin'}];
+ {id:'bureau',cl:1,n:'Au bureau',d:'Être élu au bureau du club',r:3,i:'club',ok:id=>(window.RAM&&RAM.roles&&RAM.club?RAM.roles[id]==='bureau':id===ME()&&S.role==='admin')}];
 const RAR=['Courant','Peu courant','Rare','Très rare'];
 /* Cadres autour de l'avatar, débloqués par le score d'investissement */
 const FRAMES=[{n:'Sans cadre',min:0},{n:'Bronze',min:150},{n:'Argent',min:500},{n:'Or',min:1200},{n:'Platine',min:2500},{n:'Diamant',min:4500}];
@@ -70,7 +70,7 @@ function check(){const id=ME(),s=ST(id),out=[];
  else if(out.length)render(true)}
 /* Décerner un trophée (club, automatique ou demande approuvée) : un palier de plus, ou le trophée rare */
 function award(id,tid,quiet,tier){const t=findT(tid),s=ST(id);let lv;
- if(t.t){const n=tierOf(t,s.c[t.id]||0);const k=tier!=null?Math.max(tier,n):n;if(k>=4)return false;s.c[t.id]=t.t[k];lv=TIERS[k].toLowerCase()}else{if(rOk(t,id))return false;s.k.add('award:'+t.id);lv=RAR[t.r].toLowerCase()}
+ if(t.t){const n=tierOf(t,s.c[t.id]||0);const k=tier!=null?Math.max(tier,n):n;if(k>=4)return false;s.c[t.id]=t.t[k];s.k.add('award:'+t.id+':'+k);lv=TIERS[k].toLowerCase()}else{if(rOk(t,id))return false;s.k.add('award:'+t.id);lv=RAR[t.r].toLowerCase()}
  if(id===ME())check();else if(!quiet)NOTIFS.unshift({by:'club',txt:`te décerne le trophée ${t.n} (${lv})`,t:"À l'instant",n:1,go:{v:'troph',id:id+'|'+t.id},to:[id]});
  return true}
 /* Clôture du championnat : trophée Champion pour ceux qui ont joué au moins un match (et le capitaine) */
