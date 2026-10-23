@@ -88,20 +88,31 @@ const A = {
       toast("Les notifications s'ouvriront quand le club aura validé ton accès");
       return;
     }
+    // les nouvelles (non lues) en haut, puis l'historique déjà lu ; toutes passent en « lues » à l'ouverture
+    const row = (n, i) => {
+      const r = n.conv && recs.find(x => x.id === n.conv),
+        c = r && r.conv && r.conv[ME()],
+        who =
+          n.tier != null || n.frame
+            ? `<span class="medal t${Math.max(0, n.tier || 0)}">${ic('trophy')}</span>`
+            : av(n.by, 'sm');
+      return r && r.st === 'soon' && r.lineup && r.lineup[ME()]
+        ? `<div class="msg nrow">${who}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${ago(n)}</time><span class="ctl" style="margin-top:8px"><button class="btn sm grow ${c === 'ok' ? '' : 'ghost'}" data-a="conv" data-r="${r.id}" data-s="ok">Je suis dispo</button><button class="btn sm grow ${c === 'no' ? 'hot' : 'ghost'}" data-a="conv" data-r="${r.id}" data-s="no">Pas dispo</button></span><button class="nm" data-a="ngo" data-i="${i}" style="color:var(--accent)">Voir la rencontre</button></span></div>`
+        : `<button class="msg nrow ${n.n ? 'unread' : ''}" data-a="ngo" data-i="${i}">${who}<span class="grow">${n.tier != null || n.frame ? '' : `<span class="nm">${name(n.by)}</span> `}${n.tier != null || n.frame ? esc(n.txt) : n.txt}<br><time>${ago(n)}</time></span>${n.n ? '<span class="st no">Nouveau</span>' : ''}</button>`;
+    };
+    const vis = NOTIFS.map((n, i) => [n, i]).filter(([n]) => !S.blocked.has(n.by) && nVis(n)),
+      fresh = vis.filter(([n]) => n.n),
+      old = vis.filter(([n]) => !n.n),
+      part = (t, l) =>
+        l.length ? `<span class="kicker nsec">${t}</span>${l.map(([n, i]) => row(n, i)).join('')}` : '';
     sheet(
       'Notifications',
       `<div class="body">${
-        NOTIFS.length
-          ? NOTIFS.map((n, i) => {
-              if (S.blocked.has(n.by) || !nVis(n)) return '';
-              const r = n.conv && recs.find(x => x.id === n.conv),
-                c = r && r.conv && r.conv[ME()];
-              return r && r.st === 'soon' && r.lineup && r.lineup[ME()]
-                ? `<div class="msg nrow">${av(n.by, 'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time><span class="ctl" style="margin-top:8px"><button class="btn sm grow ${c === 'ok' ? '' : 'ghost'}" data-a="conv" data-r="${r.id}" data-s="ok">Je suis dispo</button><button class="btn sm grow ${c === 'no' ? 'hot' : 'ghost'}" data-a="conv" data-r="${r.id}" data-s="no">Pas dispo</button></span><button class="nm" data-a="ngo" data-i="${i}" style="color:var(--accent)">Voir la rencontre</button></span></div>`
-                : `<button class="msg nrow" data-a="ngo" data-i="${i}">${av(n.by, 'sm')}<span class="grow"><span class="nm">${name(n.by)}</span> ${n.txt}<br><time>${n.t}</time></span>${n.n ? '<span class="st no">Nouveau</span>' : ''}</button>`;
-            }).join('')
+        vis.length
+          ? part(`Nouvelles · ${fresh.length}`, fresh) +
+            part(fresh.length ? 'Déjà lues' : 'Dernières notifications', old)
           : empty('bell', 'Aucune notification', 'Suis des adhérents pour être prévenu de leurs résultats.')
-      }<div class="note">Tu choisis ce que tu reçois dans ton profil, rubrique « Mes notifications ».</div></div>`
+      }<div class="note">Les notifications des 7 derniers jours sont gardées (au moins les 20 dernières), sur tous tes appareils. Tu choisis ce que tu reçois dans ton profil, rubrique « Mes notifications ».</div></div>`
     );
     $('sheet').classList.add('side');
     NOTIFS.forEach(n => (n.n = 0));
@@ -374,7 +385,7 @@ const A = {
       num = a => a.map(String);
     sheet(
       'Infos du club',
-      `<form class="body" id="info-form"><div class="two">${Sel('i-courts', 'Courts de tennis', num([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15]), String(I2.courts))}${Sel('i-pistes', 'Pistes de padel', num([0, 1, 2, 3, 4, 5, 6, 8]), String(I2.pistes))}</div>${F('i-house', 'Horaires du club-house', '', I2.house)}${F('i-secr', 'Horaires du secrétariat', '', I2.secr)}${F('i-addr', 'Adresse', '', I2.addr)}<span class="lb">Tarifs</span>${FORM.map((f, i) => `<div class="two">${O('i-fn' + i, 'Formule', '', f[0])}${O('i-fp' + i, 'Prix', '', f[2])}</div>`).join('')}${O('i-book', 'Lien de réservation des courts', 'https://…', I2.book)}${O('i-pay', 'Lien de paiement de la cotisation (HelloAsso…)', 'https://…', I2.pay)}${O('i-shop', 'Lien de la boutique', 'https://…', I2.shop)}<div class="fld"><span class="lb">Modules</span><label class="chk" for="i-actus"><input type="checkbox" id="i-actus" ${I2.mods.actus ? 'checked' : ''}>Actus (articles)</label><label class="chk" for="i-comm"><input type="checkbox" id="i-comm" ${I2.mods.comm ? 'checked' : ''}>Commissions</label><p class="muted small">Un petit club peut masquer les modules dont il n'a pas besoin.</p></div><button class="btn full">Enregistrer</button></form>`
+      `<form class="body" id="info-form"><div class="two">${Sel('i-courts', 'Courts de tennis', num([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15]), String(I2.courts))}${Sel('i-pistes', 'Pistes de padel', num([0, 1, 2, 3, 4, 5, 6, 8]), String(I2.pistes))}</div>${F('i-house', 'Horaires du club-house', '', I2.house)}${F('i-secr', 'Horaires du secrétariat', '', I2.secr)}${F('i-addr', 'Adresse', '', I2.addr)}<span class="lb">Tarifs</span>${FORM.map((f, i) => `<div class="two">${O('i-fn' + i, 'Formule', '', f[0])}${O('i-fp' + i, 'Prix', '', f[2])}</div>`).join('')}${O('i-book', 'Lien de réservation des courts', 'https://…', I2.book)}${O('i-pay', 'Lien de paiement de la cotisation (HelloAsso…)', 'https://…', I2.pay)}${O('i-shop', 'Lien de la boutique', 'https://…', I2.shop)}<div class="fld"><span class="lb">Modules</span><label class="chk" for="i-actus"><input type="checkbox" id="i-actus" ${I2.mods.actus ? 'checked' : ''}>Actus (articles)</label><label class="chk" for="i-comm"><input type="checkbox" id="i-comm" ${I2.mods.comm ? 'checked' : ''}>Commissions</label><label class="chk" for="i-bar"><input type="checkbox" id="i-bar" ${I2.mods.bar ? 'checked' : ''}>Bar et club-house (carte, réservation des repas)</label>${Sel('i-cut', 'Réservations au bar jusqu’à la veille, à', ['12 h', '14 h', '16 h', '18 h', '19 h', '20 h', '21 h', '22 h'], (Number.isInteger(+I2.barCut) ? +I2.barCut : 20) + ' h')}<p class="muted small">Un petit club peut masquer les modules dont il n'a pas besoin.</p></div><button class="btn full">Enregistrer</button></form>`
     );
   },
   readh() {
@@ -1168,4 +1179,3 @@ const A = {
     );
   }
 };
-
