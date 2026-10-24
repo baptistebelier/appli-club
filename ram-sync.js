@@ -1042,6 +1042,39 @@
         );
       }
     }
+    // tournoi /RAM JA : inscrit par son partenaire, puis résultat à la clôture
+    if (coll === 'post' && a && b.kind === 'jatour' && b.ja && a.ja) {
+      const go = { v: 'post', id },
+        keys = [me, ...kids],
+        inn = j => (j.list || []).find(x => keys.includes(x.k1) || keys.includes(x.k2));
+      if (!inn(a.ja) && inn(b.ja))
+        once(`jain/${id}`, () =>
+          notify('mine', 'club', `: tu es inscrit au tournoi « ${b.title} » (${fmtD(b.d)})`, go)
+        );
+      if (a.ja.status !== 'done' && b.ja.status === 'done') {
+        const r = (b.ja.results || []).find(x => (x.k || []).some(k => keys.includes(k)));
+        if (r || inn(b.ja))
+          once(`jares/${id}`, () =>
+            notify(
+              'mine',
+              'club',
+              r
+                ? `: résultat du tournoi « ${b.title} » : ${jaPlace(r.place, r.lo)} place`
+                : `: le tournoi « ${b.title} » est terminé, les résultats sont publiés`,
+              go
+            )
+          );
+      }
+      // horaire de mon match : nouveau, ou déplacé de plus d'un quart d'heure, ou changement de terrain
+      const na = (inn(a.ja) || {}).next,
+        nb = (inn(b.ja) || {}).next;
+      if (nb && !nb.live && (!na || Math.abs(nb.at - na.at) >= 15 * 60000 || nb.court !== na.court))
+        once(`janext/${id}/${nb.at}/${nb.court}`, () =>
+          notify('team', 'club', `: ton match du tournoi « ${b.title} » : ${jaNext(nb)}`, go)
+        );
+      if (a.ja.status === 'open' && b.ja.status === 'drawn' && inn(b.ja))
+        once(`jadraw/${id}`, () => notify('mine', 'club', `: le tirage du tournoi « ${b.title} » est fait`, go));
+    }
     // publications par niveaux : l'enseignant voit arriver les inscriptions ; chacun est prévenu quand sa date est validée
     if (coll === 'post' && a && b.kind === 'niveaux' && b.nv && a.nv) {
       const go = { v: 'post', id },
@@ -1498,6 +1531,7 @@
     R.roles = d.roles || {};
     R.scores = d.scores || {};
     R.counts = d.counts || {};
+    R.jaTitles = d.jaTitles || {}; // titres de juge-arbitre /RAM JA des adhérents (badge)
     R.wallet = d.wallet || null; // points bar (gagnés en consommant au bar), calculés par le serveur
     R.base = new Map();
     R.bad = new Map();
@@ -1659,10 +1693,32 @@
     closeSheet();
     start(d.id).catch(x => toast(x.message));
   };
-  A.ramClubs = () =>
+  /* mes clubs : le principal (celui de ma licence, repris par /RAM JA) et les secondaires (adhérent, autre sport…) */
+  const ROLE_L = { bureau: 'Bureau', coach: 'Enseignant', mem: 'Adhérent' };
+  A.ramClubs = () => {
+    const main = R.clubs.find(c => c.main),
+      row = c =>
+        `<div class="item"><button class="grow" data-a="ramSwitch" data-id="${c.id}" style="text-align:left;display:flex;gap:10px;align-items:center">${ic(c.id === R.club ? 'check' : 'club')}<span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_L[c.role] || ''}${c.id === R.club ? ' · ouvert' : ''}</span></span></button>${c.main ? '<span class="tag lime">Principal</span>' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}">Principal</button>`}</div>`;
     sheet(
       'Mes clubs',
-      `<div class="body"><div class="menu">${R.clubs.map(c => `<button data-a="ramSwitch" data-id="${c.id}">${ic(c.id === R.club ? 'check' : 'club')}${e(c.name)}</button>`).join('')}<button data-a="ramStart">${ic('plus')}Créer ou rejoindre un autre club</button></div></div>`
+      `<div class="body">${main ? `<span class="kicker">Club principal · licence</span>${row(main)}` : ''}${
+        R.clubs.filter(c => !c.main).length
+          ? `<span class="kicker">${main ? 'Clubs secondaires' : 'Mes clubs'}</span>${R.clubs
+              .filter(c => !c.main)
+              .map(row)
+              .join('')}`
+          : ''
+      }<p class="muted small">Le club principal est celui de ta licence : c’est lui qui apparaît sur ta fiche joueur /RAM JA. Tu peux être adhérent d’autres clubs (par exemple un club de tennis et un club de padel).</p><div class="menu"><button data-a="ramStart">${ic('plus')}Rejoindre ou créer un autre club</button></div></div>`
+    );
+  };
+  A.ramMain = d =>
+    api('/api/ram/main', { id: d.id }).then(
+      async () => {
+        R.clubs = (await api('/api/ram/clubs')).clubs;
+        A.ramClubs();
+        toast('Club principal enregistré : il apparaît sur ta fiche joueur /RAM JA');
+      },
+      x => toast(x.message)
     );
   A.ramStart = () => onboard();
   A.ramCopy = () => {
@@ -1762,7 +1818,7 @@
     if (!u)
       return `${logo}<div class="grow"><b>Compte /RAM</b><span>Connecte-toi avec ton compte /RAM : le même que pour /RAM JA.</span></div><a class="btn sm" href="${loginUrl()}">Se connecter</a>`;
     const nm = e([u.first, u.last].filter(Boolean).join(' ') || u.name || u.email);
-    return `${logo}<div class="grow"><b>Compte /RAM</b><span>${nm} · ${e(u.email || '')}</span><small>${R.live ? (R.clubs.length > 1 ? `<button class="nm" data-a="ramClubs" style="color:var(--accent)">Changer de club</button>` : `Le même compte que /RAM JA.`) : `<button class="nm" data-a="ramStart" style="color:var(--accent)">Créer ou rejoindre mon club</button>`}</small></div><button class="btn sm ghost" data-a="logout">Se déconnecter</button>`;
+    return `${logo}<div class="grow"><b>Compte /RAM</b><span>${nm} · ${e(u.email || '')}</span><small>${R.live ? `<button class="nm" data-a="ramClubs" style="color:var(--accent)">${R.clubs.length > 1 ? `Mes clubs (${R.clubs.length}) · changer` : 'Mes clubs · en rejoindre un autre'}</button>` : `<button class="nm" data-a="ramStart" style="color:var(--accent)">Créer ou rejoindre mon club</button>`}</small></div><button class="btn sm ghost" data-a="logout">Se déconnecter</button>`;
   }
   function fill() {
     const el = document.getElementById('ramAccount');
