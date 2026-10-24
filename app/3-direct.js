@@ -257,11 +257,21 @@ function shrink(file, cb) {
         c = document.createElement('canvas');
       c.width = im.width * k;
       c.height = im.height * k;
-      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-      cb(c.toDataURL('image/jpeg', 0.8));
+      const x = c.getContext('2d');
+      x.drawImage(im, 0, 0, c.width, c.height);
+      // image avec transparence (logo PNG détouré) : gardée en PNG, sinon JPEG (plus léger)
+      let alpha = false;
+      try {
+        const px = x.getImageData(0, 0, c.width, c.height).data;
+        for (let i = 3; i < px.length; i += 4)
+          if (px[i] < 250) {
+            alpha = true;
+            break;
+          }
+      } catch (e) {}
+      cb(alpha ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.8));
     };
     im.src = fr.result;
   };
   fr.readAsDataURL(file);
 }
-
