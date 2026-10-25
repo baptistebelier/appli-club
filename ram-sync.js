@@ -105,6 +105,8 @@
   const others = (map, me) => Object.entries(map || {}).filter(([k]) => k !== me);
   const POST_LOCAL = ['t', 'my', 'yes', 'maybe', 'wl', 'likes', 'com', 'ins'];
   function postOut(p, prev) {
+    // publication du club : on garde qui l'a écrite (elle n'est pas « Nouveau » pour son auteur)
+    if (p.by === 'club' && !p.wr && !R.base.has('post/' + p.id)) p.wr = R.key;
     const s = copy(p);
     POST_LOCAL.forEach(k => delete s[k]);
     if (!p.at && !R.base.has('post/' + p.id)) p.at = Date.now();
@@ -1275,6 +1277,42 @@
       console.warn('/RAM Club : trophées', x.message);
     }
   }
+  /* pastilles : nouveautés de mes autres clubs depuis ma dernière visite (gardée sur cet appareil) */
+  R.badges = {};
+  const seenAll = () => {
+    try {
+      return JSON.parse(LS.get('ram-seen')) || {};
+    } catch (x) {
+      return {};
+    }
+  };
+  function seenNow() {
+    if (!R.club) return;
+    const s = seenAll();
+    s[R.club] = Date.now();
+    LS.set('ram-seen', J(s));
+  }
+  async function badges() {
+    if (!R.live || R.clubs.length < 2) return;
+    seenNow();
+    const s = seenAll();
+    // un club jamais ouvert sur cet appareil : on part d'aujourd'hui
+    R.clubs.forEach(c => {
+      if (!s[c.id]) s[c.id] = Date.now();
+    });
+    LS.set('ram-seen', J(s));
+    try {
+      const b = (await api('/api/ram/badges', { since: s })).badges || {};
+      delete b[R.club];
+      if (J(b) !== J(R.badges)) {
+        R.badges = b;
+        if (S.tab === 'home' || S.tab === 'me') ramRender(true);
+      }
+    } catch (x) {}
+  }
+  setInterval(badges, 120000);
+  const newsClubs = () => R.clubs.filter(c => c.id !== R.club && R.badges[c.id] > 0);
+  const pastille = c => (R.badges[c.id] > 0 ? `<span class="un">${R.badges[c.id]}</span>` : '');
   async function pull() {
     const d = await api('/api/ram/c/' + R.club + '/sync?since=' + R.rev);
     // accès validé par le bureau ou rôle changé : ce qu'on a le droit de voir change, on recharge tout le club
@@ -1519,6 +1557,7 @@
   }
   async function start(id) {
     const d = await api('/api/ram/c/' + id + '/sync?since=0');
+    seenNow(); // le club que je quitte : vu jusqu'ici
     stop();
     wipe();
     R.club = id;
@@ -1557,6 +1596,8 @@
       'report'
     ];
     d.items.sort((a, b) => order.indexOf(a.coll) - order.indexOf(b.coll)).forEach(it => applyItem(it, true));
+    R.badges = {};
+    setTimeout(badges, 1500);
     applyCounts(R.counts);
     trophyCheck();
     if (!M[R.key]) M[R.key] = { n: 'Moi', r: 'NC', team: '', fol: 0, g: 'H', bd: '', res: [] };
@@ -1693,12 +1734,17 @@
     closeSheet();
     start(d.id).catch(x => toast(x.message));
   };
+  /* notification d'un autre de mes clubs : on ouvre ce club, puis l'écran concerné */
+  window.ramOpen = async (id, url) => {
+    if (id !== R.club && R.clubs.some(c => c.id === id)) await start(id).catch(x => toast(x.message));
+    if (id === R.club) openFromUrl(url);
+  };
   /* mes clubs : le principal (celui de ma licence, repris par /RAM JA) et les secondaires (adhérent, autre sport…) */
   const ROLE_L = { bureau: 'Bureau', coach: 'Enseignant', mem: 'Adhérent' };
   A.ramClubs = () => {
     const main = R.clubs.find(c => c.main),
       row = c =>
-        `<div class="item"><button class="grow" data-a="ramSwitch" data-id="${c.id}" style="text-align:left;display:flex;gap:10px;align-items:center">${ic(c.id === R.club ? 'check' : 'club')}<span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_L[c.role] || ''}${c.id === R.club ? ' · ouvert' : ''}</span></span></button>${c.main ? '<span class="tag lime">Principal</span>' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}">Principal</button>`}</div>`;
+        `<div class="item"><button class="grow" data-a="ramSwitch" data-id="${c.id}" style="text-align:left;display:flex;gap:10px;align-items:center">${ic(c.id === R.club ? 'check' : 'club')}<span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_L[c.role] || ''}${c.id === R.club ? ' · ouvert' : ''}</span></span>${pastille(c)}</button>${c.main ? '<span class="tag lime">Principal</span>' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}">Principal</button>`}</div>`;
     sheet(
       'Mes clubs',
       `<div class="body">${main ? `<span class="kicker">Club principal · licence</span>${row(main)}` : ''}${
@@ -1841,7 +1887,7 @@
     return `<div class="card"><span class="kicker">Mes clubs</span>${list
       .map(
         c =>
-          `<div class="item" style="gap:10px"><span class="tile">${ic('club')}</span><span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_P[c.role] || ''}${c.main ? ' · club principal (licence)' : ' · club secondaire'}</span></span>${c.id === R.club ? '<span class="tag lime">Ouvert</span>' : `<button class="btn sm" data-a="ramSwitch" data-id="${c.id}">Ouvrir</button>`}${c.main ? '' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}" title="Le club de ta licence, repris sur ta fiche /RAM JA">Principal</button>`}</div>`
+          `<div class="item" style="gap:10px"><span class="tile">${ic('club')}</span><span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_P[c.role] || ''}${c.main ? ' · club principal (licence)' : ' · club secondaire'}</span></span>${c.id === R.club ? '<span class="tag lime">Ouvert</span>' : `${pastille(c)}<button class="btn sm" data-a="ramSwitch" data-id="${c.id}">Ouvrir</button>`}${c.main ? '' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}" title="Le club de ta licence, repris sur ta fiche /RAM JA">Principal</button>`}</div>`
       )
       .join(
         ''
@@ -1849,8 +1895,8 @@
   }
   function fill() {
     const box = document.getElementById('ramClubsBox');
-    if (box && R.live && box.dataset.v !== J(R.clubs)) {
-      box.dataset.v = J(R.clubs);
+    if (box && R.live && box.dataset.v !== J([R.clubs, R.badges])) {
+      box.dataset.v = J([R.clubs, R.badges]);
       box.hidden = false;
       box.innerHTML = clubsCard();
     }
@@ -1866,8 +1912,17 @@
   V.home = function () {
     const h = _home.apply(this, arguments);
     if (R.live) {
-      const ask = jaAsk();
-      return ask ? '<div class="pad" style="padding-bottom:0">' + ask + '</div>' + h : h;
+      const o = newsClubs(),
+        news = o.length
+          ? `<div class="card"><span class="kicker">Du nouveau dans tes autres clubs</span>${o
+              .map(
+                c =>
+                  `<div class="item" style="gap:10px"><span class="tile">${ic('club')}</span><span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${R.badges[c.id]} nouveauté${R.badges[c.id] > 1 ? 's' : ''}</span></span><button class="btn sm" data-a="ramSwitch" data-id="${c.id}">Ouvrir</button></div>`
+              )
+              .join('')}</div>`
+          : '',
+        ask = jaAsk();
+      return ask || news ? '<div class="pad" style="padding-bottom:0">' + (ask || '') + news + '</div>' + h : h;
     } // « Est-ce toi ? » aussi sur l'accueil
     if (!served || R.user === undefined) return h;
     const card = R.user
@@ -1952,7 +2007,7 @@
     const pid = (M[id] || {})._ja;
     if (pid) {
       const hs = jaHist(pid);
-      h += `<div class="stack"><span class="kicker">Tournois /RAM JA</span><div class="palm">${hs === null ? '<p class="muted small">Chargement…</p>' : hs.length ? hs.map(x => `<div class="res"><span class="wl wide ${x.place === 1 ? 'w' : 'pl'}">${jaPlace(x.place, x.placeLo)}</span><span class="grow"><span class="nm">${e(x.tournament || 'Tournoi')}</span>${x.category ? ` <span class="bd rk">${e(x.category)}</span>` : ''}<br><span class="muted small">${[x.club, x.date, x.partner ? 'avec ' + x.partner : '', x.points ? x.points + ' pts' : ''].filter(Boolean).map(e).join(' · ')}</span></span></div>`).join('') : '<p class="muted small">Aucun tournoi clôturé pour le moment.</p>'}</div></div>`;
+      h += `<div class="stack"><span class="kicker">Tournois et animations /RAM JA</span><div class="palm">${hs === null ? '<p class="muted small">Chargement…</p>' : hs.length ? hs.map(x => `<div class="res"><span class="wl wide ${x.place === 1 ? 'w' : 'pl'}">${jaPlace(x.place, x.placeLo)}</span><span class="grow"><span class="nm">${e(x.tournament || 'Tournoi')}</span>${x.category ? ` <span class="bd rk">${e(x.category)}</span>` : ''}<br><span class="muted small">${[x.club, x.date, x.partner ? 'avec ' + x.partner : '', x.points ? x.points + ' pts' : ''].filter(Boolean).map(e).join(' · ')}</span></span></div>`).join('') : '<p class="muted small">Aucun tournoi clôturé pour le moment.</p>'}</div></div>`;
     }
     return h;
   }
@@ -2012,9 +2067,11 @@
       R.user = me.user && !me.user.guest ? me.user : null;
       if (R.user) {
         R.clubs = (await api('/api/ram/clubs')).clubs;
-        const want = LS.get('ram-club'),
-          c = R.clubs.find(x => x.id === want) || R.clubs[0];
+        const fromUrl = (location.hash.match(/[?&]club=([\w-]+)/) || [])[1],
+          want = LS.get('ram-club'),
+          c = R.clubs.find(x => x.id === fromUrl) || R.clubs.find(x => x.id === want) || R.clubs[0];
         if (c) await start(c.id);
+        if (c && location.hash) openFromUrl(location.hash); // ouvert depuis une notification
       }
     } catch (x) {
       console.warn('/RAM Club : démarrage', x.message);
