@@ -22,7 +22,7 @@ function fxBurst(pt, conf) {
   const d = document.createElement('div'),
     cols = conf ? ['var(--accent)', 'var(--hot)', 'var(--accent2, var(--hot))', 'var(--fg)'] : ['var(--hot)'],
     n = conf ? 22 : 9;
-  d.className = 'fx' + (conf ? ' conf' : '');
+  d.className = 'ramfx' + (conf ? ' conf' : ''); // « fx » est déjà pris par les cadres d'avatar (trophées)
   d.style.transform = `translate(${pt[0]}px, ${pt[1]}px)`;
   d.setAttribute('aria-hidden', 'true');
   for (let i = 0; i < n; i++) {
@@ -87,23 +87,54 @@ fxWrap('tab', () => {
   void s.getBoundingClientRect();
   s.classList.add('bnc');
 });
+// appui sur un bouton : il s'enfonce (au moins 150 ms, même pour un tap éclair), puis revient avec un ressort
+const FX_PRESS = '.btn,.chip,.ib,.act,.item,.pit,.menu button,.seg button,.tabs button';
+document.addEventListener(
+  'pointerdown',
+  e => {
+    const el = e.target.closest && e.target.closest(FX_PRESS);
+    if (!el || fxCalm()) return;
+    el.classList.add('press');
+    const t0 = Date.now(),
+      up = () => {
+        setTimeout(() => el.classList.remove('press'), Math.max(0, 150 - (Date.now() - t0)));
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', up);
+      };
+    document.addEventListener('pointerup', up);
+    document.addEventListener('pointercancel', up);
+  },
+  { passive: true }
+);
 // interrupteurs : petite vibration
 document.addEventListener('click', e => {
   if (e.target.closest && e.target.closest('.tg')) fxBuzz(6);
 });
-// nouvelle notification : la cloche s'agite
-const fxNotify = notify;
-notify = function () {
-  const before = NOTIFS.length,
-    out = fxNotify.apply(this, arguments);
-  if (NOTIFS.length > before && !fxCalm())
-    setTimeout(() => {
-      const b = document.querySelector('#top [data-a="notifs"]');
-      if (!b) return;
-      b.classList.remove('ring');
-      void b.getBoundingClientRect();
-      b.classList.add('ring');
-      setTimeout(() => b.classList.remove('ring'), 900);
-    }, 60);
-  return out;
-};
+/* la cloche s'agite : à l'ouverture de l'appli s'il y a des notifications non lues, à chaque nouvelle notification
+   (qu'elle vienne de ce téléphone ou du serveur), puis toutes les 30 s tant qu'il en reste à lire.
+   L'en-tête est redessiné souvent (synchronisation) : la cloche reprend son mouvement là où il en était
+   (fxBellCls et fxBellStyle sont appelés à chaque dessin de l'en-tête, app/1-affichage.js). */
+const FX_RING = 800;
+let fxBellAt = 0,
+  fxBellN = -1;
+const fxUnread = () =>
+  typeof pending === 'function' && pending()
+    ? 0
+    : NOTIFS.filter(n => n.n && (typeof nVis !== 'function' || nVis(n))).length;
+function fxBellCls() {
+  const n = fxUnread();
+  if (n > 0 && n > fxBellN && !fxCalm()) fxBellAt = Date.now();
+  fxBellN = n;
+  return Date.now() - fxBellAt < FX_RING ? ' ramring' : '';
+}
+const fxBellStyle = () => `--rd:-${Math.min(FX_RING, Date.now() - fxBellAt)}ms`;
+setInterval(() => {
+  if (!fxUnread() || fxCalm() || document.hidden) return;
+  const b = document.querySelector('#top [data-a="notifs"]');
+  if (!b) return;
+  fxBellAt = Date.now();
+  b.style.setProperty('--rd', '0ms');
+  b.classList.remove('ramring');
+  void b.getBoundingClientRect();
+  b.classList.add('ramring');
+}, 30000);

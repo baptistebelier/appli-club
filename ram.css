@@ -53,7 +53,7 @@
 .tabs.drag button.hov { color: var(--on-accent); }
 .tabs button svg { transition: transform .15s; }
 .tabs.drag button.hov svg { transform: scale(1.15); }
-.tabs .cnt { box-shadow: 0 0 0 2px var(--bg); }
+.tabs .cnt { box-shadow: none; border: 0; }   /* pastille : un simple rond rouge avec le nombre, sans contour */
 
 /* ---------- logo /RAM Club ---------- */
 .powered img { background: transparent; padding: 0; height: 46px; }
@@ -539,8 +539,10 @@ html, body { background: var(--bg); }
 :root[data-style="street"] .btn:not(.ghost) { box-shadow: 4px 4px 0 var(--accent2, var(--hot)); }
 /* full street : les sous-titres (nom du club au-dessus de « Groupes », « Cours, équipes et événements »…)
    deviennent des étiquettes surlignées, comme les sur-titres de /RAM JA */
-:root[data-style="street"] :is(.top .sub, #main > .seg .segt span) { display: inline-block; justify-self: start; width: fit-content; max-width: 100%; background: var(--hot); color: var(--on-hot); padding: 2px 8px; transform: rotate(-1.5deg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:root[data-style="street"] .top .sub { display: block; margin-top: 4px; }
+:root[data-style="street"] :is(.top h1 .sub, #main > .seg .segt span) { display: inline-block; justify-self: start; width: fit-content; max-width: 100%; background: var(--hot); color: var(--on-hot); padding: 2px 8px; transform: rotate(-1.5deg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* le sous-titre surligné passe sous le gros titre, avec un peu d'air (il chevauchait la fin du titre) ;
+   seulement le sous-titre du titre : le logo du club (img.toplogo.sub) n'est jamais surligné ni penché */
+:root[data-style="street"] .top h1 .sub { display: block !important; margin-top: 7px; }
 :root[data-style="street"] #main > .seg .segt { gap: 8px; }
 
 /* téléphone et tablette : le contenu des pages à onglets (Agenda, École, Club…) dans un cadre uni ton sur ton,
@@ -594,3 +596,25 @@ html, body { background: var(--bg); }
 .nrow .grow { line-height: 1.35; }
 .nrow time { margin-top: 2px; }
 .nrow .st.no { flex: none; align-self: center; }
+
+/* Onglets compacts sur téléphone (4 onglets ou plus) : tous dans la largeur de l'écran, pictogrammes seuls,
+   l'onglet ouvert affiche aussi son titre (26/10/2026) */
+@media (max-width: 1023px) {
+  .seg.ico { overflow: visible; -webkit-mask-image: none; mask-image: none; gap: 6px; }
+  .seg.ico button { flex: 1 1 0; min-width: 0; justify-content: center; padding: 0 6px; transition: flex-grow .3s cubic-bezier(.3, 1.3, .5, 1), background .2s; }
+  .seg.ico button[aria-selected="true"] { flex-grow: 2.6; }
+  .seg.ico button svg { flex: none; }
+  .seg.ico button:not([aria-selected="true"]) .lb { display: none; }
+  .seg.ico .lb { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+}
+
+/* bulle avec sa pointe : l'ombre décalée suit toute la forme, pointe comprise (sinon la pointe flotte
+   sur l'ombre de la bulle) (26/10/2026) */
+.bub.tail { box-shadow: none; filter: drop-shadow(3px 3px 0 var(--ram-hard)); }
+.msg.me .bub.tail { box-shadow: none; filter: drop-shadow(3px 3px 0 var(--accent2, var(--hot))); }
+/* la pointe se cale sur le bord extérieur de la bulle (bordure de 1 px comprise) : le bas de la bulle et
+   le bas de la pointe forment une seule ligne droite, sans petite marche */
+.msg.me .bub.tail::after { right: -12px; bottom: -1px; width: 12px; height: 13px; }
+.msg:not(.me) .bub.tail::after { left: -11px; bottom: 0; width: 12px; height: 12px; }
+/* texte des messages : même taille et même couleur partout (groupes, direct, commentaires) */
+.bub .tx { font-size: var(--t2, 15px); color: inherit; }

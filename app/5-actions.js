@@ -3,6 +3,13 @@
 /* ---------- actions ---------- */
 const A = {
   tab(d) {
+    // onglet déjà ouvert, sur sa page principale : on remonte en haut en douceur
+    if (d.t === S.tab && !S.stack.length) {
+      const m = $('main'),
+        calm = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (m.scrollTop > 0) m.scrollTo({ top: 0, behavior: calm ? 'auto' : 'smooth' });
+      return;
+    }
     const o = ['home', 'chans', 'agenda', 'ecole', 'club', 'me'];
     S.dir = d.t === S.tab && !S.stack.length ? 0 : S.stack.length || o.indexOf(d.t) < o.indexOf(S.tab) ? -1 : 1;
     S.tab = d.t;
@@ -1208,4 +1215,9 @@ const A = {
       `<form class="body" id="del-form"><div class="note">Ton profil, tes résultats et tes inscriptions seront supprimés sous 30 jours. Tes messages resteront affichés sous le nom « Ancien membre ». Un résultat de padel partagé reste dans le palmarès de ton partenaire, sans ton nom. Les comptes jeunes qui te sont rattachés seront aussi supprimés.</div><button type="button" class="btn sm ghost" data-a="toast" data-msg="Export préparé : tu le recevras par e-mail">Recevoir une copie de mes données</button><div class="fld"><label class="chk" for="del-ok"><input type="checkbox" id="del-ok" required>Je comprends que cette action est définitive.</label></div><button class="btn full hot">Supprimer définitivement mon compte</button></form>`
     );
   }
+};
+/* onglets de mon profil : Mon jeu, Mes infos, Réglages */
+A.meTab = d => {
+  S.meTab = d.k;
+  render(true);
 };
