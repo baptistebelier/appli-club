@@ -1,0 +1,674 @@
+/* /RAM Coach — coach/coach.css : ce qui s'ajoute aux styles du Club (app.css, ram.css) pour les pages de l'enseignant */
+.coses {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+}
+.coses .grow {
+  min-width: 0;
+}
+.coses.cx {
+  opacity: 0.72;
+}
+.coses.cx .dblk {
+  background: var(--hot);
+  color: var(--on-hot);
+}
+.cotheme {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.cotheme svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--accent-tx, var(--accent));
+}
+.coweek {
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.ib.flip svg {
+  transform: rotate(180deg);
+}
+.cokv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+.cokv:last-of-type {
+  border-bottom: 0;
+}
+.cokv b {
+  text-align: right;
+}
+.corow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--line);
+  width: 100%;
+}
+.corow:last-of-type {
+  border-bottom: 0;
+}
+.corow .nm {
+  text-align: left;
+}
+.pea {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+.pea button {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--card2);
+  font-family: var(--f-display);
+  font-size: 17px;
+  color: var(--fg);
+}
+.pea button.on.P {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.pea button.on.E {
+  background: var(--fg);
+  color: var(--bg);
+}
+.pea button.on.A {
+  background: var(--hot);
+  color: var(--on-hot);
+}
+.coscale {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.coscale button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--card2);
+  font-family: var(--f-display);
+  font-size: 20px;
+  color: var(--fg);
+}
+.coscale button.past {
+  background: color-mix(in srgb, var(--accent) 30%, var(--card));
+}
+.coscale button.on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.coul {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cotech {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  width: 100%;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  color: inherit;
+}
+.cotech:last-child {
+  border-bottom: 0;
+}
+.cotech .pips {
+  margin: 0;
+  flex: none;
+}
+.cotech .pips i.on {
+  background: var(--accent);
+}
+.cotech .small {
+  width: 78px;
+  text-align: right;
+  flex: none;
+}
+.cobars {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 6px;
+  height: 170px;
+}
+.cobars div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+  gap: 4px;
+  min-width: 0;
+}
+.cobars i {
+  display: block;
+  width: 100%;
+  max-width: 34px;
+  min-height: 2px;
+  background: var(--accent);
+  border-radius: 6px 6px 2px 2px;
+}
+.cobars span {
+  font-size: 11px;
+  color: var(--muted);
+}
+.cobars b {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  order: -1;
+}
+.cosearch input {
+  width: 100%;
+}
+.coadd {
+  max-height: 52vh;
+  overflow: auto;
+  margin-bottom: 12px;
+}
+.coadd .corow input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  accent-color: var(--accent);
+}
+.cotimer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  text-align: center;
+}
+.cotimer .tmn {
+  font-family: var(--f-display);
+  font-weight: 400;
+  font-size: clamp(72px, 24vw, 120px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.cotimer.rest .tmn {
+  color: var(--hot-tx, var(--hot));
+}
+.cotimer .tmset {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+.cotimer .tmset > div {
+  background: var(--card2);
+  border-radius: var(--rb);
+  padding: 8px 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+.cotimer .tmset .row {
+  gap: 2px;
+  align-items: center;
+}
+.cotimer .tmset .ib {
+  width: 36px;
+  height: 36px;
+  font-size: 20px;
+}
+.cotimer .ctl {
+  width: 100%;
+}
+/* le bouton touché saute (appel, niveau, grille, bilan) */
+@keyframes copop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.copop {
+  animation: copop 0.32s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .copop {
+    animation: none;
+  }
+}
+/* le bouton touché saute (appel, niveau, grille, bilan) */
+@keyframes copop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18) rotate(-3deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.copop {
+  animation: copop 0.32s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .copop {
+    animation: none;
+  }
+}
+/* tout le contenu sur fond opaque : titres de section sur leur barre, listes sur leur carte */
+.cohd {
+  margin: 6px 0 -8px;
+  padding: 8px 12px;
+  background: var(--card);
+  border-left: 4px solid var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-sub);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg);
+}
+.cohd span {
+  flex: 1;
+  min-width: 0;
+}
+.colist {
+  gap: 0;
+  padding-block: 4px;
+}
+.cotools {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cotools .btn {
+  flex: 1 1 40%;
+}
+.coid .avedit {
+  flex: none;
+}
+.coclubbar {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+}
+.tag.coclub svg {
+  width: 13px;
+  height: 13px;
+}
+/* pas de cadres d'avatar gagnés au club (trophées) dans /RAM Coach */
+.av[class*=' fr'] {
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+.av[class*=' fr']::before,
+.av[class*=' fr']::after {
+  display: none !important;
+}
+/* texte agrandi : les chiffres et les réglages du minuteur passent à la ligne au lieu de déborder */
+.pad .stats {
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+}
+.stats b {
+  overflow-wrap: anywhere;
+}
+.cotimer .tmset {
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+}
+/* écran très étroit ou texte très agrandi : la barre ne garde que les pictogrammes (le nom reste lu par le lecteur d'écran) */
+@media (max-width: 330px) {
+  .tabs button {
+    font-size: 0;
+    gap: 0;
+  }
+}
+
+/* ---------- barres de navigation : les codes exacts de /RAM JA ----------
+   barre principale = le rail de /RAM JA (bordeaux presque noir, texte rosé, onglet ouvert sur voile clair,
+   pictogramme et repère citron) ; barre secondaire = le bandeau « Tournoi en cours » (dégradé bordeaux) */
+:root {
+  --co-rail: #0b0306;
+  --co-rail-tx: #c9aeb5;
+  --co-rail-on: #ffffff14;
+  --co-side: linear-gradient(180deg, #2e0914 0%, #1a060c 100%);
+  --co-side-tx: #e9d3d9;
+  --co-side-on: #ffffff1c;
+  --co-lime: #e0f50a;
+}
+:root[style*='color-scheme: light'] {
+  --co-rail: #2a0610;
+  --co-rail-tx: #e8c9d1;
+  --co-rail-on: #ffffff1c;
+  --co-side: linear-gradient(180deg, #74102a 0%, #4d0818 100%);
+  --co-side-tx: #f6dde3;
+  --co-side-on: #ffffff22;
+  --co-lime: #daf35c;
+}
+.toplogo,
+.segt > span {
+  display: none !important;
+}
+.tabs,
+:root[style*='color-scheme: light'] .tabs {
+  background: var(--co-rail) !important;
+  border-color: var(--co-rail) !important;
+}
+.tabs button,
+.tabs button svg {
+  color: var(--co-rail-tx);
+}
+.tabs .pill {
+  background: var(--co-rail-on) !important;
+  box-shadow: inset 0 -3px 0 var(--co-lime) !important;
+  border-radius: 12px !important;
+}
+.tabs button[aria-current='page'] {
+  color: #fff !important;
+}
+.tabs button[aria-current='page'] svg {
+  color: var(--co-lime) !important;
+}
+@media (min-width: 1024px) {
+  .tabs::before {
+    background-image: url('../img/coach-v2-logo-blanc.png') !important;
+  }
+  .tabs button {
+    border-radius: 14px;
+  }
+  .tabs button:hover,
+  .rbot button:hover {
+    background: #ffffff0f !important;
+    color: #fff !important;
+  }
+  .tabs button[aria-current='page'],
+  .tabs button[aria-current='page']:hover {
+    background: var(--co-rail-on) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+  .tabs button[aria-current='page']::before {
+    background: var(--co-lime) !important;
+  }
+  .rbot {
+    background: var(--co-rail) !important;
+  }
+  .rbot button {
+    color: var(--co-rail-tx) !important;
+  }
+  #main > .seg {
+    background: var(--co-side) !important;
+    border-right: 0 !important;
+  }
+  #main > .seg .segt {
+    background: #ffffff10 !important;
+    border: 1px solid #ffffff1c;
+    border-radius: 14px;
+  }
+  #main > .seg .segt b {
+    color: #fff !important;
+  }
+  #main > .seg button {
+    color: var(--co-side-tx) !important;
+    border: 1px solid transparent !important;
+    border-radius: 12px;
+    background: transparent !important;
+  }
+  #main > .seg button:hover {
+    color: #fff !important;
+    background: #ffffff0f !important;
+  }
+  #main > .seg button[aria-selected='true'] {
+    color: #fff !important;
+    background: var(--co-side-on) !important;
+    border-color: #ffffff26 !important;
+    box-shadow: inset 3px 0 0 var(--co-lime) !important;
+    transform: none !important;
+  }
+  #main > .seg button[aria-selected='true'] svg {
+    color: var(--co-lime);
+  }
+}
+@media (max-width: 1023px) {
+  #main > .seg {
+    background: var(--co-side) !important;
+    border: 0 !important;
+    padding: 6px !important;
+    gap: 4px;
+  }
+  #main > .seg button {
+    color: var(--co-side-tx) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 10px;
+  }
+  #main > .seg button[aria-selected='true'] {
+    color: #fff !important;
+    background: var(--co-side-on) !important;
+    border-color: #ffffff26 !important;
+    box-shadow: inset 0 -3px 0 var(--co-lime) !important;
+  }
+  #main > .seg button[aria-selected='true']::before {
+    display: none !important;
+  }
+  #main > .seg button[aria-selected='true'] svg {
+    color: var(--co-lime);
+  }
+}
+/* profil, sur le modèle du profil /RAM JA : carte d'identité bordeaux à ombre citron, cartes titrées */
+.cohero {
+  background: var(--co-side) !important;
+  color: #fff;
+  border: 0 !important;
+  box-shadow: 6px 6px 0 var(--co-lime) !important;
+}
+.cohero .avedit .av {
+  box-shadow: 0 0 0 3px #ffffff33;
+}
+.coey {
+  display: block;
+  font-family: var(--f-sub);
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent2);
+}
+.cohero .coey {
+  color: #ffb3c4;
+}
+.coname {
+  font-family: var(--f-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-style: italic;
+  font-size: clamp(28px, 8vw, 40px);
+  line-height: 0.98;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.coname span:last-child {
+  display: inline-block;
+}
+.coh2 {
+  font-family: var(--f-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 24px;
+  line-height: 1;
+  margin: 2px 0 6px;
+}
+.coh3 {
+  font-family: var(--f-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  font-size: 18px;
+  margin: 10px 0 0;
+}
+.tag.copink {
+  background: var(--accent2) !important;
+  color: #fff !important;
+}
+.tag.coghost {
+  background: #ffffff1f !important;
+  color: #fff !important;
+}
+.coseg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.coseg button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  background: var(--card2);
+  color: var(--fg);
+  font-family: var(--f-sub);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 13px;
+}
+.coseg button svg {
+  width: 16px;
+  height: 16px;
+}
+.coseg button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+.copc .prof {
+  box-shadow: none !important;
+  border: 1px solid var(--line);
+}
+/* téléphone : six onglets en bas, le Profil en haut à droite ; ordinateur : le Profil reste en bas du menu */
+@media (max-width: 1023px) {
+  .tabs [data-t='me'] {
+    display: none !important;
+  }
+}
+@media (min-width: 1024px) {
+  .coptop {
+    display: none !important;
+  }
+  .tabs [data-t='me'] {
+    display: none !important;
+  }
+}
+.coptop .av {
+  width: 34px;
+  height: 34px;
+}
+.codash {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+}
+.codash b {
+  font-size: 22px;
+}
+.comonths {
+  height: 200px;
+}
+.comonths small {
+  font-size: 10px;
+  color: var(--muted);
+}
+.coclubc {
+  text-align: left;
+  width: 100%;
+  color: inherit;
+}
+.coclubc > .row > svg {
+  transform: rotate(180deg);
+  width: 18px;
+  height: 18px;
+  flex: none;
+  color: var(--muted);
+}
+.coweek {
+  flex-direction: row !important;
+  align-items: center;
+}
+/* Full street : les sur-titres et sous-titres de /RAM Coach deviennent des étiquettes surlignées et penchées
+   (sur-titres rose, titres de section et petits titres des cartes citron), comme les sous-titres du Club et de /RAM JA */
+:root[data-style='street'] .coey {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--accent2);
+  color: #fff;
+  padding: 2px 8px;
+  transform: rotate(-1.5deg);
+  margin-bottom: 6px;
+}
+:root[data-style='street'] .cohero .coey {
+  background: var(--co-lime);
+  color: #1a0509;
+}
+:root[data-style='street'] .cohd span {
+  flex: none;
+  display: inline-block;
+  max-width: 100%;
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: 2px 8px;
+  transform: rotate(-1.5deg);
+}
+:root[data-style='street'] #main .card .kicker {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  background: var(--accent2);
+  color: #fff;
+  padding: 2px 8px;
+  transform: rotate(-1.5deg);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+:root[data-style='street'] .coses .cotheme {
+  display: inline-flex;
+  width: fit-content;
+  background: var(--accent);
+  color: var(--on-accent);
+  padding: 2px 8px;
+  transform: rotate(-1.5deg);
+}
+:root[data-style='street'] .coses .cotheme svg {
+  color: var(--on-accent) !important;
+}

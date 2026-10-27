@@ -10,7 +10,7 @@
 (function () {
   if (window.RAM) return; // déjà chargé (jamais deux synchronisations dans la même page)
   const JA = 'https://ja.riseandmove.fr';
-  const onClubHost = /^club\./.test(location.hostname);
+  const onClubHost = /^(club|coach)\./.test(location.hostname); // /RAM Coach : même appli, mêmes données
   const served = onClubHost || location.pathname.startsWith('/club'); // sinon : démo sans serveur
   const here = () => location.href.split('#')[0];
   // page de connexion propre à /RAM Club (même compte /RAM que /RAM JA), puis retour à l'endroit quitté
@@ -225,7 +225,9 @@
       at(ch, 'chan');
       add('chan', ch.id, strip(ch, ['msgs', 'un', 'mute']));
     });
+    // /RAM Coach : les éléments d'un autre club (_club) sont envoyés à leur club par coach/4-finitions.js
     GROUPS.forEach(g => {
+      if (g._club) return;
       at(g, 'group');
       add('group', g.id, g);
     });
@@ -280,8 +282,16 @@
       at(x, 'redeem');
       add('redeem', x.id, x);
     });
+    // /RAM Coach : fiches élèves, séances, suivi des élèves
+    ELEVES.forEach(x => !x._club && add('eleve', x.id, x));
+    SEANCES.forEach(x => !x._club && add('seance', x.id, x));
+    SUIVI.forEach(x => {
+      if (x._club) return;
+      at(x, 'suivi');
+      add('suivi', x.id, x);
+    });
     Object.keys(M).forEach(k => {
-      if (k === 'club') return;
+      if (k === 'club' || M[k]._club) return;
       const s = strip(M[k], ['fol']);
       s.valid = VALID[k] || '';
       // abonnements (« fo ») : publics, dans le profil de celui qui suit → nombre d'abonnés et notification en direct pour tous
@@ -458,6 +468,7 @@
   /* différences entre deux versions → opérations (set, unset, add, rm) */
   /* un champ vide créé à l'affichage (lineup: {}, cancel: []) vaut un champ absent : rien à envoyer */
   const empty = v => (Array.isArray(v) && !v.length) || (isObj(v) && !Object.keys(v).length);
+  window.ramDiff = (a, b) => diff(a, b);
   function diff(a, b, p = [], out = []) {
     Object.keys(b).forEach(k => {
       const x = a[k],
@@ -504,7 +515,10 @@
     claim: () => (typeof CLAIMS !== 'undefined' ? CLAIMS : []),
     bar: () => BAR,
     order: () => ORDERS,
-    redeem: () => REDEEMS
+    redeem: () => REDEEMS,
+    eleve: () => ELEVES,
+    seance: () => SEANCES,
+    suivi: () => SUIVI
   };
   function place(list, obj, desc) {
     const i = list.findIndex(x => x.id === obj.id);
@@ -854,6 +868,11 @@
       case 'order':
       case 'redeem':
         return R.role === 'bureau' || myKeys().includes(d.by);
+      case 'eleve':
+      case 'seance':
+        return staff;
+      case 'suivi':
+        return staff || (d.by === k && myKeys().includes(d.to) && (d.k === 'msg' || d.k === 'video'));
     }
     return false;
   }
@@ -1564,6 +1583,9 @@
     BAR.length = 0;
     ORDERS.length = 0;
     REDEEMS.length = 0;
+    ELEVES.length = 0;
+    SEANCES.length = 0;
+    SUIVI.length = 0;
     ['tel', 'mail'].forEach(k => {
       MYCT[k][2] = '';
     });
@@ -1621,6 +1643,9 @@
       'bar',
       'order',
       'redeem',
+      'eleve',
+      'seance',
+      'suivi',
       'msg',
       'report'
     ];
@@ -1773,7 +1798,7 @@
   A.ramClubs = () => {
     const main = R.clubs.find(c => c.main),
       row = c =>
-        `<div class="item"><button class="grow" data-a="ramSwitch" data-id="${c.id}" style="text-align:left;display:flex;gap:10px;align-items:center">${ic(c.id === R.club ? 'check' : 'club')}<span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_L[c.role] || ''}${c.id === R.club ? ' · ouvert' : ''}</span></span>${pastille(c)}</button>${c.main ? '<span class="tag lime">Principal</span>' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}">Principal</button>`}</div>`;
+        `<div class="item"><button class="grow" data-a="ramSwitch" data-id="${c.id}" style="text-align:left;display:flex;gap:10px;align-items:center">${ic(c.id === R.club ? 'check' : 'club')}<span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${S.super ? 'Administrateur' : ROLE_L[c.role] || ''}${c.id === R.club ? ' · ouvert' : ''}</span></span>${pastille(c)}</button>${c.main ? '<span class="tag lime">Principal</span>' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}">Principal</button>`}</div>`;
     sheet(
       'Mes clubs',
       `<div class="body">${main ? `<span class="kicker">Club principal · licence</span>${row(main)}` : ''}${
@@ -1907,8 +1932,32 @@
     if (!u)
       return `${logo}<div class="grow"><b>Compte /RAM</b><span>Connecte-toi avec ton compte /RAM : le même que pour /RAM JA.</span></div><a class="btn sm" href="${loginUrl()}">Se connecter</a>`;
     const nm = e([u.first, u.last].filter(Boolean).join(' ') || u.name || u.email);
-    return `${logo}<div class="grow"><b>Compte /RAM</b><span>${nm} · ${e(u.email || '')}</span><small>${R.live ? `<button class="nm" data-a="ramClubs" style="color:var(--accent)">${R.clubs.length > 1 ? `Mes clubs (${R.clubs.length}) · changer` : 'Mes clubs · en rejoindre un autre'}</button>` : `<button class="nm" data-a="ramStart" style="color:var(--accent)">Créer ou rejoindre mon club</button>`}</small></div><button class="btn sm ghost" data-a="logout">Se déconnecter</button>`;
+    return `${logo}<div class="grow"><b>Compte /RAM</b><span>${nm} · ${e(u.email || '')}</span><small><button class="nm" data-a="ramPw" style="color:var(--accent)">${u.hasPassword ? 'Changer le mot de passe' : 'Choisir un mot de passe'}</button> · ${R.live ? `<button class="nm" data-a="ramClubs" style="color:var(--accent)">${R.clubs.length > 1 ? `Mes clubs (${R.clubs.length}) · changer` : 'Mes clubs · en rejoindre un autre'}</button>` : `<button class="nm" data-a="ramStart" style="color:var(--accent)">Créer ou rejoindre mon club</button>`}</small></div><button class="btn sm ghost" data-a="logout">Se déconnecter</button>`;
   }
+  /* mot de passe du compte /RAM : changé depuis n'importe quelle appli (/RAM Club, /RAM Coach, /RAM JA),
+     il vaut aussitôt pour les trois (un seul compte) */
+  A.ramPw = () => {
+    const has = !!(R.user && R.user.hasPassword);
+    sheet(
+      has ? 'Changer le mot de passe' : 'Choisir un mot de passe',
+      `<form class="body" id="ram-pw">${has ? '<div class="fld"><label for="pw-cur">Mot de passe actuel</label><input id="pw-cur" type="password" autocomplete="current-password" required></div>' : ''}<div class="fld"><label for="pw-new">Nouveau mot de passe <span class="muted small">(8 caractères minimum)</span></label><input id="pw-new" type="password" autocomplete="new-password" minlength="8" required></div><div class="fld"><label for="pw-new2">Nouveau mot de passe, encore une fois</label><input id="pw-new2" type="password" autocomplete="new-password" minlength="8" required></div><p class="muted small">Un seul compte /RAM pour /RAM Club, /RAM Coach et /RAM JA : le nouveau mot de passe vaut aussitôt dans les trois applis.</p><button class="btn full">Enregistrer</button></form>`
+    );
+  };
+  document.addEventListener('submit', ev => {
+    if (ev.target.id !== 'ram-pw') return;
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
+    const v = id => ($(id) ? $(id).value : '');
+    if (v('pw-new') !== v('pw-new2')) return toast('Les deux nouveaux mots de passe ne sont pas identiques');
+    api('/api/me/password', { current: v('pw-cur'), next: v('pw-new') }).then(
+      () => {
+        if (R.user) R.user.hasPassword = true;
+        closeSheet();
+        toast('Mot de passe modifié pour /RAM Club, /RAM Coach et /RAM JA');
+      },
+      x => toast(x.message)
+    );
+  });
   /* profil : mes clubs (principal et secondaires), changer de club, en rejoindre un autre */
   function clubsCard() {
     const ROLE_P = { bureau: 'Bureau', coach: 'Enseignant', mem: 'Adhérent' },
@@ -1916,7 +1965,7 @@
     return `<div class="card"><span class="kicker">Mes clubs</span>${list
       .map(
         c =>
-          `<div class="item" style="gap:10px"><span class="tile">${ic('club')}</span><span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${ROLE_P[c.role] || ''}${c.main ? ' · club principal (licence)' : ' · club secondaire'}</span></span>${c.id === R.club ? '<span class="tag lime">Ouvert</span>' : `${pastille(c)}<button class="btn sm" data-a="ramSwitch" data-id="${c.id}">Ouvrir</button>`}${c.main ? '' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}" title="Le club de ta licence, repris sur ta fiche /RAM JA">Principal</button>`}</div>`
+          `<div class="item" style="gap:10px"><span class="tile">${ic('club')}</span><span class="grow"><span class="nm">${e(c.name)}</span><br><span class="muted small">${S.super ? 'Administrateur' : ROLE_P[c.role] || ''}${c.main ? ' · club principal (licence)' : ' · club secondaire'}</span></span>${c.id === R.club ? '<span class="tag lime">Ouvert</span>' : `${pastille(c)}<button class="btn sm" data-a="ramSwitch" data-id="${c.id}">Ouvrir</button>`}${c.main ? '' : `<button class="btn sm ghost" data-a="ramMain" data-id="${c.id}" title="Le club de ta licence, repris sur ta fiche /RAM JA">Principal</button>`}</div>`
       )
       .join(
         ''
@@ -2107,7 +2156,12 @@
         R.clubs = (await api('/api/ram/clubs')).clubs;
         const fromUrl = (location.hash.match(/[?&]club=([\w-]+)/) || [])[1],
           want = LS.get('ram-club'),
-          c = R.clubs.find(x => x.id === fromUrl) || R.clubs.find(x => x.id === want) || R.clubs[0];
+          // /RAM Coach choisit lui-même (son club principal parmi ceux où il enseigne)
+          c =
+            R.clubs.find(x => x.id === fromUrl) ||
+            (window.ramPickClub && window.ramPickClub(R.clubs, want)) ||
+            R.clubs.find(x => x.id === want) ||
+            R.clubs[0];
         if (c) await start(c.id);
         if (c && location.hash) openFromUrl(location.hash); // ouvert depuis une notification
       }
