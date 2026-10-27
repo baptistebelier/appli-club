@@ -134,7 +134,13 @@ window.ramPickClub = (clubs, last) => {
   const l = clubs.filter(coTeach).length ? clubs.filter(coTeach) : clubs;
   return l.find(c => c.main) || l.find(c => c.id === last) || l[0];
 };
-const CO_COLL = { group: () => GROUPS, seance: () => SEANCES, suivi: () => SUIVI, eleve: () => ELEVES };
+const CO_COLL = {
+  group: () => GROUPS,
+  seance: () => SEANCES,
+  suivi: () => SUIVI,
+  eleve: () => ELEVES,
+  brouillon: () => BROUILLONS
+};
 const coBare = o => {
   const c = JSON.parse(JSON.stringify(o));
   delete c._club;
@@ -158,8 +164,10 @@ function coApply(cid, it) {
     k = it.coll + '/' + it.id;
   if (it.coll === 'member') {
     if (it.del) delete M[it.id];
-    else if (!M[it.id] || M[it.id]._club === cid)
+    else if (!M[it.id] || M[it.id]._club === cid) {
       M[it.id] = c.members[it.id] = Object.assign({ res: [] }, it.data, { _club: cid });
+      c.base.set('member/' + it.id, JSON.stringify(coBare(M[it.id])));
+    }
     return;
   }
   if (!CO_COLL[it.coll] || (it.coll === 'group' && it.data && (it.data.type !== 'train' || it.data.old))) return;
@@ -237,6 +245,14 @@ async function coPush() {
           }
         })
       );
+      // fiche /RAM Club d'un adhérent de ce club (niveau padel ou tennis donné dans /RAM Coach)
+      Object.keys(c.members || {}).forEach(k => {
+        const m = M[k],
+          b = c.base.get('member/' + k);
+        if (!m || m._club !== cid || !b) return;
+        const patch = window.ramDiff(JSON.parse(b), coBare(m)).filter(op => ['pl', 'tn'].includes(op.p[0]));
+        if (patch.length) ops.push({ coll: 'member', id: k, op: 'patch', patch, _j: JSON.stringify(coBare(m)) });
+      });
       // un commentaire personnel effacé dans un bilan : supprimé aussi dans son club
       c.base.forEach((v, k) => {
         if (k.startsWith('suivi/') && !seen.has(k) && JSON.parse(v).by === c.key)
@@ -329,15 +345,127 @@ if (
     ELEVES.push({ id: k, _club: 'arena', n: names[i], sport: 'Padel', lvl: 4 + (i % 3), parents: [] })
   );
 }
-/* téléphone : le Profil se trouve en haut à droite (la barre du bas garde six onglets) */
+/* ---------- téléphone : la navigation de /RAM JA ----------
+   un bandeau en haut (menu à gauche, logo /RAM COACH au centre, notifications à droite), toujours visible,
+   et un volet qui glisse depuis la gauche : les pages, puis en bas le profil, le mode jour / nuit et la sortie.
+   La barre d'onglets du bas n'existe plus sur téléphone ; l'ordinateur garde son menu latéral. */
+Object.assign(I, { menu: '<path d="M3 6h18M3 12h18M3 18h12"/>' });
+const coMobile = () => !matchMedia('(min-width: 1024px)').matches;
+function coDrawerHTML() {
+  const cur = S.stack.length ? '' : S.tab,
+    me = ME(),
+    dk = effDark(),
+    it = (a, attrs, icon, label, on) =>
+      `<button class="cdr-it${on ? ' on' : ''}" data-a="${a}" ${attrs} ${on ? 'aria-current="page"' : ''}>${icon}<span>${label}</span>${a === 'coNav' && attrs.includes('"msgs"') && coUnread() ? `<span class="cnt">${coUnread()}</span>` : ''}</button>`;
+  return `<div class="cdr-logo"><img src="img/coach-v2-logo-blanc.png" alt="/RAM Coach"></div><nav class="cdr-group" aria-label="Pages">${TABBAR.filter(
+    t => t[0] !== 'me'
+  )
+    .map(t => it('coNav', `data-t="${t[0]}"`, ic(t[1]), t[2], cur === t[0]))
+    .join(
+      ''
+    )}</nav><div class="cdr-bottom"><i class="cdr-sep"></i>${it('coMode', '', ic('moon'), 'Mode jour / nuit')}${it('coNav', 'data-t="me"', M[me] ? av(me, 'sm') : ic('user'), M[me] ? esc(M[me].n) : 'Profil', cur === 'me')}${it('coOut', '', ic('logout'), 'Se déconnecter')}</div>`;
+}
+function coDrawer(open) {
+  let d = $('codrawer');
+  if (!d) {
+    $('phone').insertAdjacentHTML(
+      'beforeend',
+      '<div class="cdr-veil" id="codveil" data-a="coDrawer"></div><aside class="cdr" id="codrawer" aria-label="Menu" aria-hidden="true"></aside>'
+    );
+    d = $('codrawer');
+  }
+  d.innerHTML = coDrawerHTML();
+  $('phone').classList.toggle('drawer-open', !!open);
+  d.setAttribute('aria-hidden', String(!open));
+  if (open) {
+    const f = d.querySelector('[aria-current]') || d.querySelector('button');
+    if (f) f.focus({ preventScroll: true });
+  }
+}
+Object.assign(A, {
+  coDrawer() {
+    coDrawer(!$('phone').classList.contains('drawer-open'));
+  },
+  coNav(d) {
+    coDrawer(false);
+    S.stack = [];
+    A.tab({ t: d.t });
+  },
+  coMode() {
+    A.ramMode();
+    coDrawer(true);
+  },
+  coOut() {
+    coDrawer(false);
+    A.logout();
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('phone').classList.contains('drawer-open')) coDrawer(false);
+});
 const coRender1 = render;
 render = function () {
   const r = coRender1.apply(this, arguments),
     top = $('top');
-  if (top && !top.querySelector('.coptop'))
+  if (top && !top.querySelector('.cobar')) {
+    const dk = effDark(),
+      bell = top.querySelector('[data-a="notifs"]');
     top.insertAdjacentHTML(
-      'beforeend',
-      `<button class="ib coptop" data-a="tab" data-t="me" aria-label="Mon profil">${M[ME()] ? av(ME(), 'sm') : ic('user')}</button>`
+      'afterbegin',
+      `<div class="cobar"><button class="cobar-btn" data-a="coDrawer" aria-label="Ouvrir le menu">${ic('menu')}</button><span class="cobar-logo"><img src="img/coach-v2-logo-${dk ? 'blanc' : 'noir'}.png" alt="/RAM Coach"></span>${bell ? bell.outerHTML.replace('class="ib', 'class="ib cobar-bell') : '<span></span>'}</div>`
     );
+    if (coMobile() && typeof topPad === 'function') topPad();
+  }
+  if ($('codrawer') && $('phone').classList.contains('drawer-open')) $('codrawer').innerHTML = coDrawerHTML();
   return r;
 };
+/* téléphone : glisser depuis le bord gauche ouvre le menu (comme /RAM JA) ; le glisser vers la gauche le referme */
+(function () {
+  let x0 = 0,
+    y0 = 0,
+    from = '';
+  document.addEventListener(
+    'touchstart',
+    e => {
+      from = '';
+      if (!coMobile() || e.touches.length !== 1 || $('sheet')) return;
+      const t = e.touches[0],
+        open = $('phone').classList.contains('drawer-open');
+      if (open || t.clientX < 28) {
+        from = open ? 'ouvert' : 'bord';
+        x0 = t.clientX;
+        y0 = t.clientY;
+      }
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    'touchend',
+    e => {
+      if (!from) return;
+      const t = e.changedTouches[0],
+        dx = t.clientX - x0,
+        dy = Math.abs(t.clientY - y0);
+      if (dy > Math.abs(dx)) return;
+      if (from === 'bord' && dx > 50) coDrawer(true);
+      if (from === 'ouvert' && dx < -50) coDrawer(false);
+      from = '';
+    },
+    { passive: true }
+  );
+})();
+
+/* échelles de niveaux : celles du compte /RAM de l'enseignant (les mêmes dans tous ses clubs) */
+addEventListener('load', () =>
+  (window.ramReady || Promise.resolve()).then(() => {
+    if (!(window.RAM && RAM.user)) return;
+    fetch('/api/coach/echelles', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.echelles) return;
+        Object.keys(d.echelles).forEach(sp => (SCALES[sp] = d.echelles[sp]));
+        render(true);
+      })
+      .catch(() => {});
+  })
+);
