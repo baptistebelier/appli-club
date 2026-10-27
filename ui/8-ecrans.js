@@ -66,7 +66,7 @@ const V = {
   },
   chan(id) {
     const c = chans.find(c => c.id === id);
-    return `<div class="chat">${lpHelp()}${c.kid && S.role !== 'kid' ? `<div class="note">Tu lis ce canal en tant que parent de Léo.</div>` : ''}${c.msgs.map((m, i) => msgRow(m, i, c.sport, 'c:' + c.id, S.sent && i === c.msgs.length - 1)).join('') || empty('chat', 'Aucun message', 'Lance la discussion.')}</div>`;
+    return `<div class="chat">${lpHelp()}${c.kid && S.role !== 'kid' ? `<div class="note">Tu lis ce canal en tant que parent de Léo.</div>` : ''}${c.msgs.map((m, i) => msgRow(m, i, c.sport, 'c:' + c.id, S.sent && i === c.msgs.length - 1)).join('') || empty('chat', 'Aucun message', 'Lance la discussion.')}${typingSlot('c:' + c.id)}</div>`;
   },
   /* les modes de l'agenda (Événements, Semaine, Jour, Liste) deviennent des onglets, comme sur les autres pages */
   agenda() {
@@ -83,7 +83,7 @@ const V = {
   },
   ecole() {
     const staff = isAdmin(),
-      coach = S.role === 'coach',
+      coach = S.role === 'coach' || !!S.super,
       tabs = [
         ['mine', 'Mes cours', 'cal'],
         ['stages', 'Stages', 'ball']
@@ -154,7 +154,7 @@ const V = {
   }).join(
     ''
   )}${it('newPost', 'plus', 'Créer un championnat', 'Puis ajoute ses équipes, leurs capitaines et leur calendrier', 'data-k="champ"')}</div>
-  <div class="card adm-sec"><span class="kicker">Groupes</span>${grps('train')}${S.role === 'coach' ? it('newPost', 'plus', "Créer un groupe d'entraînement", 'Jour, heure, lieu et critères', 'data-k="train"') : ''}${it('newPost', 'chat', 'Créer un groupe de discussion', 'Covoiturage, petites annonces, bénévoles…', 'data-k="chan"')}</div>
+  <div class="card adm-sec"><span class="kicker">Groupes</span>${grps('train')}${S.role === 'coach' || S.super ? it('newPost', 'plus', "Créer un groupe d'entraînement", 'Jour, heure, lieu et critères', 'data-k="train"') : ''}${it('newPost', 'chat', 'Créer un groupe de discussion', 'Covoiturage, petites annonces, bénévoles…', 'data-k="chan"')}</div>
   <div class="card adm-sec"><span class="kicker">Le club</span>${it('open', 'info', 'Aide · guide du bureau', 'Tout ce que fait l’appli, rubrique par rubrique', 'data-v="aide"') + it('open', 'flag', 'Signalements', REPORTS.length ? `${REPORTS.length} contenu${REPORTS.length > 1 ? 's' : ''} à examiner` : 'Aucun contenu signalé', 'data-v="reports"')}${it('clubInfo', 'info', 'Infos du club', 'Courts, horaires, adresse, tarifs, liens, modules')}${
     CLUBINFO.mods.comm && isBureau()
       ? it(

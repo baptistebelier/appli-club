@@ -15,7 +15,9 @@
   const here = () => location.href.split('#')[0];
   // page de connexion propre à /RAM Club (même compte /RAM que /RAM JA), puis retour à l'endroit quitté
   const loginUrl = () =>
-    (onClubHost ? '' : '/club') + '/connexion?retour=' + encodeURIComponent(location.pathname + location.search);
+    (onClubHost ? '' : '/club') +
+    '/connexion' +
+    (/\/demo\/?$/.test(location.pathname) ? '' : '?retour=' + encodeURIComponent(location.pathname + location.search));
   const e = s =>
     String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const J = o => JSON.stringify(o);
@@ -301,12 +303,24 @@
           add('stats', k, { c: s.c, k: [...s.k], got: s.got, lvl: s.lvl });
         }
       });
-    const read = Object.assign({}, (prev('prefs', R.key) || {}).read || {});
+    const pp = prev('prefs', R.key) || {},
+      read = Object.assign({}, pp.read || {}),
+      // infos des messages (glisser son message vers la gauche) : jusqu'où ce téléphone a reçu (dl) et lu (rdl)
+      // les messages de chaque groupe, et à quelle heure ; les 30 derniers repères par groupe
+      dl = JSON.parse(JSON.stringify(pp.dl || {})),
+      rdl = JSON.parse(JSON.stringify(pp.rdl || {})),
+      mark = (map, id, upTo) => {
+        const l = (map[id] = map[id] || []);
+        if (upTo > (l.length ? l[l.length - 1][0] : 0)) {
+          l.push([upTo, Date.now()]);
+          if (l.length > 30) l.splice(0, l.length - 30);
+        }
+      };
     chans.forEach(ch => {
-      if (!ch.un) {
-        const last = Math.max(0, ...(ch.msgs || []).map(m => m.at || 0));
-        if (last) read[ch.id] = Math.max(read[ch.id] || 0, last);
-      }
+      const last = Math.max(0, ...(ch.msgs || []).map(m => m.at || 0));
+      if (last) mark(dl, ch.id, last);
+      if (!ch.un && last) read[ch.id] = Math.max(read[ch.id] || 0, last);
+      if (read[ch.id]) mark(rdl, ch.id, read[ch.id]);
     });
     add('prefs', R.key, {
       nh: notifStore(),
@@ -318,6 +332,8 @@
       ct: MYCT,
       mute: chans.filter(ch => ch.mute).map(ch => ch.id),
       read,
+      dl,
+      rdl,
       setup: S.setup || {},
       invited: S.invited || 0,
       motif: S.motif || 'ram-mixte',
@@ -599,6 +615,7 @@
         }
         place2(l, m);
         if (!initial && s.by !== R.key) fresh.push(['msg', m, s.ref]);
+        if (window.ramTypingDone) ramTypingDone(s.ref, s.by);
         return;
       }
       case 'chan': {
@@ -1331,6 +1348,10 @@
       R.wallet = d.wallet;
       if (ch && !d.items.length && S.tab === 'club') render(true);
     }
+    if (d.reads && JSON.stringify(d.reads) !== JSON.stringify(R.reads)) {
+      R.reads = d.reads;
+      if (!d.items.length && view().v === 'chan') render(true);
+    }
     if (d.scores) {
       const ch = Object.keys(d.scores).some(k => d.scores[k] !== R.scores[k]);
       R.scores = d.scores;
@@ -1483,6 +1504,10 @@
       try {
         d = JSON.parse(ev.data);
       } catch (x) {}
+      if (d.typing) {
+        if (window.ramTyping) ramTyping(d.typing);
+        return;
+      }
       if (d.rev < 0) {
         stop();
         toast('Tu ne fais plus partie de ce club');
@@ -1565,12 +1590,14 @@
     R.club = id;
     R.key = d.me.key;
     R.role = d.me.role;
+    S.super = !!d.me.super; // administrateur de l'appli : bureau et enseignant à la fois
     R.valid = d.me.valid;
     R.loadAt = Date.now();
     R.code = d.club.code;
     R.fol = d.fol || {};
     R.roles = d.roles || {};
     R.scores = d.scores || {};
+    R.reads = d.reads || {}; // coches : jusqu'où tous les autres membres de chaque groupe ont lu
     R.counts = d.counts || {};
     R.jaTitles = d.jaTitles || {}; // titres de juge-arbitre /RAM JA des adhérents (badge)
     R.wallet = d.wallet || null; // points bar (gagnés en consommant au bar), calculés par le serveur
@@ -2048,7 +2075,8 @@
 
   /* ---------- lancement ---------- */
   (async () => {
-    if (!served) {
+    // /demo : toujours le club fictif, même avec un compte connecté
+    if (!served || /\/demo\/?$/.test(location.pathname)) {
       R.user = null;
       readyFn();
       return;

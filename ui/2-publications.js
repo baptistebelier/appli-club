@@ -202,7 +202,7 @@ function adBand(p) {
         `<button class="adi${x.logo ? '' : ' txt'}" data-a="open" data-v="partners" aria-label="${esc(x.name)}">${x.logo ? `<img src="${x.logo}" alt="">` : `<span>${x.name}</span>`}</button>`
     )
     .join('');
-  return `<section class="adband ${p.color === 'hot' ? 'hot' : ''}" aria-label="${esc(p.title)}"><div class="adh"><span>${p.title}</span>${isAdmin() ? `<button class="ib" data-a="pmenu" data-id="${p.id}" aria-label="Options du bandeau">${ic('more')}</button>` : ''}</div><div class="adw"><div class="track">${items}${items.replace(/<button /g, '<button tabindex="-1" aria-hidden="true" ')}</div></div></section>`;
+  return `<section class="adband ${p.color === 'hot' ? 'hot' : ''}" data-ad="${p.id}" aria-label="${esc(p.title)}"><div class="adh"><span>${p.title}</span>${isAdmin() ? `<button class="ib" data-a="pmenu" data-id="${p.id}" aria-label="Options du bandeau">${ic('more')}</button>` : ''}</div><div class="adw"><div class="track">${items}${items.replace(/<button /g, '<button tabindex="-1" aria-hidden="true" ')}</div></div></section>`;
 }
 function commList() {
   const can = c => isBureau() || c.resp === ME();
@@ -212,7 +212,7 @@ function postHTML(p) {
   if (p.kind === 'ad') return adBand(p);
   const liked = S.liked.has(p.id),
     sp = postSport(p);
-  return `<article class="post">${sportCorner(p)}<div class="hd">${av(p.by)}<div class="grow"><div class="row" style="gap:6px;flex-wrap:wrap">${who(p.by)}${bd(p.by, sp)}</div><div class="muted small">${p.pin ? '<span class="bd pin">Épinglé</span> ' : ''}${isNew('home', p.at, p.by, p.wr) ? '<span class="bd new">Nouveau</span> ' : ''}${p.t}</div></div><button class="ib" data-a="pmenu" data-id="${p.id}" aria-label="Options de la publication">${ic('more')}</button></div>
+  return `<article class="post">${sportCorner(p)}<div class="hd">${avLink(p.by)}<div class="grow"><div class="row" style="gap:6px;flex-wrap:wrap">${who(p.by)}${bd(p.by, sp)}</div><div class="muted small">${p.pin ? '<span class="bd pin">Épinglé</span> ' : ''}${isNew('home', p.at, p.by, p.wr) ? '<span class="bd new">Nouveau</span> ' : ''}${p.t}</div></div><button class="ib" data-a="pmenu" data-id="${p.id}" aria-label="Options de la publication">${ic('more')}</button></div>
  ${isAdmin() && p.vis && p.vis.length ? `<div class="vis">${ic('eye')}Visible par ${p.vis.map(v => `<span class="tag">${v}</span>`).join('')}</div>` : ''}${isMinor(p.by) ? `<div class="vis">${ic('shield')}Visible par son groupe, ses parents et les encadrants</div>` : ''}${postBody(p)}
  <div class="acts"><button class="act ${liked ? 'on' : ''} ${S.pop === p.id ? 'pop' : ''}" data-a="like" data-id="${p.id}" aria-pressed="${liked}" aria-label="J'aime">${ic('heart')}${p.likes + (liked ? 1 : 0)}</button><button class="act" data-a="comments" data-id="${p.id}" aria-label="Commentaires">${ic('com')}${p.com.length}</button></div></article>`;
 }
@@ -245,6 +245,23 @@ function dayLbl(at) {
     n = Math.round((new Date(dayOf(+t)) - new Date(d)) / 864e5);
   return n === 0 ? "Aujourd'hui" : n === 1 ? 'Hier' : n < 7 ? DAYS[new Date(at).getDay()] : fmtD(d);
 }
+/* coches de mes messages, comme WhatsApp : une coche grise = parti de ce téléphone (pas encore reçu par le serveur),
+   deux coches grises = reçu par le club, deux coches de couleur = lu par tous les autres membres du groupe */
+Object.assign(I, {
+  tick1: '<path d="M4 12.5l4.5 4.5L19 6.5"/>',
+  tick2: '<path d="M2 12.5l4.5 4.5L17 6.5M9.5 15.5l1.5 1.5L21.5 6.5"/>'
+});
+function msgTicks(m, ref) {
+  const live = window.RAM && RAM.live;
+  if (live && !(m._id && RAM.base && RAM.base.has('msg/' + m._id)))
+    return `<i class="tk" aria-label="Envoyé">${ic('tick1')}</i>`;
+  const rd = live && ref.startsWith('c:') && RAM.reads ? RAM.reads[ref.slice(2)] : undefined,
+    read = rd != null && m.at && rd >= m.at;
+  return `<i class="tk${read ? ' rd' : ''}" aria-label="${read ? 'Lu par tous' : 'Reçu'}">${ic('tick2')}</i>`;
+}
+/* « … est en train d'écrire » : rempli en direct par app/14-discussions.js */
+const typingSlot = ref =>
+  `<div class="typing-slot" data-ref="${ref}">${typeof typingHTML === 'function' ? typingHTML(ref) : ''}</div>`;
 /* fin d'une série de messages : classe « msg-end » (et non « last », déjà prise par l'aperçu gris
    du dernier message dans la liste des groupes, qui donnait à ces messages un texte plus petit et grisé) */
 const msgRow = (m, i, sport, ref, fresh) => {
@@ -257,7 +274,7 @@ const msgRow = (m, i, sport, ref, fresh) => {
     mine = m.by === ME(),
     pop = fresh || m._pop;
   delete m._pop;
-  return `${newDay ? `<div class="daysep"><span>${dayLbl(m.at)}</span></div>` : ''}<div class="msg ${mine ? 'me' : ''} ${cont ? 'cont' : ''} ${last ? 'msg-end' : ''} ${pop ? 'in' : ''}">${mine ? '' : last ? av(m.by, 'sm') : '<span class="avsp" aria-hidden="true"></span>'}<div class="grow"><div class="bubw"><div class="bub${last ? ' tail' : ''}" data-lp="mmenu" data-ref="${ref}" data-i="${i}">${mine || cont ? '' : `<div class="hd">${who(m.by)}${bd(m.by, sport)}</div>`}${m.rep ? `<span class="quote">${m.rep.by === 'club' ? club().short : first(m.rep.by)} : ${esc(m.rep.x).slice(0, 80)}</span>` : ''}${m.img ? `<button class="ph mph" style="background-image:url(${m.img})" data-a="photo" aria-label="Agrandir la photo"></button>` : ''}${m.x ? `<span class="tx">${esc(m.x)}</span>` : ''}<time>${m.t || ''}</time></div><button class="bmore" data-a="mmenu" data-ref="${ref}" data-i="${i}" aria-label="Options du message">${ic('more')}</button></div>${
+  return `${newDay ? `<div class="daysep"><span>${dayLbl(m.at)}</span></div>` : ''}<div class="msg ${mine ? 'me' : ''} ${cont ? 'cont' : ''} ${last ? 'msg-end' : ''} ${m.re && Object.keys(m.re).length ? 'hasre' : ''} ${pop ? 'in' : ''}">${mine ? '' : last ? avLink(m.by, 'sm') : '<span class="avsp" aria-hidden="true"></span>'}<div class="grow"><div class="bubw"><div class="bub${last ? ' tail' : ''}" data-lp="mmenu" data-ref="${ref}" data-i="${i}">${mine || cont ? '' : `<div class="hd">${who(m.by)}${bd(m.by, sport)}</div>`}${m.rep ? `<span class="quote">${m.rep.by === 'club' ? club().short : first(m.rep.by)} : ${esc(m.rep.x).slice(0, 80)}</span>` : ''}${m.img ? `<button class="ph mph" style="background-image:url(${m.img})" data-a="photo" aria-label="Agrandir la photo"></button>` : ''}${m.x ? `<span class="tx">${esc(m.x)}</span>` : ''}<time>${m.t || ''}${mine ? msgTicks(m, ref) : ''}</time></div><button class="bmore" data-a="mmenu" data-ref="${ref}" data-i="${i}" aria-label="Options du message">${ic('more')}</button></div>${
     m.re && Object.keys(m.re).length
       ? `<div class="reacts">${Object.entries(m.re)
           .map(

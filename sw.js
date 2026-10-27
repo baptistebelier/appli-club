@@ -1,6 +1,6 @@
 /* ---------- Service worker de l'appli du club : hors connexion + notifications push ----------
    Changer VERSION à chaque mise en ligne : l'ancien cache est supprimé à l'activation. */
-const VERSION = '2026-10-26-agenda5';
+const VERSION = '2026-10-27-bandeaux1';
 const CACHE = 'appli-club-' + VERSION;
 /* Fichiers de l'appli mis en cache dès l'installation */
 const CORE = [
@@ -41,6 +41,8 @@ const CORE = [
   'app/11-tournois.js',
   'app/12-finitions.js',
   'app/13-favoris.js',
+  'app/14-discussions.js',
+  'app/15-bandeaux.js',
   'manifest.webmanifest',
   'icon-180.png',
   'icon-512.png'
@@ -79,7 +81,7 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       fetch(req)
         .then(res => {
-          if (res.ok) {
+          if (res.ok && res.headers.get('X-Club-Page') === 'appli') {
             const copy = res.clone();
             caches.open(CACHE).then(c => c.put('index.html', copy));
           }
