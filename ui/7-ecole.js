@@ -15,7 +15,8 @@ const grpN = g => g.mem.length + (g.ext || []).length;
 const grpFull = g => !!g.max && grpN(g) >= g.max;
 /* un vrai groupe, en cours : ni une séance ponctuelle (cours individuel), ni un cycle terminé */
 const grpLive = g => g.type === 'train' && !g.once && !(g.to && (g.to < TODAY || g.fini));
-const locOf = (g, iso) => (g.loc || {})[iso] || g.defLoc || 'Extérieur';
+// lieu d'une séance : en salle par défaut ; « Extérieur » pour la saison (interrupteur du groupe) ou ce jour-là
+const locOf = (g, iso) => (g.loc || {})[iso] || g.defLoc || 'En salle';
 const respOf = (g, iso, id) => ((g.resp || {})[iso] || {})[id] || (((g.abs || {})[iso] || []).includes(id) ? 'no' : '');
 function sessCard(g, iso, who, manage) {
   const cx = (g.cancel || []).includes(iso),
@@ -25,7 +26,7 @@ function sessCard(g, iso, who, manage) {
     nOk = g.mem.filter(p => respOf(g, iso, p) === 'ok').length,
     nNo = g.mem.filter(p => respOf(g, iso, p) === 'no').length;
   return (
-    `<div class="card"><div class="row" style="align-items:flex-start;gap:12px"><span class="dblk"><b>${d}</b>${MO[m - 1]}</span><div class="grow"><span class="h3" style="font-size:19px">${g.name}</span><br><span class="muted small">${DA[new Date(y, m - 1, d).getDay()]} · ${g.h} · ${g.dur}${g.coach ? ' · ' + first(g.coach) : ''}</span><div class="tags" style="display:flex;margin-top:6px">${cx ? '<span class="tag" style="background:var(--hot);color:#fff">Cours annulé</span>' : `<span class="tag loc">${ic(loc === 'En salle' ? 'home' : 'sun')}${loc}</span>`}${sportTag(g.sport)}${who && who !== ME() ? `<span class="tag">${first(who)}</span>` : ''}${manage || !who ? `<span class="tag">${grpN(g)} élève${grpN(g) > 1 ? 's' : ''}${g.max ? ' / ' + g.max : ''}</span>${grpFull(g) ? '<span class="tag" style="background:var(--accent);color:var(--on-accent)">Complet</span>' : ''}` : ''}</div></div></div>` +
+    `<div class="card"><div class="row" style="align-items:flex-start;gap:12px"><span class="dblk"><b>${d}</b>${MO[m - 1]}<i>${g.h}</i></span><div class="grow"><span class="h3" style="font-size:19px">${g.name}</span><br><span class="muted small">${DA[new Date(y, m - 1, d).getDay()]} · ${g.h} · ${g.dur}${g.coach ? ' · ' + first(g.coach) : ''}</span><div class="tags" style="display:flex;margin-top:6px">${cx ? '<span class="tag" style="background:var(--hot);color:#fff">Cours annulé</span>' : `<span class="tag loc">${ic(loc === 'En salle' ? 'home' : 'sun')}${loc}</span>`}${sportTag(g.sport)}${who && who !== ME() ? `<span class="tag">${first(who)}</span>` : ''}${manage || !who ? `<span class="tag">${grpN(g)} élève${grpN(g) > 1 ? 's' : ''}${g.max ? ' / ' + g.max : ''}</span>${grpFull(g) ? '<span class="tag" style="background:var(--accent);color:var(--on-accent)">Complet</span>' : ''}` : ''}</div></div></div>` +
     (cx || !who
       ? ''
       : `<div class="ctl"><button class="btn sm grow ${r === 'ok' ? '' : 'ghost'}" data-a="cresp" data-g="${g.id}" data-d="${iso}" data-u="${who}" data-s="ok">${who === ME() ? 'Je serai présent' : first(who) + ' sera présent'}</button><button class="btn sm grow ${r === 'no' ? 'hot' : 'ghost'}" data-a="cresp" data-g="${g.id}" data-d="${iso}" data-u="${who}" data-s="no">Absent</button></div>`) +
@@ -138,7 +139,7 @@ function ecoleBody(t) {
       gs
         .map(
           g =>
-            `<button class="item" data-a="open" data-v="grp" data-id="${g.id}"><span class="tile">${ic('users')}</span><span class="grow"><span class="nm">${g.name}</span><br><span class="muted small">${grpN(g)} élève${grpN(g) > 1 ? 's' : ''}${g.max ? ' sur ' + g.max : ''} · ${g.sub || DAYS[g.day] + ' ' + g.h} · ${g.defLoc || 'Extérieur'}</span></span>${grpFull(g) ? '<span class="tag">Complet</span>' : ''}</button>`
+            `<button class="item" data-a="open" data-v="grp" data-id="${g.id}"><span class="tile">${ic('users')}</span><span class="grow"><span class="nm">${g.name}</span><br><span class="muted small">${grpN(g)} élève${grpN(g) > 1 ? 's' : ''}${g.max ? ' sur ' + g.max : ''} · ${g.sub || DAYS[g.day] + ' ' + g.h} · ${g.defLoc || 'En salle'}</span></span>${grpFull(g) ? '<span class="tag">Complet</span>' : ''}</button>`
         )
         .join('') +
       (gs.length

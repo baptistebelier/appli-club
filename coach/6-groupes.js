@@ -64,6 +64,54 @@ function coOffHtml(g) {
   }`;
 }
 
+/* ---------- lieu : en salle par défaut, un interrupteur pour la saison en extérieur ----------
+   g.defLoc : lieu des prochaines séances ; g.loc[date] : un jour précis (« Passer en salle » s'il pleut).
+   g.locPref : le lieu a été choisi par l'enseignant. Les groupes créés avant la règle « en salle par défaut »
+   (où « Extérieur » n'était qu'une valeur par défaut) passent une fois en salle (coLocInit). */
+const coLocTg = g => {
+  const out = g.defLoc === 'Extérieur';
+  return `<div class="cokv"><span class="muted">${out ? 'Saison en extérieur · « Passer en salle » s’il pleut' : 'En salle · saison en extérieur au printemps'}</span><span class="cocyc"><span class="muted small">Extérieur</span><button class="tg" role="switch" aria-checked="${out}" data-a="coLocSeason" data-id="${g.id}" aria-label="${esc(g.name)} : ${out ? 'repasser en salle' : 'passer la saison en extérieur'}"></button></span></div>`;
+};
+function coLocInit() {
+  coGroups('', true).forEach(g => {
+    if (g.locPref || g.old) return;
+    if (g.defLoc !== 'En salle') g.defLoc = 'En salle';
+    g.locPref = 1;
+  });
+}
+
+/* ---------- reporter une séance, ou changer la date d'une seule ----------
+   Reporter : la séance glisse à l'occurrence suivante du groupe (une semaine, deux pour un groupe une semaine sur
+   deux, en sautant les périodes sans cours) et toutes les suivantes glissent avec elle, thèmes compris : la suite
+   des thèmes prévus est gardée ; un cycle ou un pack se termine une occurrence plus tard.
+   Changer la date : seule cette séance change de jour (avec son thème, son appel et son bilan). */
+/* prochaine occurrence du créneau après une date, sans tenir compte de la fin du cycle */
+function coNextOcc(g, after) {
+  const free = Object.assign({}, g, { to: null });
+  for (let i = 1; i <= 120; i++) {
+    const d = isoIn(i, after);
+    if (trainOn(free, d) && !(g.extra || []).includes(d)) return d;
+  }
+  return isoIn(7 * (g.every || 1), after);
+}
+/* une séance (thème, appel, bilan) passe d'une date à une autre */
+function coSesMove(g, from, to) {
+  const s = SEANCES.find(x => x.id === g.id + '.' + from && (x._club || '') === (g._club || ''));
+  if (!s) return;
+  const t = sesGet(g.id + '.' + to);
+  Object.keys(s).forEach(k => !['id', 'g', 'd', '_club'].includes(k) && (t[k] = s[k]));
+  SEANCES.splice(SEANCES.indexOf(s), 1);
+}
+/* une date du groupe disparaît, une autre apparaît (séance déplacée : skip et extra, comme data.js trainOn) */
+function coDateOff(g, d) {
+  if ((g.extra || []).includes(d)) g.extra = g.extra.filter(x => x !== d);
+  if (trainOn(g, d)) g.skip = (g.skip || []).concat(d);
+}
+function coDateOn(g, d) {
+  g.skip = (g.skip || []).filter(x => x !== d);
+  if (!trainOn(g, d)) g.extra = (g.extra || []).concat(d).sort();
+}
+
 /* ---------- Programmer des séances ---------- */
 /* les dates proposées : à partir d'une date, chaque semaine ou une semaine sur deux */
 function coPlanDates(start, n, step, off) {
@@ -109,6 +157,67 @@ const coPlanRead = () =>
   [...document.querySelectorAll('#co-plan .co-pd')].map(i => i.value).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d));
 
 Object.assign(A, {
+  /* saison en extérieur : les prochaines séances changent de lieu (un jour déjà réglé à la main l'est encore) ;
+     élèves et parents prévenus */
+  coLocSeason(d) {
+    const g = grp(d.id);
+    if (!g) return;
+    const nl = g.defLoc === 'Extérieur' ? 'En salle' : 'Extérieur';
+    g.defLoc = nl;
+    g.locPref = 1;
+    if (g.loc) Object.keys(g.loc).forEach(k => k > TODAY && g.loc[k] === nl && delete g.loc[k]);
+    NOTIFS.unshift({
+      by: g.coach,
+      txt: `${g.name} : les prochains cours auront lieu ${nl === 'En salle' ? 'en salle' : 'en extérieur'}`,
+      t: "À l'instant",
+      n: 1,
+      go: { v: 'agenda', ag: 'cours' },
+      to: g.mem.slice()
+    });
+    coSave(`${g.name} : prochaines séances ${nl === 'En salle' ? 'en salle' : 'en extérieur'} · élèves prévenus`);
+  },
+  coShift(d) {
+    const g = grp(d.id);
+    if (!g) return;
+    const L = coDates(g, d.d, g.to || isoIn(365)),
+      next = coNextOcc(g, L[L.length - 1] || d.d);
+    sheet(
+      'Reporter la séance',
+      `<div class="body"><p>La séance du <b>${fmtD(d.d)}</b> est reportée à la suivante, le <b>${fmtD(L[1] || next)}</b>. Les ${plural(L.length - 1, 'séance suivante', 'séances suivantes')} glissent aussi d'une occurrence, avec leurs thèmes${g.to ? ` : le cycle se termine le <b>${fmtD(next)}</b> au lieu du ${fmtD(g.to)}` : ''}.</p><p class="muted small">Les élèves et leurs parents sont prévenus dans /RAM Club.</p><button class="btn full" data-a="coShiftOk" data-id="${g.id}" data-d="${d.d}">${ic('cal')}Reporter</button><button class="btn full ghost" data-a="coMove" data-id="${g.id}" data-d="${d.d}">Changer seulement la date de cette séance</button></div>`
+    );
+  },
+  coShiftOk(d) {
+    const g = grp(d.id);
+    closeSheet();
+    if (!g) return;
+    const L = coDates(g, d.d, g.to || isoIn(365)).filter(x => !isCx(g, x)),
+      next = coNextOcc(g, L[L.length - 1] || d.d),
+      N = L.slice(1).concat(next);
+    // les séances glissent d'une occurrence, de la dernière à la première (sans écraser la suivante)
+    for (let i = L.length - 1; i >= 0; i--) coSesMove(g, L[i], N[i]);
+    coDateOff(g, d.d);
+    if (g.to) g.to = next;
+    else if (!trainOn(g, next)) coDateOn(g, next);
+    NOTIFS.unshift({
+      by: g.coach,
+      txt: `${g.name} : la séance du ${fmtD(d.d)} est reportée au ${fmtD(N[0])}, les suivantes sont décalées`,
+      t: "À l'instant",
+      n: 1,
+      go: { v: 'agenda', ag: 'cours' },
+      to: g.mem.slice()
+    });
+    const top = S.stack[S.stack.length - 1];
+    if (top && top.v === 'seance' && top.id === g.id + '.' + d.d) top.id = g.id + '.' + N[0];
+    coSave(`Séance reportée au ${fmtD(N[0])} · ${plural(N.length, 'séance décalée', 'séances décalées')}`);
+  },
+  coMove(d) {
+    const g = grp(d.id);
+    if (!g) return;
+    sheet(
+      'Changer la date',
+      `<form class="body" id="co-move" data-id="${g.id}" data-d="${d.d}"><p class="muted small">Seule la séance du ${fmtD(d.d)} change de jour, avec son thème, son appel et son bilan. Les autres séances${g.once ? '' : ' du groupe'} ne bougent pas.</p><div class="fld"><label for="co-mv-d">Nouvelle date</label><input id="co-mv-d" type="date" required value="${d.d}"></div>${g.once ? `<div class="fld"><label for="co-mv-h">Heure</label><select id="co-mv-h">${HOURS.map(h => `<option ${h === g.h ? 'selected' : ''}>${h}</option>`).join('')}</select></div>` : ''}<button class="btn full">Déplacer la séance</button></form>`
+    );
+  },
   coOffAdd(d) {
     const g = grp(d.id);
     if (!g) return;
@@ -258,6 +367,32 @@ document.addEventListener('change', e => {
   }
 });
 document.addEventListener('submit', e => {
+  if (e.target.id !== 'co-move') return;
+  e.preventDefault();
+  const f = e.target,
+    g = grp(f.dataset.id),
+    from = f.dataset.d,
+    to = $('co-mv-d').value;
+  if (!g || !/^\d{4}-\d{2}-\d{2}$/.test(to)) return;
+  if (to !== from && !g.once && coDates(g, to, to).length) return toast('Le groupe a déjà une séance ce jour-là');
+  coSesMove(g, from, to);
+  if (g.once) {
+    g.once = to;
+    g.day = coDow(to);
+    if ($('co-mv-h')) g.h = $('co-mv-h').value;
+    g.sub = `${fmtD(to)} ${g.h} · ${g.dur}`;
+  } else if (to !== from) {
+    coDateOff(g, from);
+    coDateOn(g, to);
+    if (g.to && to > g.to) g.to = to;
+    if (g.from && to < g.from) g.from = to;
+  }
+  closeSheet();
+  const top = S.stack[S.stack.length - 1];
+  if (top && top.v === 'seance') top.id = g.id + '.' + to;
+  coSave('Séance déplacée au ' + fmtD(to));
+});
+document.addEventListener('submit', e => {
   if (e.target.id !== 'co-off') return;
   e.preventDefault();
   const g = grp(e.target.dataset.id),
@@ -281,7 +416,7 @@ function coPlanApply(g, list, cycle) {
   const keep = new Set(list),
     fut = d => d > TODAY;
   g.extra = (g.extra || []).filter(d => !fut(d) || keep.has(d));
-  g.skip = (g.skip || []).filter(d => !fut(d) || !keep.has(d));
+  g.skip = (g.skip || []).filter(d => !keep.has(d));
   delete g.fini;
   if (cycle) g.to = list.length ? list[list.length - 1] : TODAY;
   else if (g.to && g.to >= TODAY) delete g.to;
@@ -290,10 +425,14 @@ function coPlanApply(g, list, cycle) {
   if (list.length && (g.from ? g.from > list[0] : !used)) g.from = list[0];
   // jusqu'à la dernière date choisie : après elle, un groupe sans fin reprend son créneau chaque semaine
   const end = list.length ? list[list.length - 1] : TODAY;
-  for (let d = isoIn(1); d <= end; d = isoIn(1, d)) {
+  // des dates passées choisies (cycle commencé avant d'être programmé) sont reprises ; une séance passée déjà
+  // faite (appel ou bilan) n'est jamais retirée
+  const done = d =>
+    SEANCES.some(x => x.id === g.id + '.' + d && (x._club || '') === (g._club || '') && (x.pres || x.recap));
+  for (let d = list.length && list[0] < isoIn(1) ? list[0] : isoIn(1); d <= end; d = isoIn(1, d)) {
     if (keep.has(d)) {
       if (!trainOn(g, d)) g.extra.push(d);
-    } else if (trainOn(g, d)) g.skip.push(d);
+    } else if (trainOn(g, d) && (fut(d) || !done(d))) g.skip.push(d);
   }
   g.extra.sort();
   g.skip.sort();
@@ -303,7 +442,7 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   const g = grp(e.target.dataset.id);
   if (!g) return;
-  const list = [...new Set(coPlanRead())].filter(d => d > TODAY).sort(),
+  const list = [...new Set(coPlanRead())].sort(),
     o = $('co-pl-o').value,
     p = coPlanOf(o);
   if (o) g.offre = o;
