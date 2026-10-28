@@ -97,14 +97,24 @@ function isoIn(n, from) {
 const rIdx = r => RANKS.indexOf(r);
 /* un groupe d'entraînement a-t-il cours ce jour-là ? chaque semaine (g.day), ou une seule fois (g.once : séance
    ponctuelle, cours individuel créé dans /RAM Coach) */
-// groupe chaque semaine : entre from et to s'ils sont donnés (un cycle), avec ses séances déplacées
+// groupe chaque semaine (ou toutes les every semaines) : entre from et to s'ils sont donnés (un cycle), avec ses séances déplacées
 // (extra : en plus, skip : pas ce jour-là) ; séance ponctuelle : sa seule date (once)
+const dayOfAt = t => {
+  const d = new Date(t);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
 const trainOn = (g, iso) => {
   if (g.once) return g.once === iso;
   if ((g.extra || []).includes(iso)) return true;
+  // périodes sans cours (vacances scolaires…) : du … au …, bornes comprises
+  if ((g.off || []).some(o => iso >= o.du && iso <= o.au)) return false;
   if ((g.skip || []).includes(iso) || (g.from && iso < g.from) || (g.to && iso > g.to)) return false;
+  // un groupe sans date de début commence le jour de sa création (at) : pas de séances imaginaires avant
+  if (!g.from && g.at && iso < dayOfAt(g.at)) return false;
   const [y, m, d] = iso.split('-').map(Number);
-  return new Date(y, m - 1, d).getDay() === g.day;
+  if (new Date(y, m - 1, d).getDay() !== g.day) return false;
+  // une semaine sur deux (every : 2), compté depuis la première séance
+  return !(g.every > 1 && g.from) || Math.round((Date.parse(iso) - Date.parse(g.from)) / 6048e5) % g.every === 0;
 };
 
 /* Ce que chaque club personnalise : nom, sigle, logo, couleurs */
@@ -1228,7 +1238,17 @@ const S = {
   imgs: [],
   grpAll: false,
   share: { tel: true, mail: false, soc: true },
-  nset: { club: true, follow: true, chan: true, team: true, live: false, play: true, mine: true, suivi: true },
+  nset: {
+    club: true,
+    follow: true,
+    chan: true,
+    team: true,
+    live: false,
+    play: true,
+    mine: true,
+    suivi: true,
+    resa: true
+  },
   plan: {
     scope: 'me',
     mode: 'events',

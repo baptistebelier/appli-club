@@ -169,25 +169,87 @@ const proLines = t =>
     .filter(Boolean);
 function proBody(k) {
   const p = proOf(k),
-    gs = GROUPS.filter(g => g.type === 'train' && g.coach === k),
+    gs = GROUPS.filter(g => g.type === 'train' && g.coach === k && !g.once && !(g.to && g.to < TODAY)),
+    off = proOffers(k),
     yrs = p.since ? +TODAY.slice(0, 4) - +p.since : 0,
     row = (l, v) => (v ? `<div class="prow"><span class="muted">${l}</span><span>${v}</span></div>` : ''),
     web = svLink(toUrlP(p.web)),
     book = svLink(toUrlP(p.book)),
     tel = String(p.tel || '').replace(/[^+\d]/g, '');
   return `<div class="pbody">${p.bio ? `<p>${esc(p.bio)}</p>` : ''}${row('Diplôme', esc(p.dip || ''))}${row('Enseigne depuis', p.since ? esc(p.since) + (yrs > 0 ? ` (${yrs} an${yrs > 1 ? 's' : ''})` : '') : '')}${row('Âge', p.age && M[k].bd ? age(k) + ' ans' : '')}${row('Sports', esc(p.sports || [...new Set(gs.map(g => g.sport))].join(', ')))}${row('Groupes', gs.map(g => esc(g.name)).join(', '))}${row('Téléphone', p.tel ? `<a href="tel:${tel}">${esc(p.tel)}</a>` : '')}${row('E-mail', p.mail ? `<a href="mailto:${esc(p.mail)}">${esc(p.mail)}</a>` : '')}${row('Site internet', web ? `<a href="${esc(web)}" target="_blank" rel="noopener">${esc(String(p.web).replace(/^https?:\/\//, ''))}</a>` : '')}${
-    proLines(p.tarifs).length
-      ? `<span class="kicker">Tarifs</span><ul class="ptar">${proLines(p.tarifs)
-          .map(x => `<li>${esc(x)}</li>`)
-          .join('')}</ul>`
-      : ''
+    off && off.formules.length
+      ? proOffersHtml(off)
+      : proLines(p.tarifs).length
+        ? `<span class="kicker">Tarifs</span><ul class="ptar">${proLines(p.tarifs)
+            .map(x => `<li>${esc(x)}</li>`)
+            .join('')}</ul>`
+        : ''
   }<div class="ctl" style="flex-wrap:wrap">${book ? `<a class="btn grow" href="${esc(book)}" target="_blank" rel="noopener">${ic('cal')}Réserver une séance</a>` : ''}${tel ? `<a class="btn grow ghost" href="tel:${tel}">${ic('phone')}Appeler</a>` : ''}${p.mail ? `<a class="btn grow ghost" href="mailto:${esc(p.mail)}">${ic('mail')}Écrire</a>` : ''}${k !== ME() ? `<button class="btn grow ghost" data-a="member" data-id="${k}">${ic('user')}Profil</button>` : ''}</div></div>`;
+}
+/* formules et tarifs d'un enseignant (rangés sur son compte /RAM), lus une fois par enseignant */
+const PRO_OFF = {};
+function proOffers(k) {
+  if (!(window.RAM && RAM.live)) return typeof OFFRES !== 'undefined' && k === ME() ? OFFRES : null;
+  if (!(k in PRO_OFF)) {
+    PRO_OFF[k] = null;
+    fetch('/api/coach/formules/public?c=' + encodeURIComponent(RAM.club) + '&k=' + encodeURIComponent(k), {
+      credentials: 'include'
+    })
+      .then(r => r.json())
+      .then(d => {
+        PRO_OFF[k] = d.formules;
+        if (d.formules && d.formules.formules.length) render(true);
+      })
+      .catch(() => {});
+  }
+  return PRO_OFF[k];
+}
+/* la période d'un abonnement et son engagement, en bon français (« tous les 6 mois », « engagement 12 mois ») */
+const abPer = a =>
+  ({ mois: 'par mois', trimestre: 'par trimestre', '6 mois': 'tous les 6 mois', an: 'par an' })[a.periode] ||
+  'par ' + a.periode;
+function abEng(a) {
+  const n = +a.duree || 1,
+    m = { mois: 1, trimestre: 3, '6 mois': 6 }[a.periode];
+  if (n <= 1) return '';
+  return m ? `engagement ${n * m} mois` : `engagement ${n} ${a.periode === 'an' ? 'ans' : a.periode}`;
+}
+function proOffersHtml(o) {
+  const e = n => (Math.round(n * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €',
+    mn = n => (n % 60 ? (n >= 60 ? Math.floor(n / 60) + ' h ' + (n % 60) : n + ' min') : n / 60 + ' h'),
+    kind = f => (f.joueurs === 1 ? 'individuel' : f.joueurs === 2 ? 'duo' : 'collectif à ' + f.joueurs),
+    line = (t, p, sub) =>
+      `<li><span class="ptl"><b>${t}</b><span class="ptp">${p}</span></span>${sub ? `<span class="muted small">${sub}</span>` : ''}</li>`;
+  const seance = o.formules
+    .map(f => {
+      const pk = o.packs.filter(p => p.formule === f.id);
+      return line(
+        `${esc(f.nom)} · ${mn(f.duree)}`,
+        e(f.prix) + (f.par === 'personne' && f.joueurs > 1 ? ' / pers.' : ''),
+        pk.map(p => `${esc(p.nom || 'Pack')} : ${p.seances} séances, ${e(p.prix)}`).join('<br>')
+      );
+    })
+    .join('');
+  const abos = o.abos
+    .map(a => {
+      const f = o.formules.find(x => x.id === a.formule),
+        eng = abEng(a),
+        det = [
+          a.parSemaine ? `${a.parSemaine} séance${a.parSemaine > 1 ? 's' : ''} par semaine` : '',
+          f ? `cours ${kind(f)} de ${mn(f.duree)}` : '',
+          /* le nom dit souvent déjà l'engagement : « Academy Training (6 mois) » */
+          eng && !new RegExp('\\b' + (+a.duree || 0) + '\\s*(mois|ans?)\\b', 'i').test(a.nom) ? eng : ''
+        ].filter(Boolean);
+      return line(esc(a.nom), `${e(a.prix)} ${abPer(a)}`, det.join(' · '));
+    })
+    .join('');
+  return `<span class="kicker">Tarifs</span>${seance ? `<span class="ptt">À la séance et en pack</span><ul class="ptar">${seance}</ul>` : ''}${abos ? `<span class="ptt">Abonnements</span><ul class="ptar">${abos}</ul>` : ''}`;
 }
 const toUrlP = u => (u ? (/^https?:\/\//i.test(u) ? u : 'https://' + u) : '');
 /* une ligne par enseignant, qui s'ouvre comme un menu déroulant */
 function profCard(k, open) {
   const p = proOf(k),
-    gs = GROUPS.filter(g => g.type === 'train' && g.coach === k);
+    gs = GROUPS.filter(g => g.type === 'train' && g.coach === k && !g.once && !(g.to && g.to < TODAY));
   return `<details class="card prof"${open ? ' open' : ''}><summary>${av(k, 'sm')}<span class="grow"><span class="nm">${esc(name(k))}</span><br><span class="muted small">${esc(p.dip || (gs.length ? gs.length + ' groupe' + (gs.length > 1 ? 's' : '') : 'Enseignant'))}${p.since ? ' · depuis ' + esc(p.since) : ''}</span></span><span class="chev" aria-hidden="true">${ic('back')}</span></summary>${proBody(k)}</details>`;
 }
 function profsBody() {
