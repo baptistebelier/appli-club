@@ -41,7 +41,7 @@ const V = {
       );
     })()}</div>
   ${isAdmin() && CLUBINFO.joined < CLUBINFO.members ? `<div class="pad" style="padding-bottom:4px"><button class="note" data-a="open" data-v="join" style="width:100%;text-align:left">${CLUBINFO.joined} adhérents sur ${CLUBINFO.members} ont rejoint l'appli. <b style="color:var(--accent)">Inviter les autres</b></button></div>` : ''}
-  <div class="feed">${feed.length ? feed.map(postHTML).join('') : empty('home', 'Le mur est vide', 'Les annonces et les résultats du club apparaîtront ici.')}</div>`;
+  <div class="feed">${feed.length ? feed.map(postHTML).join('') : empty('home', 'Le mur est vide', 'Les annonces et les résultats du club apparaîtront ici.')}</div>${window.RAM && RAM.postsBefore ? '<div class="pad"><button class="btn ghost full" data-a="ramOlderPosts">Publications plus anciennes</button></div>' : ''}`;
   },
   chans() {
     const list = chans.filter(c => c.g === S.chanTab && chanOk(c));
@@ -69,7 +69,12 @@ const V = {
     // discussion supprimée pendant qu'on la lisait
     if (!c)
       return `<div class="pad">${empty('chat', 'Discussion supprimée', 'Ce groupe de discussion n’existe plus.')}</div>`;
-    return `<div class="chat">${lpHelp()}${c.kid && S.role !== 'kid' ? `<div class="note">Tu lis ce canal en tant que parent de Léo.</div>` : ''}${c.msgs.map((m, i) => msgRow(m, i, c.sport, 'c:' + c.id, S.sent && i === c.msgs.length - 1)).join('') || empty('chat', 'Aucun message', 'Lance la discussion.')}${typingSlot('c:' + c.id)}</div>`;
+    // l'ouverture n'apporte que les derniers messages : les précédents à la demande (ram-sync.js)
+    const older =
+      window.RAM && RAM.more && RAM.more['c:' + c.id]
+        ? `<button class="btn ghost sm full" data-a="ramOlder" data-ref="c:${c.id}">Messages plus anciens</button>`
+        : '';
+    return `<div class="chat">${older}${lpHelp()}${c.kid && S.role !== 'kid' ? `<div class="note">Tu lis ce canal en tant que parent de Léo.</div>` : ''}${c.msgs.map((m, i) => msgRow(m, i, c.sport, 'c:' + c.id, S.sent && i === c.msgs.length - 1)).join('') || empty('chat', 'Aucun message', 'Lance la discussion.')}${typingSlot('c:' + c.id)}</div>`;
   },
   /* les modes de l'agenda (Événements, Semaine, Jour, Liste) deviennent des onglets, comme sur les autres pages */
   agenda() {

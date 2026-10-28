@@ -226,10 +226,12 @@
       add('chan', ch.id, strip(ch, ['msgs', 'un', 'mute']));
     });
     // /RAM Coach : les éléments d'un autre club (_club) sont envoyés à leur club par coach/4-finitions.js
+    // un cours particulier (séance ponctuelle : once) est rangé dans la collection « cours », les groupes dans « group »
     GROUPS.forEach(g => {
       if (g._club) return;
-      at(g, 'group');
-      add('group', g.id, g);
+      const coll = g.once ? 'cours' : 'group';
+      at(g, coll);
+      add(coll, g.id, g);
     });
     OLDG.forEach(g => {
       at(g, 'group');
@@ -649,8 +651,9 @@
         return;
       }
       case 'group':
+      case 'cours':
       case 'champ': {
-        const [cur, old] = it.coll === 'group' ? [GROUPS, OLDG] : [CHAMPS, OLDC];
+        const [cur, old] = it.coll === 'champ' ? [CHAMPS, OLDC] : [GROUPS, OLDG];
         drop(cur, id);
         drop(old, id);
         if (it.del) return;
@@ -853,6 +856,8 @@
         return staff;
       case 'group':
         return staff || d.cap === k || d.coach === k;
+      case 'cours':
+        return staff;
       case 'rec':
         return staff || capOf(d.tid);
       case 'comm':
@@ -1027,7 +1032,7 @@
     const me = R.key,
       kids = (M[me] && M[me].kids) || [];
     // /RAM Coach : une réservation (Calendly…) arrive dans mon planning, s'annule, ou un élève de plus s'inscrit
-    if (coll === 'group' && b.cal && b.coach === me && b.once) {
+    if ((coll === 'group' || coll === 'cours') && b.cal && b.coach === me && b.once) {
       const who = l => [...((l && l.mem) || []), ...((l && l.ext) || [])],
         nm = k => (M[k] ? name(k) : (ELEVES.find(e => e.id === k) || {}).n || 'un élève'),
         when = `le ${fmtD(b.once)} à ${b.h}`,
@@ -1250,7 +1255,7 @@
           notify('team', 'club', `${team} – ${b.opp} : fin de la rencontre, ${s[0]} à ${s[1]}`, go);
         });
     }
-    if (coll === 'group' && a && added(a.mem, b.mem).some(k => k === me || kids.includes(k)))
+    if ((coll === 'group' || coll === 'cours') && a && added(a.mem, b.mem).some(k => k === me || kids.includes(k)))
       once(`grp/${id}/${(b.mem || []).length}`, () =>
         notify(
           'team',
@@ -1649,6 +1654,8 @@
     R.roles = d.roles || {};
     R.scores = d.scores || {};
     R.reads = d.reads || {}; // coches : jusqu'où tous les autres membres de chaque groupe ont lu
+    R.more = d.more || {}; // discussions qui ont des messages plus anciens que ceux reçus à l'ouverture
+    R.postsBefore = d.postsBefore || 0; // publications plus anciennes que celles reçues à l'ouverture (à partir de ce moment)
     R.counts = d.counts || {};
     R.jaTitles = d.jaTitles || {}; // titres de juge-arbitre /RAM JA des adhérents (badge)
     R.wallet = d.wallet || null; // points bar (gagnés en consommant au bar), calculés par le serveur
@@ -1662,6 +1669,7 @@
       'stats',
       'chan',
       'group',
+      'cours',
       'champ',
       'rec',
       'post',
@@ -1737,6 +1745,44 @@
       m.via = "une reprise d'adhésion";
       render(true);
     }
+  };
+  /* messages plus anciens d'une discussion : l'ouverture n'apporte que les derniers de chacune */
+  A.ramOlder = d => {
+    const ref = d.ref;
+    let first = Infinity;
+    R.base.forEach((v, k) => {
+      if (k.startsWith('msg/') && v.data && v.data.ref === ref && +v.data.at < first) first = +v.data.at;
+    });
+    api('/api/ram/c/' + R.club + '/older?ref=' + encodeURIComponent(ref) + (first < Infinity ? '&before=' + first : ''))
+      .then(r => {
+        r.items.forEach(it => {
+          if (R.base.has('msg/' + it.id)) return;
+          R.base.set('msg/' + it.id, { data: it.data });
+          applyItem(it, true);
+        });
+        R.more[ref] = r.more ? 1 : 0;
+        ramRender(true);
+      })
+      .catch(() => toast('Messages plus anciens indisponibles pour le moment'));
+  };
+  /* publications plus anciennes du mur, 20 par 20, avec leurs derniers commentaires */
+  A.ramOlderPosts = () => {
+    if (!R.postsBefore) return;
+    api('/api/ram/c/' + R.club + '/posts?before=' + R.postsBefore)
+      .then(r => {
+        r.items
+          .sort((a, b) => (a.coll === 'post' ? -1 : 0) - (b.coll === 'post' ? -1 : 0))
+          .forEach(it => {
+            const k = it.coll + '/' + it.id;
+            if (R.base.has(k)) return;
+            R.base.set(k, { data: it.data });
+            applyItem(it, true);
+          });
+        R.postsBefore = r.before || 0;
+        derive();
+        ramRender(true);
+      })
+      .catch(() => toast('Publications plus anciennes indisponibles pour le moment'));
   };
   A.ramRole = d =>
     api('/api/ram/c/' + R.club + '/role', { key: d.id, role: d.r }).then(
