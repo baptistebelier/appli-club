@@ -18,6 +18,11 @@ const OFFRES = {
   abos: [{ id: 'a1', nom: 'Academy Training', formule: 'f1', periode: 'mois', duree: 6, prix: 120, parSemaine: 1 }]
 };
 const PERIODES = ['mois', 'trimestre', '6 mois', 'an'];
+/* vendu sur Shopify : la référence (SKU) reconnue à la commande payée, et le lien d'achat montré aux élèves */
+const ofVente = (id, x) =>
+  O(id + '-sku', 'Référence Shopify (SKU, facultatif)', 'PACK-5', (x && x.sku) || '') +
+  O(id + '-url', 'Lien d’achat Shopify (facultatif)', 'https://…', (x && x.url) || '');
+const ofVenteLue = id => ({ sku: ($(id + '-sku') || {}).value || '', url: ($(id + '-url') || {}).value || '' });
 const eur = n => (Math.round(n * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €';
 const minTxt = n => (n % 60 ? (n >= 60 ? Math.floor(n / 60) + ' h ' + (n % 60) : n + ' min') : n / 60 + ' h');
 const foOf = id => OFFRES.formules.find(f => f.id === id);
@@ -363,7 +368,7 @@ Object.assign(A, {
           ['personne', 'Par personne']
         ],
         f.par
-      )}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coFoDel', d.id)}</div></form>`
+      )}${ofVente('co-fv', f)}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coFoDel', d.id)}</div></form>`
     );
   },
   coFoDel(d) {
@@ -378,7 +383,7 @@ Object.assign(A, {
       f = foOf(p.formule);
     sheet(
       p.id ? 'Pack de séances' : 'Nouveau pack',
-      `<form class="body" id="co-pk" data-id="${p.id || 'new'}" data-f="${p.formule}"><p class="muted small">${f ? esc(f.nom) + ' · ' + foKind(f) + ' · ' + minTxt(f.duree) + ' · à l’unité : ' + foPrice(f) : ''}</p>${O('co-kn', 'Nom du pack (facultatif)', 'Pack Découverte, Perfectionnement…', p.nom)}${ofNum('co-ks', 'Nombre de séances', p.seances, 1)}${O('co-ke', 'En plusieurs fois : paiements attendus aux séances (facultatif)', '1, 3, 5', (p.ech || []).join(', '))}${ofNum('co-kp', 'Prix du pack en euros', p.prix)}<p class="muted small" id="co-kx"></p><div class="cotools"><button class="btn">Enregistrer</button>${p.id ? ofDel('coPkDel', p.id) : ''}</div></form>`
+      `<form class="body" id="co-pk" data-id="${p.id || 'new'}" data-f="${p.formule}"><p class="muted small">${f ? esc(f.nom) + ' · ' + foKind(f) + ' · ' + minTxt(f.duree) + ' · à l’unité : ' + foPrice(f) : ''}</p>${O('co-kn', 'Nom du pack (facultatif)', 'Pack Découverte, Perfectionnement…', p.nom)}${ofNum('co-ks', 'Nombre de séances', p.seances, 1)}${O('co-ke', 'En plusieurs fois : paiements attendus aux séances (facultatif)', '1, 3, 5', (p.ech || []).join(', '))}${ofNum('co-kp', 'Prix du pack en euros', p.prix)}<p class="muted small" id="co-kx"></p>${ofVente('co-kv', p)}<div class="cotools"><button class="btn">Enregistrer</button>${p.id ? ofDel('coPkDel', p.id) : ''}</div></form>`
     );
     const upd = () => {
       const n = +$('co-ks').value,
@@ -413,7 +418,7 @@ Object.assign(A, {
         'Par',
         PERIODES.map(x => [x, x]),
         a.periode
-      )}${ofNum('co-ad', 'Engagement (nombre de périodes)', a.duree, 1)}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coAbDel', d.id)}</div></form>`
+      )}${ofNum('co-ad', 'Engagement (nombre de périodes)', a.duree, 1)}${ofVente('co-av', a)}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coAbDel', d.id)}</div></form>`
     );
   },
   coAbDel(d) {
@@ -464,7 +469,8 @@ document.addEventListener('submit', e => {
       joueurs: Math.max(1, Math.round(n('co-fj'))),
       duree: +v('co-fd'),
       prix: n('co-fp'),
-      par: v('co-fpp')
+      par: v('co-fpp'),
+      ...ofVenteLue('co-fv')
     };
     if (f.dataset.id === 'new') OFFRES.formules.push(Object.assign({ id: nid('f') }, x));
     else Object.assign(foOf(f.dataset.id), x);
@@ -473,7 +479,13 @@ document.addEventListener('submit', e => {
   }
   if (f.id === 'co-pk') {
     e.preventDefault();
-    const x = { formule: f.dataset.f, nom: v('co-kn'), seances: Math.max(2, Math.round(n('co-ks'))), prix: n('co-kp') },
+    const x = {
+        formule: f.dataset.f,
+        nom: v('co-kn'),
+        seances: Math.max(2, Math.round(n('co-ks'))),
+        prix: n('co-kp'),
+        ...ofVenteLue('co-kv')
+      },
       ech = v('co-ke')
         .split(/[^\d]+/)
         .filter(Boolean)
@@ -498,7 +510,8 @@ document.addEventListener('submit', e => {
       periode: v('co-ae'),
       duree: Math.max(1, Math.round(n('co-ad'))),
       ens: v('co-ag'),
-      moyen: v('co-amy')
+      moyen: v('co-amy'),
+      ...ofVenteLue('co-av')
     };
     if (f.dataset.id === 'new') OFFRES.abos.push(Object.assign({ id: nid('a') }, x));
     else
