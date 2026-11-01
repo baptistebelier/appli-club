@@ -192,15 +192,49 @@ function coApply(cid, it) {
 }
 async function coPull(cid) {
   const c = CO_EXT[cid];
-  const r = await fetch('/api/ram/c/' + cid + '/sync?since=' + (c.rev || 0), { credentials: 'include' }),
+  const r = await fetch('/api/ram/c/' + cid + '/sync?since=' + (c.rev || 0) + (c.rev ? '' : '&fenetre=1'), {
+      credentials: 'include'
+    }),
     d = await r.json();
   if (!r.ok) throw new Error(d.error || 'club');
+  if (d.histoAvant) c.histoAvant = d.histoAvant;
   c.key = d.me.key;
   c.role = d.me.role;
   d.items
     .sort((a, b) => (a.coll === 'member' ? -1 : 0) - (b.coll === 'member' ? -1 : 0))
     .forEach(it => coApply(cid, it));
   c.rev = d.rev;
+}
+/* mise à jour arrivée toute seule : jamais de redessin pendant une saisie (sinon le texte tapé disparaît) */
+const coRefresh = () => (window.ramSafeRender ? ramSafeRender() : render(true));
+/* ouverture allégée : l'historique des cours et des séances n'arrive que si l'écran en a besoin.
+   Ces écrans-là n'en ont pas besoin ; le planning, seulement pour une semaine ancienne. */
+const CO_LEGER = ['today', 'dash', 'msgs', 'chan', 'clubs', 'cclub', 'me', 'niveaux', 'formules'];
+function coHistoNeeded() {
+  const v = view().v;
+  if (v === 'planning') return !!(window.RAM && RAM.histoAvant) && monday(S.pl.w) < RAM.histoAvant;
+  return !CO_LEGER.includes(v);
+}
+let coHistoRun = false;
+async function coLoadHisto() {
+  if (coHistoRun || !(window.RAM && RAM.live && RAM.loadHisto)) return;
+  coHistoRun = true;
+  let got = await RAM.loadHisto();
+  for (const [cid, c] of Object.entries(CO_EXT)) {
+    if (!c.base || !c.histoAvant || c.histoOk) continue;
+    c.histoOk = true;
+    try {
+      const r = await fetch('/api/ram/c/' + cid + '/histo?avant=' + c.histoAvant, { credentials: 'include' }),
+        d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'club');
+      d.items.forEach(it => coApply(cid, it));
+      got = true;
+    } catch (e) {
+      c.histoOk = false;
+    }
+  }
+  coHistoRun = false;
+  if (got) coRefresh();
 }
 /* les autres clubs où j'enseigne : chargés une fois, puis tenus à jour */
 async function coLoadExt() {
@@ -215,7 +249,7 @@ async function coLoadExt() {
       return coPull(c.id).catch(() => {});
     })
   );
-  render(true);
+  coRefresh();
 }
 /* mes changements dans les autres clubs : comparés à la dernière version reçue, envoyés par petites opérations */
 let coPushing = false,
@@ -291,16 +325,26 @@ const coRender0 = render;
 render = function () {
   coMerge();
   const r = coRender0.apply(this, arguments);
+  if (coHistoNeeded()) coLoadHisto();
   clearTimeout(coPushT);
   coPushT = setTimeout(coPush, 400);
   return r;
 };
+/* un autre club où j'enseigne a changé (connexion en direct de ram-sync.js) : ses nouveautés arrivent aussitôt */
+window.ramOtherClub = (cid, rev) => {
+  const c = CO_EXT[cid];
+  if (!c) return false;
+  if (c.base && rev > (c.rev || 0) && !coPushing)
+    coPull(cid)
+      .then(coRefresh)
+      .catch(() => {});
+  return true;
+};
+/* filet de sécurité (connexion coupée, appli en arrière-plan) : relecture de tous mes autres clubs toutes les 2 minutes */
 setInterval(() => {
   if (!(window.RAM && RAM.live) || document.hidden || coPushing) return;
-  Promise.all(Object.keys(CO_EXT).map(id => (CO_EXT[id].base ? coPull(id).catch(() => {}) : 0))).then(() =>
-    render(true)
-  );
-}, 25000);
+  Promise.all(Object.keys(CO_EXT).map(id => (CO_EXT[id].base ? coPull(id).catch(() => {}) : 0))).then(coRefresh);
+}, 120000);
 /* démonstration : l'enseignante a aussi un groupe dans un deuxième club, avec ses élèves */
 if (
   !(/^(club|coach)\./.test(location.hostname) || location.pathname.startsWith('/club')) ||

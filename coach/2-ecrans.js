@@ -340,10 +340,10 @@ ${hd('Bilan de la séance')}${dr ? `<div class="card codraft"><span class="kicke
 /* filtre par club (quand j'enseigne dans plusieurs clubs) : Planning, Élèves, Tableau de bord */
 const coClubChips = () =>
   coMulti()
-    ? `<div class="card"><div class="chips"><button class="chip" data-a="coClub" data-c="all" aria-pressed="${!S.coClub || S.coClub === 'all'}">Tous mes clubs</button>${coClubList()
+    ? `<div class="card"><div class="chips"><button class="chip" data-a="coClub" data-c="all" aria-pressed="${!S.coClub || S.coClub === 'all'}">${ic('clubs')}Tous mes clubs</button>${coClubList()
         .map(
           c =>
-            `<button class="chip" data-a="coClub" data-c="${c.id}" aria-pressed="${S.coClub === c.id}">${esc(c.name)}</button>`
+            `<button class="chip" data-a="coClub" data-c="${c.id}" aria-pressed="${S.coClub === c.id}">${ic('club')}${esc(c.name)}</button>`
         )
         .join('')}</div></div>`
     : '';
@@ -358,8 +358,10 @@ function coEleves() {
       .filter(k => coInClub(M[k] || coEl(k) || {}))
       .filter(k => f === 'all' || (f === 'nc' ? !M[k] : f === 'jeunes' ? M[k] && isMinor(k) : coSport(k) === f))
       .sort((a, b) => svName(a).localeCompare(svName(b)));
-  const chip = (v, t) => `<button class="chip" data-a="coElF" data-v="${v}" aria-pressed="${f === v}">${t}</button>`;
-  return `<div class="pad">${coClubChips()}<div class="card"><div class="fld cosearch"><input id="co-q" type="search" placeholder="Rechercher un élève" value="${esc(S.elQ || '')}" aria-label="Rechercher un élève"></div><div class="chips">${chip('all', 'Tous')}${chip('Padel', 'Padel')}${chip('Tennis', 'Tennis')}${chip('jeunes', 'Jeunes')}${chip('nc', 'Sans compte')}</div></div>${hd(plural(l.length, 'élève'))}${
+  const chip = (v, t, i) =>
+      `<button class="chip" data-a="coElF" data-v="${v}" aria-pressed="${f === v}">${ic(i)}${t}</button>`,
+    openF = S.elFO || f !== 'all';
+  return `<div class="pad">${coClubChips()}<div class="card"><div class="cosearch"><label class="cosq">${ic('search')}<input id="co-q" type="search" placeholder="Rechercher un élève" value="${esc(S.elQ || '')}" aria-label="Rechercher un élève"></label><button class="btn ghost cofbtn" data-a="coElFO" aria-expanded="${!!openF}" aria-label="Filtres">${ic('funnel')}${f !== 'all' ? '<i class="codot"></i>' : ''}</button></div>${openF ? `<div class="chips" style="margin-top:10px">${chip('all', 'Tous', 'users')}${chip('Padel', 'Padel', 'padel')}${chip('Tennis', 'Tennis', 'ball')}${chip('jeunes', 'Jeunes', 'kid')}${chip('nc', 'Sans compte', 'nolink')}</div>` : ''}</div>${hd(plural(l.length, 'élève'))}${
     l.length
       ? list(
           l
@@ -553,14 +555,68 @@ function coFigures(l) {
   };
 }
 const eurs = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+/* données du tableau de bord : calculées par le serveur dans les vraies tables (/api/coach/tableau), gardées 1 min ;
+   en démonstration ou si le serveur ne répond pas, calculées ici avec les mêmes règles (regles.js) */
+const coDashCache = {};
+function coDashServer(from) {
+  const k = from + '|' + (S.coClub || 'all'),
+    c = coDashCache[k] || (coDashCache[k] = { at: 0 });
+  if (Date.now() - c.at > 60000) {
+    c.at = Date.now();
+    const club = S.coClub && S.coClub !== 'all' ? '&club=' + encodeURIComponent(S.coClub) : '',
+      redraw = () => {
+        if (view().v === 'dash') window.ramSafeRender ? ramSafeRender() : render(true);
+      };
+    fetch(`/api/coach/tableau?du=${isoIn(-400)}&au=${TODAY}&de=${from}${club}`, { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status))))
+      .then(d => {
+        c.data = d;
+        c.err = 0;
+        redraw();
+      })
+      .catch(() => {
+        c.err = 1;
+        // calcul sur place : il lui faut tout l'historique
+        if (typeof coLoadHisto === 'function') coLoadHisto();
+        redraw();
+      });
+  }
+  return c;
+}
+/* une ligne du serveur → { g, d, s } comme coSessions ; le groupe de l'appli s'il est connu, sinon reconstitué */
+function coDashRow(r) {
+  const ext = r.club !== coMainId() ? r.club : '';
+  const g = GROUPS.find(x => x.id === r.groupe && (x._club || '') === ext) || {
+    id: r.groupe,
+    type: 'train',
+    name: r.nom,
+    sport: r.sport,
+    dur: r.duree,
+    h: r.heure,
+    mem: [],
+    ext: r.eleves,
+    tarif: r.tarif,
+    _club: ext || undefined,
+    once: r.cours ? r.date : undefined
+  };
+  return { g, d: r.date, s: { theme: r.theme, pres: r.appel } };
+}
 function coDash() {
   const per = S.dashP || 'saison',
     from = per === 'mois' ? TODAY.slice(0, 8) + '01' : per === 'an' ? isoIn(-364) : coSeasonStart(),
+    live = !!(window.RAM && RAM.live),
+    srv = live ? coDashServer(from) : null;
+  if (srv && !srv.data && !srv.err)
+    return `<div class="pad">${coClubChips()}<div class="card"><p class="muted small">Calcul du tableau de bord…</p></div></div>`;
+  const fromServer = !!(srv && srv.data),
+    histo = fromServer
+      ? srv.data.seances.filter(r => !r.annule).map(coDashRow)
+      : coSessions(isoIn(-400), TODAY).filter(x => !isCx(x.g, x.d)),
     gs = coGroups(),
-    done = coSessions(from, TODAY).filter(x => !isCx(x.g, x.d)),
+    done = histo.filter(x => x.d >= from),
     F = coFigures(done),
-    C = coChiffre(from, TODAY),
-    eleves = new Set(gs.flatMap(coStu)),
+    C = fromServer ? srv.data.chiffres[0] : coChiffre(from, TODAY),
+    eleves = new Set(gs.flatMap(coStu).concat(histo.flatMap(x => coStu(x.g)))),
     act = gs.filter(g => coIsGrp(g) && !coOver(g)),
     fillG = act.filter(g => g.max),
     fill = fillG.length
@@ -569,13 +625,13 @@ function coDash() {
     terrain = act.reduce((a, g) => a + durMin(g.dur), 0) / 60;
   // évolution mois par mois (12 derniers mois, ou depuis la rentrée)
   const months = [],
-    C12 = coChiffre(isoIn(-400), TODAY);
+    C12 = fromServer ? srv.data.chiffres[1] : coChiffre(isoIn(-400), TODAY);
   for (let i = 11; i >= 0; i--) {
     const [y, m] = TODAY.split('-').map(Number),
       d = new Date(y, m - 1 - i, 1),
       a = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01',
       z = isoIn(-1, new Date(d.getFullYear(), d.getMonth() + 1, 1).toISOString().slice(0, 10)),
-      l = coSessions(a, z < TODAY ? z : TODAY).filter(x => !isCx(x.g, x.d));
+      l = histo.filter(x => x.d >= a && x.d <= (z < TODAY ? z : TODAY));
     if (per !== 'an' && a < coSeasonStart()) continue;
     months.push([MOIS[d.getMonth()], coFigures(l), C12.parMois[a.slice(0, 7)] || 0]);
   }

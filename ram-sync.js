@@ -989,11 +989,14 @@
       await pull();
     } catch (x) {
       if (x.status === 401 || x.status === 404) {
+        if (x.status === 401) R.cacheClear();
+        else cacheDrop(R.club);
         stop();
         toast(x.status === 401 ? 'Ta session /RAM a expiré : reconnecte-toi' : 'Tu ne fais plus partie de ce club');
       } else console.warn('/RAM Club : synchronisation', x.message);
     } finally {
       busy = false;
+      cacheSoon();
       if (again) {
         again = false;
         setTimeout(tick, 50);
@@ -1363,6 +1366,15 @@
     s[R.club] = Date.now();
     LS.set('ram-seen', J(s));
   }
+  /* nouveautés dans un autre de mes clubs : pastilles recalculées, au plus une fois toutes les 10 secondes */
+  let badgesT = null;
+  function badgesSoon() {
+    if (!badgesT)
+      badgesT = setTimeout(() => {
+        badgesT = null;
+        badges();
+      }, 10000);
+  }
   async function badges() {
     if (!R.live || R.clubs.length < 2) return;
     seenNow();
@@ -1389,7 +1401,7 @@
     // accès validé par le bureau ou rôle changé : ce qu'on a le droit de voir change, on recharge tout le club
     if (d.me && (d.me.valid !== R.valid || d.me.role !== R.role)) {
       const opened = d.me.valid && !R.valid;
-      await start(R.club);
+      await start(R.club, { plein: true });
       if (opened) toast('Ton accès au club est validé : bienvenue !');
       return;
     }
@@ -1398,16 +1410,16 @@
     if (d.wallet) {
       const ch = !R.wallet || R.wallet.earned !== d.wallet.earned;
       R.wallet = d.wallet;
-      if (ch && !d.items.length && S.tab === 'club') render(true);
+      if (ch && !d.items.length && S.tab === 'club') safeRender();
     }
     if (d.reads && JSON.stringify(d.reads) !== JSON.stringify(R.reads)) {
       R.reads = d.reads;
-      if (!d.items.length && view().v === 'chan') render(true);
+      if (!d.items.length && view().v === 'chan') safeRender();
     }
     if (d.scores) {
       const ch = Object.keys(d.scores).some(k => d.scores[k] !== R.scores[k]);
       R.scores = d.scores;
-      if (ch && !d.items.length) render(true);
+      if (ch && !d.items.length) safeRender();
     }
     if (!d.items.length) {
       R.rev = d.rev;
@@ -1422,6 +1434,8 @@
       })
     );
     fresh = [];
+    const first = R.cacheFirst;
+    R.cacheFirst = false;
     d.items.forEach(it => {
       const k = it.coll + '/' + it.id,
         b = R.base.get(k);
@@ -1438,11 +1452,15 @@
         R.base.set(k, { data: it.data });
         return;
       }
-      applyItem(it, false);
+      applyItem(it, first);
     });
     R.rev = d.rev;
     derive();
     trophyCheck(); // compteurs, trophées décernés par le club
+    if (first) {
+      safeRender();
+      return;
+    }
     // nouveau message dans la discussion ouverte : il apparaît avec une animation et l'écran défile jusqu'à lui
     const v0 = view(),
       here = v0.v === 'chan' ? 'c:' + v0.id : v0.v === 'rec' ? 'r:' + v0.id : '';
@@ -1525,8 +1543,20 @@
       return;
     }
     pend = false;
+    // le texte tapé puis laissé dans un champ de l'écran (thème de séance…) survit au redessin
+    const main = $('main'),
+      keep = main
+        ? [...main.querySelectorAll('input[id],textarea[id]')]
+            .filter(i => !['checkbox', 'radio', 'file', 'hidden'].includes(i.type) && i.value !== i.defaultValue)
+            .map(i => [i.id, i.value])
+        : [];
     ramRender(true);
+    keep.forEach(([id, v]) => {
+      const e = $(id);
+      if (e) e.value = v;
+    });
   }
+  window.ramSafeRender = safeRender; // pour les mises à jour qui arrivent toutes seules (autres clubs de /RAM Coach)
   document.addEventListener('focusout', () =>
     setTimeout(() => {
       if (pend && R.live) safeRender();
@@ -1550,12 +1580,19 @@
   function listen() {
     if (es) es.close();
     if (!window.EventSource) return;
-    es = new EventSource('/api/ram/c/' + R.club + '/events', { withCredentials: true });
+    // une seule connexion pour tous mes clubs : le club ouvert se met à jour aussitôt ; les autres clubs où j'enseigne
+    // (/RAM Coach : ramOtherClub) aussi ; pour les autres, les pastilles de nouveautés
+    es = new EventSource('/api/ram/events', { withCredentials: true });
     es.onmessage = ev => {
       let d = {};
       try {
         d = JSON.parse(ev.data);
       } catch (x) {}
+      if (d.club && d.club !== R.club) {
+        if (d.typing || d.rev < 0) return;
+        if (!(window.ramOtherClub && ramOtherClub(d.club, d.rev))) badgesSoon();
+        return;
+      }
       if (d.typing) {
         if (window.ramTyping) ramTyping(d.typing);
         return;
@@ -1638,8 +1675,88 @@
     TODAY = isoOf(new Date());
     S.plan.d = TODAY;
   }
-  async function start(id) {
-    const d = await api('/api/ram/c/' + id + '/sync?since=0');
+  /* ---------- cache sur l'appareil (IndexedDB) : l'appli s'ouvre aussitôt avec le dernier état connu, puis seules les nouveautés
+     arrivent. Un état par compte, club et appli, refait à neuf au bout de 7 jours ; tout est effacé à la déconnexion. ---------- */
+  const CACHE_V = 1,
+    CACHE_TTL = 7 * 864e5;
+  const cacheDb = () =>
+    new Promise((ok, ko) => {
+      const q = indexedDB.open('ram-cache', 1);
+      q.onupgradeneeded = () => q.result.createObjectStore('clubs');
+      q.onsuccess = () => ok(q.result);
+      q.onerror = () => ko(q.error);
+    });
+  const cacheKey = id => [(R.user && R.user.id) || '', id, window.RAM_APP || 'club'].join('|');
+  async function cacheRun(mode, fn) {
+    try {
+      const db = await cacheDb();
+      return await new Promise((ok, ko) => {
+        const t = db.transaction('clubs', mode),
+          q = fn(t.objectStore('clubs'));
+        t.oncomplete = () => {
+          db.close();
+          ok(q && q.result);
+        };
+        t.onerror = t.onabort = () => {
+          db.close();
+          ko(t.error);
+        };
+      });
+    } catch (x) {
+      return null; // navigation privée, stockage plein… : l'appli fonctionne sans cache
+    }
+  }
+  async function cacheGet(id) {
+    if (!R.user || !R.user.id || !window.indexedDB) return null;
+    const c = await cacheRun('readonly', s => s.get(cacheKey(id)));
+    return c && c.v === CACHE_V && Date.now() - c.full < CACHE_TTL ? c : null;
+  }
+  const cacheDrop = id => cacheRun('readwrite', s => s.delete(cacheKey(id)));
+  R.cacheClear = () => cacheRun('readwrite', s => s.clear());
+  let cacheT = null,
+    cacheRev = 0;
+  function cacheSoon() {
+    if (cacheT || !R.live || R.rev === cacheRev || !R.user || !R.user.id || !window.indexedDB) return;
+    cacheT = setTimeout(() => {
+      cacheT = null;
+      if (!R.live) return;
+      cacheRev = R.rev;
+      const items = [];
+      R.base.forEach((v, k) => {
+        const i = k.indexOf('/');
+        items.push({ coll: k.slice(0, i), id: k.slice(i + 1), data: v.data });
+      });
+      const row = {
+        v: CACHE_V,
+        full: R.fullAt,
+        rev: R.rev,
+        me: { key: R.key, role: R.role, valid: R.valid, super: S.super || undefined },
+        club: R.clubInfo,
+        fol: R.fol,
+        roles: R.roles,
+        scores: R.scores,
+        reads: R.reads,
+        counts: R.counts,
+        jaTitles: R.jaTitles,
+        wallet: R.wallet,
+        more: R.more,
+        postsBefore: R.postsBefore,
+        histoAvant: R.histoAvant,
+        histoOk: R.histoOk,
+        items
+      };
+      const k = cacheKey(R.club);
+      cacheRun('readwrite', s => s.put(row, k));
+    }, 4000);
+  }
+  async function start(id, opts = {}) {
+    // /RAM Coach : ouverture allégée, l'historique des cours et des séances arrive à la demande (loadHisto)
+    const mem = opts.plein ? null : await cacheGet(id);
+    const d =
+      mem || (await api('/api/ram/c/' + id + '/sync?since=0' + (window.RAM_APP === 'coach' ? '&fenetre=1' : '')));
+    R.fullAt = mem ? mem.full : Date.now();
+    R.clubInfo = d.club;
+    R.cacheFirst = !!mem; // les nouveautés d'après le cache : sans notification, comme à une ouverture normale
     seenNow(); // le club que je quitte : vu jusqu'ici
     stop();
     wipe();
@@ -1655,6 +1772,8 @@
     R.scores = d.scores || {};
     R.reads = d.reads || {}; // coches : jusqu'où tous les autres membres de chaque groupe ont lu
     R.more = d.more || {}; // discussions qui ont des messages plus anciens que ceux reçus à l'ouverture
+    R.histoAvant = d.histoAvant || '';
+    R.histoOk = !!d.histoOk;
     R.postsBefore = d.postsBefore || 0; // publications plus anciennes que celles reçues à l'ouverture (à partir de ce moment)
     R.counts = d.counts || {};
     R.jaTitles = d.jaTitles || {}; // titres de juge-arbitre /RAM JA des adhérents (badge)
@@ -1765,6 +1884,25 @@
       })
       .catch(() => toast('Messages plus anciens indisponibles pour le moment'));
   };
+  /* /RAM Coach : l'historique du club ouvert, une seule fois ; vrai si quelque chose est arrivé */
+  R.loadHisto = async () => {
+    if (!R.live || !R.histoAvant || R.histoOk) return false;
+    R.histoOk = true;
+    try {
+      const r = await api('/api/ram/c/' + R.club + '/histo?avant=' + R.histoAvant);
+      r.items.forEach(it => {
+        const k = it.coll + '/' + it.id;
+        if (R.base.has(k)) return;
+        R.base.set(k, { data: it.data });
+        applyItem(it, true);
+      });
+      derive();
+      return true;
+    } catch (x) {
+      R.histoOk = false;
+      return false;
+    }
+  };
   /* publications plus anciennes du mur, 20 par 20, avec leurs derniers commentaires */
   A.ramOlderPosts = () => {
     if (!R.postsBefore) return;
@@ -1839,7 +1977,7 @@
       stack = S.stack.slice(),
       ct = S.clubTab,
       ag = S.ecTab;
-    await start(R.club);
+    await start(R.club, { plein: true });
     S.tab = tab;
     S.stack = stack.filter(
       v =>
