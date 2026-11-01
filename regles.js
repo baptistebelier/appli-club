@@ -149,11 +149,16 @@
     keys.forEach(k => {
       const achats = ((eleves || {})[k] || {}).achats || [];
       achats.forEach(a => {
-        if (!(a.d >= from && a.d <= to)) return;
-        const p = prixAchat(a, offres);
-        encaisse += p;
-        const m = String(a.d).slice(0, 7);
-        parMois[m] = (parMois[m] || 0) + p;
+        // un achat sans échéances est réglé le jour de l'achat ; avec : chaque paiement à sa date, le reste à encaisser
+        const ech = a.pay && Array.isArray(a.pay.ech) ? a.pay.ech : null,
+          regle = ech ? ech.filter(x => x.ok).map(x => [x.ok, +x.m || 0]) : [[a.d, prixAchat(a, offres)]];
+        regle.forEach(([d, p]) => {
+          if (!(d >= from && d <= to)) return;
+          encaisse += p;
+          const m = String(d).slice(0, 7);
+          parMois[m] = (parMois[m] || 0) + p;
+        });
+        if (ech && a.d <= to) ech.forEach(x => !x.ok && (aEncaisser += +x.m || 0));
       });
       const cov = couverture(
         achats.filter(a => a.d <= to),
@@ -175,7 +180,56 @@
     return { encaisse: r(encaisse), aEncaisser: r(aEncaisser), prepaye: r(prepaye), nonCouvertes, parMois };
   }
 
+  /* qui peut lire une discussion. ch.acces : tous, groupe (les membres du groupe) ou invite ; ch.plus et ch.moins : les
+     ajouts et retraits à la main, qui priment sur la règle. Sans règle choisie : la discussion d'un groupe est réservée
+     à ses membres, les autres sont ouvertes à tous. Le bureau et les enseignants passent avant cette règle (ctx.staff). */
+  const chanRegle = ch => !!ch && !!(ch.acces || (ch.plus || []).length || (ch.moins || []).length);
+  function chanOuvert(ch, g, keys) {
+    if (!ch) return false;
+    if ((ch.moins || []).some(k => keys.includes(k))) return false;
+    if ((ch.plus || []).some(k => keys.includes(k))) return true;
+    const acces = ch.acces || (g ? 'groupe' : 'tous');
+    if (acces === 'invite') return false;
+    if (acces === 'groupe')
+      return !!g && [...(g.mem || []), ...(g.ext || []), g.coach, g.cap].some(k => k && keys.includes(k));
+    return true;
+  }
+
+  /* réservation : les plages libres d'un coach un jour donné, en minutes depuis minuit.
+     dispos : [{ jour (0 dimanche), du: '09:00', au: '12:00', lieu }] ; occupes : [[début, fin]] ses cours du jour ;
+     conges : ses vacances [{ du, au }] ; mini : la durée la plus courte qu'on peut réserver */
+  const hhmmMin = s => {
+    const m = String(s || '').match(/^(\d{1,2}):(\d{2})$/);
+    return m ? +m[1] * 60 + +m[2] : 0;
+  };
+  function plagesLibres(dispos, iso, occupes, conges, mini) {
+    if ((conges || []).some(o => iso >= o.du && iso <= o.au)) return [];
+    const wd = dowOf(iso),
+      out = [];
+    (dispos || [])
+      .filter(x => +x.jour === wd)
+      .forEach(x => {
+        let l = [[hhmmMin(x.du), hhmmMin(x.au)]];
+        (occupes || []).forEach(([a, b]) => {
+          l = l.flatMap(([u, v]) =>
+            b <= u || a >= v
+              ? [[u, v]]
+              : [
+                  [u, a],
+                  [b, v]
+                ].filter(([p, q]) => q > p)
+          );
+        });
+        l.forEach(([du, au]) => out.push({ du, au, lieu: x.lieu || '' }));
+      });
+    return out.filter(p => p.au - p.du >= (mini || 0)).sort((a, b) => a.du - b.du);
+  }
+
   return {
+    plagesLibres,
+    hhmmMin,
+    chanRegle,
+    chanOuvert,
     trainOn,
     durMin,
     fmt,

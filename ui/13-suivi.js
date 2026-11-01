@@ -172,11 +172,11 @@ function proBody(k) {
     gs = GROUPS.filter(g => g.type === 'train' && g.coach === k && !g.once && !(g.to && g.to < TODAY)),
     off = proOffers(k),
     yrs = p.since ? +TODAY.slice(0, 4) - +p.since : 0,
-    row = (l, v) => (v ? `<div class="prow"><span class="muted">${l}</span><span>${v}</span></div>` : ''),
+    tile = (i, v, l) => (v ? `<div class="ptile">${ic(i)}<b>${v}</b><span>${l}</span></div>` : ''),
     web = svLink(toUrlP(p.web)),
     book = svLink(toUrlP(p.book)),
     tel = String(p.tel || '').replace(/[^+\d]/g, '');
-  return `<div class="pbody">${p.bio ? `<p>${esc(p.bio)}</p>` : ''}${row('Diplôme', esc(p.dip || ''))}${row('Enseigne depuis', p.since ? esc(p.since) + (yrs > 0 ? ` (${yrs} an${yrs > 1 ? 's' : ''})` : '') : '')}${row('Âge', p.age && M[k].bd ? age(k) + ' ans' : '')}${row('Sports', esc(p.sports || [...new Set(gs.map(g => g.sport))].join(', ')))}${row('Groupes', gs.map(g => esc(g.name)).join(', '))}${row('Téléphone', p.tel ? `<a href="tel:${tel}">${esc(p.tel)}</a>` : '')}${row('E-mail', p.mail ? `<a href="mailto:${esc(p.mail)}">${esc(p.mail)}</a>` : '')}${row('Site internet', web ? `<a href="${esc(web)}" target="_blank" rel="noopener">${esc(String(p.web).replace(/^https?:\/\//, ''))}</a>` : '')}${
+  return `<div class="pbody">${p.bio ? `<p>${esc(p.bio)}</p>` : ''}<div class="ptiles">${tile('diploma', esc(p.dip || ''), 'Diplôme')}${tile('cal', p.since ? (yrs > 0 ? yrs + ' an' + (yrs > 1 ? 's' : '') : esc(p.since)) : '', p.since ? 'Enseigne depuis ' + esc(p.since) : '')}${tile('ball', esc(p.sports || [...new Set(gs.map(g => g.sport))].join(', ')), 'Sports')}${tile('user', p.age && M[k].bd ? age(k) + ' ans' : '', 'Âge')}</div><div class="pcontact">${p.tel ? `<a href="tel:${tel}">${ic('phone')}${esc(p.tel)}</a>` : ''}${p.mail ? `<a href="mailto:${esc(p.mail)}">${ic('mail')}${esc(p.mail)}</a>` : ''}${web ? `<a href="${esc(web)}" target="_blank" rel="noopener">${ic('link')}${esc(String(p.web).replace(/^https?:\/\//, ''))}</a>` : ''}</div>${gs.length ? `<button class="item" data-a="proGroups" data-id="${k}"><span class="tile">${ic('users')}</span><span class="grow"><span class="nm">Ses groupes</span><br><span class="muted small">${gs.length} groupe${gs.length > 1 ? 's' : ''}</span></span></button>` : ''}${
     off && off.formules.length
       ? proOffersHtml(off)
       : proLines(p.tarifs).length
@@ -184,7 +184,7 @@ function proBody(k) {
             .map(x => `<li>${esc(x)}</li>`)
             .join('')}</ul>`
         : ''
-  }<div class="ctl" style="flex-wrap:wrap">${book ? `<a class="btn grow" href="${esc(book)}" target="_blank" rel="noopener">${ic('cal')}Réserver une séance</a>` : ''}${tel ? `<a class="btn grow ghost" href="tel:${tel}">${ic('phone')}Appeler</a>` : ''}${p.mail ? `<a class="btn grow ghost" href="mailto:${esc(p.mail)}">${ic('mail')}Écrire</a>` : ''}${k !== ME() ? `<button class="btn grow ghost" data-a="member" data-id="${k}">${ic('user')}Profil</button>` : ''}</div></div>`;
+  }<div class="ctl" style="flex-wrap:wrap">${off && off.resa && k !== ME() ? `<button class="btn grow" data-a="open" data-v="resa" data-id="${k}">${ic('cal')}Réserver un cours</button>` : book ? `<a class="btn grow" href="${esc(book)}" target="_blank" rel="noopener">${ic('cal')}Réserver une séance</a>` : ''}${tel ? `<a class="btn grow ghost" href="tel:${tel}">${ic('phone')}Appeler</a>` : ''}${p.mail ? `<a class="btn grow ghost" href="mailto:${esc(p.mail)}">${ic('mail')}Écrire</a>` : ''}${k !== ME() ? `<button class="btn grow ghost" data-a="member" data-id="${k}">${ic('user')}Profil</button>` : ''}</div></div>`;
 }
 /* formules et tarifs d'un enseignant (rangés sur son compte /RAM), lus une fois par enseignant */
 const PRO_OFF = {};
@@ -230,8 +230,19 @@ function proOffersHtml(o) {
       );
     })
     .join('');
-  const abos = o.abos
+  const seen = {},
+    abRows = o.abos.filter(a => !a.ens || (seen[a.ens] ? false : (seen[a.ens] = 1)));
+  const abos = abRows
     .map(a => {
+      if (a.ens) {
+        const l = o.abos.filter(x => x.ens === a.ens),
+          min = Math.min(...l.map(x => +x.prix || 0));
+        return line(
+          esc(a.ens),
+          (l.length > 1 ? 'dès ' : '') + e(min),
+          l.map(x => `${esc(x.nom)} : ${e(x.prix)} ${abPer(x)}`).join('<br>')
+        );
+      }
       const f = o.formules.find(x => x.id === a.formule),
         eng = abEng(a),
         det = [

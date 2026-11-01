@@ -35,22 +35,34 @@ function coSelBar() {
 
 /* ---------- formule d'un groupe : ce qu'il suit et où il en est ---------- */
 function coGrpOffer(g) {
-  if (!g.offre || typeof ofLabel !== 'function') return '';
-  const [t, ref] = g.offre.split(':'),
-    pk = t === 'pack' ? OFFRES.packs.find(p => p.id === ref) : null,
-    done = coDates(g, g.from || isoIn(-365), TODAY).filter(d => !isCx(g, d)).length,
-    left = coDates(g, isoIn(1), g.to || isoIn(180)).length;
-  return `<div class="cokv"><span class="muted">Formule</span><b>${esc(ofLabel(t, ref))}</b></div>${pk ? `<div class="cokv"><span class="muted">Avancement</span><b>${Math.min(done, pk.seances)} sur ${pk.seances} séances${left ? ' · ' + left + ' à venir' : ''}</b></div>` : ''}`;
+  const [t, ref] = (g.offre || '').split(':'),
+    found = !g.offre
+      ? null
+      : t === 'pack'
+        ? OFFRES.packs.find(p => p.id === ref)
+        : t === 'abo'
+          ? OFFRES.abos.find(a => a.id === ref)
+          : foOf(ref),
+    act = !found
+      ? 'data-a="open" data-v="formules"'
+      : `data-a="${t === 'pack' ? 'coPkEdit' : t === 'abo' ? 'coAbEdit' : 'coFoEdit'}" data-id="${ref}"`;
+  return `<button class="cotile cotile-go" ${act}>${ic('ball')}<b class="cotxt">${found ? esc(ofLabel(t, ref)) : 'À choisir'}</b><span>Formule · modifier</span></button>`;
 }
+/* la jauge du cycle (ui/7-ecole.js), avec la taille du pack */
+const coCycleBar = g => {
+  const pk = (g.offre || '').startsWith('pack:') ? OFFRES.packs.find(p => p.id === g.offre.slice(5)) : null;
+  return cycleBar(g, pk ? ' · pack de ' + pk.seances : '');
+};
 
 /* ---------- périodes sans cours (vacances scolaires, fermeture du club…) ----------
    g.off = [{ nom, du, au }] : le créneau du groupe ne donne pas de séance ces jours-là (data.js trainOn) ;
    une séance ajoutée à la main pendant une période (g.extra) a lieu quand même */
 function coOffHtml(g) {
   if (g.once) return '';
+  const hits = coVacHits().filter(x => x.g === g);
   const l = (g.off || []).slice().sort((a, b) => a.du.localeCompare(b.du)),
     past = o => o.au < TODAY;
-  return `${hd('Périodes sans cours', `<button class="chip" data-a="coOffAdd" data-id="${g.id}">${ic('plus')}Ajouter</button>`)}${
+  return `${hd(ic('ban') + 'Périodes sans cours', `<button class="chip" data-a="coOffAdd" data-id="${g.id}">${ic('plus')}Ajouter</button>`)}${
     l.length
       ? list(
           l
@@ -61,8 +73,188 @@ function coOffHtml(g) {
             .join('')
         )
       : `<div class="card"><p class="muted small">Vacances scolaires, fermeture du club : pendant ces périodes, le créneau du groupe ne donne pas de séance.</p></div>`
-  }`;
+  }<div class="card"><div class="cokv"><span class="muted">Pendant les vacances du club</span><span class="cocyc"><span class="muted small">${g.vacClub ? 'Le cycle s’arrête' : 'Le cycle continue'}</span><button class="tg" role="switch" aria-checked="${!!g.vacClub}" data-a="coVacFollow" data-id="${g.id}" aria-label="${esc(g.name)} : suivre les vacances du club"></button></span></div>${hits.length ? `<p class="small">${plural(hits.length, 'séance tombe', 'séances tombent')} pendant des vacances : ${hits.map(x => fmtD(x.d)).join(', ')}.</p><button class="btn sm ghost full" data-a="coVacClear" data-id="${g.id}">${ic('trash')}Retirer ces séances</button>` : ''}</div>`;
 }
+
+/* ---------- vacances : celles de l'enseignant (OFFRES.conges) et celles de chaque club (OFFRES.vacClubs[club]) ----------
+   rangées sur le compte de l'enseignant. Aucune séance n'est proposée pendant ses vacances ; un groupe qui suit les
+   vacances du club (g.vacClub) n'en propose pas non plus pendant celles-ci. Une séance déjà programmée n'est jamais
+   retirée d'office : elle est signalée, à traiter d'un geste. Copier les vacances du club est fait une fois, sans lien. */
+const coVacClub = c => ((OFFRES.vacClubs || {})[c] || []).slice();
+const coVacOff = g => (g.off || []).concat(OFFRES.conges || [], g.vacClub ? coVacClub(coClubOf(g)) : []);
+/* les séances à venir qui tombent pendant des vacances */
+function coVacHits() {
+  const out = [],
+    in_ = (d, l) => l.find(o => d >= o.du && d <= o.au);
+  coGroups('', true)
+    .filter(g => coIsGrp(g) && !coOver(g))
+    .forEach(g => {
+      const me = OFFRES.conges || [],
+        cl = g.vacClub ? coVacClub(coClubOf(g)) : [];
+      if (!me.length && !cl.length) return;
+      coDates(g, isoIn(1), g.to && g.to < isoIn(365) ? g.to : isoIn(365)).forEach(d => {
+        const o = !isCx(g, d) && (in_(d, me) || in_(d, cl));
+        if (o) out.push({ g, d, o });
+      });
+    });
+  return out.sort((a, b) => a.d.localeCompare(b.d));
+}
+function coVacList(kind, l) {
+  return l.length
+    ? l
+        .slice()
+        .sort((a, b) => a.du.localeCompare(b.du))
+        .map(
+          o =>
+            `<div class="cokv"><span>${esc(o.nom || 'Vacances')}<br><span class="muted small">Du ${fmtD(o.du)} au ${fmtD(o.au)}</span></span><button class="ib" data-a="coVacDel" data-k="${kind}" data-du="${o.du}" data-au="${o.au}" aria-label="Retirer ${esc(o.nom || 'cette période')}">${ic('x')}</button></div>`
+        )
+        .join('')
+    : '<p class="muted small">Aucune période.</p>';
+}
+function coVacCard() {
+  const clubs = coClubList(),
+    hits = coVacHits();
+  return coPCard(
+    'Disponibilités',
+    'Mes vacances',
+    `${coVacList('me', OFFRES.conges || [])}<div class="cotools"><button class="btn sm ghost" data-a="coVacAdd" data-k="me">${ic('plus')}Ajouter</button>${clubs.length ? `<button class="btn sm ghost" data-a="coVacCopy">${ic('calmove')}Calquer sur les vacances du club</button>` : ''}</div>${clubs
+      .map(
+        c =>
+          `<span class="kicker" style="margin-top:12px">Vacances du club · ${esc(c.name)}</span>${coVacList(c.id, coVacClub(c.id))}<button class="btn sm ghost full" data-a="coVacAdd" data-k="${c.id}">${ic('plus')}Ajouter une période</button>`
+      )
+      .join(
+        ''
+      )}${hits.length ? `<span class="kicker" style="margin-top:12px">${plural(hits.length, 'séance programmée', 'séances programmées')} pendant des vacances</span><div class="list">${hits.map(x => `<button class="item" data-a="open" data-v="seance" data-id="${sesKey(x.g, x.d)}"><span class="tile">${ic('cal')}</span><span class="grow"><span class="nm">${esc(x.g.name)}</span><br><span class="muted small">${fmtD(x.d)} · ${esc(x.o.nom || 'Vacances')}</span></span></button>`).join('')}</div><button class="btn sm ghost full" data-a="coVacClear">${ic('trash')}Retirer ces séances</button>` : ''}<p class="muted small">Ces périodes sont les tiennes : un autre enseignant du club règle les siennes. Rien n'est retiré du planning sans ton geste.</p>`
+  );
+}
+/* ---------- disponibilités : les périodes où je travaille, par jour et par lieu ----------
+   première étape de la réservation : le planning montre ce qui reste libre. Personne ne réserve encore sur ces plages. */
+const COJOURS = [1, 2, 3, 4, 5, 6, 0];
+const hMinTxt = n => Math.floor(n / 60) + ' h' + (n % 60 ? ' ' + String(n % 60).padStart(2, '0') : '');
+const coOccupe = d =>
+  coSessions(d, d, 'me', 1)
+    .filter(x => !isCx(x.g, x.d))
+    .map(x => [hMin(x.g.h), hMin(x.g.h) + durMin(x.g.dur)]);
+/* ce qui reste libre un jour donné (au moins une heure) ; rien pour un jour passé */
+const coLibre = d => (d < TODAY ? [] : REGLES.plagesLibres(OFFRES.dispos, d, coOccupe(d), OFFRES.conges, 60));
+const coLibreHtml = d =>
+  coLibre(d)
+    .map(
+      p =>
+        `<div class="cofree">${ic('clock')}<span>Libre ${hMinTxt(p.du)} – ${hMinTxt(p.au)}${p.lieu ? ' · ' + esc(p.lieu) : ''}</span></div>`
+    )
+    .join('');
+function coDispoCard() {
+  const l = OFFRES.dispos || [];
+  return coPCard(
+    'Réservation',
+    'Mes disponibilités',
+    `${
+      COJOURS.filter(j => l.some(x => +x.jour === j))
+        .map(j =>
+          l
+            .map((x, i) => [x, i])
+            .filter(([x]) => +x.jour === j)
+            .sort((a, b) => a[0].du.localeCompare(b[0].du))
+            .map(
+              ([x, i]) =>
+                `<div class="cokv"><span>${DAYS[j]}<br><span class="muted small">${esc(x.du)} – ${esc(x.au)}${x.lieu ? ' · ' + esc(x.lieu) : ''}</span></span><button class="ib" data-a="coDispoDel" data-i="${i}" aria-label="Retirer ${DAYS[j]} ${esc(x.du)}">${ic('x')}</button></div>`
+            )
+            .join('')
+        )
+        .join('') ||
+      '<p class="muted small">Indique quand tu travailles : ce qui reste libre s’affiche dans ton planning.</p>'
+    }<button class="btn sm ghost full" data-a="coDispoAdd">${ic('plus')}Ajouter une période</button><p class="muted small">Les élèves ne peuvent pas encore réserver sur ces plages.</p>`
+  );
+}
+Object.assign(A, {
+  coDispoAdd() {
+    sheet(
+      'Période de travail',
+      `<form class="body" id="co-dispo"><div class="fld"><label for="co-di-j">Jour</label><select id="co-di-j">${COJOURS.map(j => `<option value="${j}">${DAYS[j]}</option>`).join('')}</select></div><div class="row" style="gap:8px"><div class="fld grow"><label for="co-di-d">De</label><input id="co-di-d" type="time" required value="09:00"></div><div class="fld grow"><label for="co-di-a">À</label><input id="co-di-a" type="time" required value="12:00"></div></div>${O('co-di-l', 'Lieu (facultatif)', 'Le club, le nom d’un site…')}<button class="btn full">Enregistrer</button></form>`
+    );
+  },
+  coDispoDel(d) {
+    OFFRES.dispos = (OFFRES.dispos || []).filter((x, i) => i !== +d.i);
+    ofSave('Période retirée');
+  },
+  coVacAdd(d) {
+    sheet(
+      d.k === 'me' ? 'Mes vacances' : 'Vacances du club',
+      `<form class="body" id="co-vac" data-k="${d.k}">${O('co-va-n', 'Nom', 'Vacances de Noël, stage, fermeture…')}<div class="row" style="gap:8px"><div class="fld grow"><label for="co-va-d">Du</label><input id="co-va-d" type="date" required value="${isoIn(1)}"></div><div class="fld grow"><label for="co-va-a">Au</label><input id="co-va-a" type="date" required value="${isoIn(8)}"></div></div><button class="btn full">Enregistrer</button></form>`
+    );
+  },
+  coVacDel(d) {
+    const keep = l => (l || []).filter(o => !(o.du === d.du && o.au === d.au));
+    if (d.k === 'me') OFFRES.conges = keep(OFFRES.conges);
+    else OFFRES.vacClubs = Object.assign({}, OFFRES.vacClubs, { [d.k]: keep(coVacClub(d.k)) });
+    ofSave('Période retirée');
+  },
+  /* la copie : une fois, à refaire si besoin. Plusieurs clubs : on choisit lequel */
+  coVacCopy(d) {
+    const clubs = coClubList();
+    if (!d.c && clubs.length > 1)
+      return sheet(
+        'Quel club copier ?',
+        `<div class="body"><div class="list">${clubs.map(c => `<button class="item" data-a="coVacCopy" data-c="${c.id}"><span class="tile">${ic('club')}</span><span class="grow"><span class="nm">${esc(c.name)}</span><br><span class="muted small">${plural(coVacClub(c.id).length, 'période')}</span></span></button>`).join('')}</div></div>`
+      );
+    const c = d.c || clubs[0].id,
+      l = coVacClub(c);
+    if (!l.length) return toast('Ce club n’a aucune période de vacances');
+    const seen = new Set((OFFRES.conges || []).map(o => o.du + o.au));
+    OFFRES.conges = (OFFRES.conges || []).concat(l.filter(o => !seen.has(o.du + o.au)));
+    closeSheet();
+    ofSave('Vacances du club copiées dans les tiennes');
+  },
+  coVacFollow(d) {
+    const g = grp(d.id);
+    if (g.vacClub) delete g.vacClub;
+    else g.vacClub = true;
+    coSave(g.vacClub ? 'Le groupe suit les vacances du club' : 'Le groupe continue pendant les vacances du club');
+  },
+  /* le geste : retirer les séances concernées (d'un groupe, ou toutes). Personne n'est prévenu, comme « Supprimer » */
+  coVacClear(d) {
+    const l = coVacHits().filter(x => !d.id || x.g.id === d.id);
+    if (
+      !confirm(
+        plural(l.length, 'séance', 'séances') +
+          ' retirée' +
+          (l.length > 1 ? 's' : '') +
+          ' du planning. Les élèves ne sont pas prévenus. Continuer ?'
+      )
+    )
+      return;
+    l.forEach(x => coDateOff(x.g, x.d));
+    coSave(plural(l.length, 'séance retirée', 'séances retirées'));
+  }
+});
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'co-dispo') return;
+  e.preventDefault();
+  const du = $('co-di-d').value,
+    au = $('co-di-a').value;
+  if (!du || !au || au <= du) return toast('La fin doit suivre le début');
+  const o = { jour: +$('co-di-j').value, du, au },
+    lieu = $('co-di-l').value.trim().slice(0, 60);
+  if (lieu) o.lieu = lieu;
+  OFFRES.dispos = (OFFRES.dispos || []).concat(o);
+  closeSheet();
+  ofSave('Période enregistrée');
+});
+document.addEventListener('submit', e => {
+  if (e.target.id !== 'co-vac') return;
+  e.preventDefault();
+  const k = e.target.dataset.k,
+    nom = $('co-va-n').value.trim().slice(0, 60),
+    du = $('co-va-d').value,
+    au = $('co-va-a').value;
+  if (!du || !au || au < du) return toast('La fin doit suivre le début');
+  const o = { nom, du, au };
+  if (k === 'me') OFFRES.conges = (OFFRES.conges || []).concat(o);
+  else OFFRES.vacClubs = Object.assign({}, OFFRES.vacClubs, { [k]: coVacClub(k).concat(o) });
+  closeSheet();
+  ofSave('Période enregistrée');
+});
 
 /* ---------- lieu : en salle par défaut, un interrupteur pour la saison en extérieur ----------
    g.defLoc : lieu des prochaines séances ; g.loc[date] : un jour précis (« Passer en salle » s'il pleut).
@@ -70,7 +262,7 @@ function coOffHtml(g) {
    (où « Extérieur » n'était qu'une valeur par défaut) passent une fois en salle (coLocInit). */
 const coLocTg = g => {
   const out = g.defLoc === 'Extérieur';
-  return `<div class="cokv"><span class="muted">${out ? 'Saison en extérieur · « Passer en salle » s’il pleut' : 'En salle · saison en extérieur au printemps'}</span><span class="cocyc"><span class="muted small">Extérieur</span><button class="tg" role="switch" aria-checked="${out}" data-a="coLocSeason" data-id="${g.id}" aria-label="${esc(g.name)} : ${out ? 'repasser en salle' : 'passer la saison en extérieur'}"></button></span></div>`;
+  return `<div class="cokv"><span class="muted coki">${ic(out ? 'sun' : 'home')}${out ? 'Saison en extérieur · « Passer en salle » s’il pleut' : 'En salle · saison en extérieur au printemps'}</span><span class="cocyc"><span class="muted small">Extérieur</span><button class="tg" role="switch" aria-checked="${out}" data-a="coLocSeason" data-id="${g.id}" aria-label="${esc(g.name)} : ${out ? 'repasser en salle' : 'passer la saison en extérieur'}"></button></span></div>`;
 };
 function coLocInit() {
   coGroups('', true).forEach(g => {
@@ -340,7 +532,7 @@ Object.assign(A, {
     const o = coPlanOf($('co-pl-o').value),
       n = parseInt($('co-pl-n').value, 10) || o.n || 10,
       s = $('co-pl-s').value || TODAY;
-    coPlanPaint(coPlanDates(s, n, +$('co-pl-r').value || 7, (grp($('co-plan').dataset.id) || {}).off));
+    coPlanPaint(coPlanDates(s, n, +$('co-pl-r').value || 7, coVacOff(grp($('co-plan').dataset.id) || {})));
   },
   coPlanAdd() {
     const l = coPlanRead(),
