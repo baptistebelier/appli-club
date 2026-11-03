@@ -5,13 +5,37 @@ let lastKey = '',
   lastFoot = '',
   slT,
   toastT;
+/* iPhone : après un glissement ou une animation de page, Safari peut ne repeindre que le haut de la zone qui défile
+   (le reste de la page reste vide jusqu'au prochain geste) : on force un nouveau dessin */
+function repeint() {
+  const m = $('main');
+  requestAnimationFrame(() => {
+    if (m.classList.contains('swipe-back') || m.classList.contains('swipe-done')) return;
+    m.style.transform = 'translateZ(0)';
+    requestAnimationFrame(() => {
+      m.style.transform = '';
+      const y = m.scrollTop;
+      if (y > 0) {
+        m.scrollTop = y - 1;
+        m.scrollTop = y;
+      }
+    });
+  });
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) repeint();
+});
+window.addEventListener('pageshow', () => repeint());
 function slide(c) {
   const m = $('main');
   m.classList.remove('pg-r', 'pg-l', 'sg-r', 'sg-l');
   void m.offsetWidth;
   m.classList.add(c);
   clearTimeout(slT);
-  slT = setTimeout(() => m.classList.remove(c), 320);
+  slT = setTimeout(() => {
+    m.classList.remove(c);
+    repeint();
+  }, 320);
 }
 const ROLE = {
   wait: 'Nouvel inscrit en attente de validation',
@@ -46,6 +70,7 @@ const TITLES = {
   post: () => ['Publication', club().name],
   art: () => ['Actus', club().name],
   partners: () => ['Partenaires', club().name],
+  partner: () => ['Partenaire', club().name],
   archive: () => ['Archives', 'Saisons précédentes'],
   join: () => ['Adhérents', 'Faire entrer le club']
 };
@@ -231,6 +256,7 @@ function render(keep) {
     S.dir = 0;
   }
   S.dir = 0;
+  if (key !== lastKey) repeint();
   lastKey = key;
   lastFoot = fk;
 }
@@ -304,5 +330,5 @@ const menuSheet = (title, items) =>
 function commentsBody(p) {
   const ref = 'p:' + p.id,
     l = p.com.map((m, i) => msgRow(m, i, postSport(p), ref)).join('');
-  return `<div class="body chat com" id="com-list">${l ? lpHelp() + l : emptyCard('com', 'Aucun commentaire', 'Sois le premier à réagir.')}${typingSlot(ref)}</div><div class="foot"><form class="composer" id="com-form" data-id="${p.id}"><textarea id="com-input" class="ta" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Ajouter un commentaire" aria-label="Commentaire"></textarea><button class="send" aria-label="Publier">${ic('send')}</button></form></div>`;
+  return `<div class="body chat com" id="com-list">${l ? lpHelp() + l : emptyCard('com', 'Aucun commentaire', 'Sois le premier à réagir.')}${typingSlot(ref)}</div><div class="foot"><div class="att" id="att" hidden></div><form class="composer" id="com-form" data-id="${p.id}"><textarea id="com-input" class="ta" rows="1" autocomplete="off" autocorrect="on" autocapitalize="sentences" spellcheck="true" enterkeyhint="enter" placeholder="Ajouter un commentaire" aria-label="Commentaire"></textarea><button class="send" aria-label="Publier">${ic('send')}</button></form></div>`;
 }
