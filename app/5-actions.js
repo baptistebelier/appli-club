@@ -309,7 +309,7 @@ const A = {
     render(true);
     toast(
       r[d.u] === 'ok'
-        ? 'Présence confirmée'
+        ? "Présence confirmée · l'enseignant est prévenu"
         : r[d.u] === 'no'
           ? "Absence signalée · l'enseignant est prévenu"
           : 'Réponse retirée'
@@ -453,6 +453,9 @@ const A = {
   readh() {
     const me = ME();
     if (JOINREQ.some(j => j.id === me)) return;
+    // synchronisé : le bureau est prévenu (lib/pushnotif.js)
+    M[me].req = S.season;
+    M[me].via = "une reprise d'adhésion";
     JOINREQ.push({
       id: me,
       n: M[me].n,
@@ -702,8 +705,9 @@ const A = {
       ev && ['image', "Terminer l'événement", 'evDone', at],
       adm && p.kind !== 'ad' && ['flag', p.pin ? 'Détacher du haut du mur' : 'Épingler en haut du mur', 'pin', at],
       (mine || adm) &&
-        ['annonce', 'event', 'cta', 'poll', 'comm', 'play'].includes(p.kind) &&
+        ['annonce', 'event', 'cta', 'poll', 'comm', 'play', 'niveaux'].includes(p.kind) &&
         !p.arch && ['edit', 'Modifier', 'pedit', at],
+      mine && ['perf', 'padel'].includes(p.kind) && !p.arch && ['edit', 'Modifier', 'pedit', at],
       (mine || adm) && ['trash', 'Supprimer', 'pdel', at, 1],
       !mine && ['flag', 'Signaler cette publication', 'preport', at],
       !mine && p.by !== 'club' && ['block', 'Bloquer ' + first(p.by), 'block', `data-id="${p.by}"`, 1]
@@ -760,7 +764,11 @@ const A = {
           .replace(/&quot;/g, '"')
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>');
+    closeSheet();
     if (p.kind === 'play') return playEdit(p);
+    if (p.kind === 'niveaux') return nvEdit(p);
+    if (p.kind === 'perf') return resEdit(p);
+    if (p.kind === 'padel') return presEdit(p);
     sheet(
       'Modifier',
       `<form class="body" id="edit-form" data-id="${p.id}">${p.kind === 'poll' ? F('e-title', 'Question', '', plain(p.q)) : F('e-title', 'Titre', '', plain(p.title)) + T('e-body', 'Texte', '', plain(p.body))}${p.kind === 'event' ? F('e-place', 'Lieu', '', plain(p.place)) + (p.d ? evWhenFields(p) : '') : ''}${p.kind === 'poll' ? '' : `<div class="fld"><label for="a-img">${p.img ? 'Remplacer la photo de couverture' : 'Ajouter une photo de couverture'}</label><input type="file" id="a-img" accept="image/*"><div class="prev" id="a-prev" ${p.img ? `style="background-image:url(${p.img})"` : 'hidden'}></div>${p.img ? `<label class="chk" for="e-noimg"><input type="checkbox" id="e-noimg">Retirer la photo</label>` : ''}</div>`}<button class="btn full">Enregistrer</button></form>`
@@ -1243,12 +1251,12 @@ const A = {
       ['ball', 'Tournoi de padel', 'resultP']
     ]);
   },
-  resultP() {
+  resultP(d) {
     const mates = Object.keys(M)
       .filter(k => k !== 'club' && k !== ME() && M[k].role !== 'Jeune' && (M[k].pad || M[k].pl))
       .sort((a, b) => M[a].n.localeCompare(M[b].n));
     sheet(
-      'Tournoi de padel',
+      (d && d.titre) || 'Tournoi de padel',
       `<form class="body" id="pres-form"><div class="two">${Sel('pr-place', 'Place obtenue', PLACES)}${Sel('pr-cat', 'Catégorie', ['P25', 'P50', 'P100', 'P250', 'P500', 'P1000'], 'P100')}</div><div class="two">${Sel('pr-pub', 'Public', ['Adultes', 'Jeunes', 'Seniors +'])}${O('pr-age', 'Âge (facultatif)', '+45, 15-18 ans…')}</div><div class="two">${Dt('pr-d', 'Date du tournoi', 1, TODAY)}${F('pr-club', 'Club organisateur', 'Padel Club Tulle')}</div>
   <div class="fld"><span class="lb">Partenaire</span><div class="radio"><label for="pt-club"><input type="radio" name="pt" value="club" id="pt-club" checked>Du club</label><label for="pt-ext"><input type="radio" name="pt" value="ext" id="pt-ext">Extérieur</label></div></div>
   <div id="pt-c">${mates.length ? Who('pr-mate', 'Joueur du club (pratique le padel)', mates) : '<p class="muted small">Aucun autre joueur de padel au club.</p>'}</div><div id="pt-e" hidden>${O('pr-ext', 'Nom et prénom du partenaire', 'Julien Masson')}</div>
@@ -1271,25 +1279,36 @@ const A = {
       if (p) posts.splice(pi, 0, p);
     });
   },
-  resultT() {
+  resultT(d) {
     const opt = `<option value="">–</option>` + [0, 1, 2, 3, 4, 5, 6, 7].map(n => `<option>${n}</option>`).join(''),
       row = (n, l) =>
         `<div class="setrow"><span class="nm">${l}</span><select id="s${n}a" aria-label="${l}, tes jeux">${opt}</select><span>/</span><select id="s${n}b" aria-label="${l}, jeux de l'adversaire">${opt}</select></div>`;
     sheet(
-      'Ajouter un résultat',
+      (d && d.titre) || 'Ajouter un résultat',
       `<form class="body" id="res-form">${F('r-opp', 'Adversaire', 'Prénom Nom')}<div class="two">${Sel('r-rank', 'Son classement', RANKS, '15/1')}${Sel('r-ctx', 'Compétition', ['Tournoi', 'Championnat par équipes', 'Tournoi interne', 'Match amical'])}</div>${O('r-name', 'Nom du tournoi (facultatif)', 'Open de Brive')}<div class="fld"><label class="chk" for="r-fin"><input type="checkbox" id="r-fin">C'était la finale du tournoi</label></div>
   <div class="fld"><span class="lb">Score · tes jeux / ceux de l'adversaire</span>${row(1, '1er set')}${row(2, '2e set')}${row(3, '3e set')}<span class="muted small">Laisse le 3e set vide si le match s'est joué en deux sets.</span></div><button class="btn full">${isMinor(ME()) ? 'Publier (visible par ton groupe et tes parents)' : 'Publier et notifier mes ' + M[ME()].fol + ' abonnés'}</button></form>`
     );
   },
+  rankMenu() {
+    menuSheet('Changer mon classement', [
+      ['racket', 'Classement de tennis', 'rank', 'data-k="tennis"'],
+      ['chart', 'Classement de padel', 'rank', 'data-k="padel"'],
+      ['ball', 'Niveau de padel', 'rank', 'data-k="niveau"']
+    ]);
+  },
   rank(d) {
     const tn = d.k === 'tennis',
+      nv = d.k === 'niveau',
       me = M[ME()];
+    closeSheet();
     sheet(
-      tn ? 'Mon classement tennis' : 'Mon classement padel',
+      tn ? 'Mon classement de tennis' : nv ? 'Mon niveau de padel' : 'Mon classement de padel',
       `<form class="body" id="rank-form" data-k="${d.k}">` +
         (tn
           ? `<div class="fld"><label for="r-new">Classement</label><select id="r-new">${RANKS.map(r => `<option value="${r}" ${r === me.r ? 'selected' : ''}>${r === 'NC' ? 'Non classé' : r}</option>`).join('')}</select></div>`
-          : `<div class="fld"><label for="r-pad">Classement national</label><input id="r-pad" inputmode="numeric" pattern="[0-9]*" placeholder="Laisse vide si non classé" value="${me.pad || ''}" autocomplete="off"></div><div class="fld"><label for="r-pl">Niveau de jeu</label><select id="r-pl">${['Aucun', ...LV].map((l, i) => `<option ${(me.pl || 0) === i ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="muted small">${LVHELP}</span></div>`) +
+          : nv
+            ? `<div class="fld"><label for="r-pl">Niveau de jeu</label><select id="r-pl">${['Aucun', ...LV].map((l, i) => `<option ${(me.pl || 0) === i ? 'selected' : ''}>${l}</option>`).join('')}</select><span class="muted small">${LVHELP}</span></div>`
+            : `<div class="fld"><label for="r-pad">Classement national</label><input id="r-pad" inputmode="numeric" pattern="[0-9]*" placeholder="Laisse vide si non classé" value="${me.pad || ''}" autocomplete="off"></div>`) +
         `<p class="muted small">Le classement n'est pas relié à Ten'Up : tu le mets à jour toi-même, et tes abonnés sont prévenus.</p><button class="btn full">Enregistrer</button></form>`
     );
   },

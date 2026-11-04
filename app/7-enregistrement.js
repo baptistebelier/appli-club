@@ -405,35 +405,36 @@ document.addEventListener('submit', e => {
   }
   if (f.id === 'rank-form') {
     const me = M[ME()],
-      tn = f.dataset.k === 'tennis';
+      k = f.dataset.k,
+      tn = k === 'tennis',
+      qui = name(ME());
     let title, body;
+    // trois choses distinctes : changer l'une ne touche ni n'annonce les autres
     if (tn) {
       const o = me.r,
         n = val('r-new');
-      if (o === n) {
-        closeSheet();
-        return;
-      }
+      if (o === n) return closeSheet();
       me.r = n;
-      title = `Classement tennis <em>${n === 'NC' ? 'non classé' : n}</em>`;
-      body = `${first(ME())} passe de ${o} à ${n}.`;
+      title = `Nouveau classement de tennis <em>pour ${qui}</em>`;
+      body = `${o === 'NC' ? 'Non classé' : o} → ${n === 'NC' ? 'non classé' : n}`;
+    } else if (k === 'niveau') {
+      const lv = val('r-pl'),
+        nl = lv === 'Aucun' ? null : LV.indexOf(lv) + 1,
+        o = me.pl || null;
+      if (nl === o) return closeSheet();
+      me.pl = nl;
+      title = `Nouveau niveau de padel <em>pour ${qui}</em>`;
+      body = `${o ? 'Niveau ' + o : 'Sans niveau'} → ${nl ? 'niveau ' + nl : 'sans niveau'}`;
     } else {
       const num = val('r-pad').replace(/\D/g, ''),
-        lv = val('r-pl'),
         np = num ? +num : null,
-        nl = lv === 'Aucun' ? null : LV.indexOf(lv) + 1;
-      if (np === (me.pad || null) && nl === (me.pl || null)) {
-        closeSheet();
-        return;
-      }
+        o = me.pad || null;
+      if (np === o) return closeSheet();
       me.pad = np;
-      me.pl = nl;
       // la fiche joueur /RAM JA reprend le classement padel (vu par les juges-arbitres)
       if (window.ramPlayerSync) ramPlayerSync({ rank: np ? String(np) : '' }).catch(() => {});
-      title = `Classement padel <em>${np ? 'n° ' + np : 'non classé'}</em>`;
-      body = np
-        ? `${first(ME())} est désormais n° ${np} au classement padel${nl ? ', niveau ' + nl : ''}.`
-        : `${first(ME())} n'est pas classé en padel${nl ? ', niveau ' + nl : ''}.`;
+      title = `Nouveau classement de padel <em>pour ${qui}</em>`;
+      body = `${o ? 'N° ' + o : 'Non classé'} → ${np ? 'n° ' + np : 'non classé'}`;
     }
     posts.unshift({
       id: 'p' + Date.now(),
@@ -448,7 +449,7 @@ document.addEventListener('submit', e => {
     });
     closeSheet();
     render(true);
-    toast(`Classement mis à jour · ${me.fol} abonnés notifiés`);
+    toast(`Mis à jour · ${me.fol} abonnés notifiés`);
     return;
   }
   if (f.id === 'pres-form') {
@@ -473,6 +474,18 @@ document.addEventListener('submit', e => {
       pid: ext ? null : val('pr-mate') || null,
       ext: ext ? g('pr-ext') : null
     };
+    if (f.dataset.edit) {
+      const p = posts.find(x => x.id === f.dataset.edit),
+        old = p.pres,
+        hors = l => (l || []).filter(x => !memePres(x, old));
+      me.pres = [r].concat(hors(me.pres));
+      if (old.pid && M[old.pid]) M[old.pid].pres = hors(M[old.pid].pres);
+      if (r.pid) (M[r.pid].pres = M[r.pid].pres || []).unshift({ ...r, pid: ME(), ext: null });
+      p.pres = r;
+      closeSheet();
+      render(true);
+      return toast('Résultat modifié');
+    }
     (me.pres = me.pres || []).unshift(r);
     if (r.pid) {
       const m2 = M[r.pid];
@@ -533,6 +546,16 @@ document.addEventListener('submit', e => {
         perf,
         fin: !!($('r-fin') && $('r-fin').checked)
       };
+    if (f.dataset.edit) {
+      const p = posts.find(x => x.id === f.dataset.edit),
+        i = me.res.findIndex(x => memeRes(x, p.res));
+      if (i >= 0) me.res[i] = r;
+      else me.res.unshift(r);
+      p.res = r;
+      closeSheet();
+      render(true);
+      return toast('Résultat modifié');
+    }
     me.res.unshift(r);
     posts.unshift({ id: 'p' + Date.now(), by: ME(), t: "À l'instant", kind: 'perf', res: r, likes: 0, com: [] });
     home(perf ? `Perf à ${or} publiée · ${me.fol} abonnés notifiés` : `Résultat publié · ${me.fol} abonnés notifiés`);

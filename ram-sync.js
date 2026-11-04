@@ -853,7 +853,7 @@
       case 'art':
       case 'partner':
       case 'report':
-        return staff;
+        return staff || d.by === k;
       case 'group':
         return staff || d.cap === k || d.coach === k;
       case 'cours':
@@ -1030,6 +1030,35 @@
         ? { v: 'rec', id: ref.slice(2) }
         : { v: 'post', id: ref.slice(2) };
   const known = k => k === 'club' || !!M[k];
+  /* panneau de notifications : ce que le serveur a gardé pour ce compte, même reçu appli fermée */
+  const NAPP = window.RAM_APP === 'coach' ? 'coach' : 'club',
+    NSINCE = 'ram-notif-since-' + NAPP;
+  let notifT = 0;
+  function pullNotifs() {
+    if (!R.key || Date.now() - notifT < 15000) return;
+    notifT = Date.now();
+    let since = 0;
+    try {
+      since = +localStorage.getItem(NSINCE) || 0;
+    } catch (e) {}
+    since = since || Date.now() - 7 * 864e5;
+    fetch('/api/ram/notifs?app=' + NAPP + '&since=' + since, { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : { items: [] }))
+      .then(d => {
+        if (!d.items || !d.items.length) return;
+        try {
+          localStorage.setItem(NSINCE, String(Math.max(...d.items.map(x => x.at))));
+        } catch (e) {}
+        if (window.ramNotifsMerge(d.items) && !$('sheet')) render(true);
+      })
+      .catch(() => {});
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      notifT = 0;
+      pullNotifs();
+    }
+  });
   function notifyDiff(coll, id, a, b) {
     if (!b) return;
     const me = R.key,
@@ -1046,7 +1075,7 @@
           notify(
             'resa',
             'club',
-            `: nouvelle réservation, ${String(b.name).toLowerCase()} ${when}${who(b).length ? ' avec ' + who(b).map(nm).join(', ') : ''}`,
+            `: nouvelle réservation, ${String(b.name).toLowerCase()} ${when}${who(b).length ? ' avec ' + who(b).map(nm).join(', ') : ''}${b.goal ? '. Objectif : ' + b.goal : ''}`,
             go
           )
         );
@@ -1081,11 +1110,58 @@
           ap.filter(k => !av.includes(k) && k !== me && known(k)).forEach(k =>
             once(`abs/${id}/${d}/${k}`, () => notify('resa', k, `sera absent : ${b.name}, ${fmtD(d)}`, lieu))
           );
+          Object.keys((b.resp || {})[d] || {})
+            .filter(
+              k =>
+                b.resp[d][k] === 'ok' &&
+                ((a.resp || {})[d] || {})[k] !== 'ok' &&
+                !av.includes(k) &&
+                k !== me &&
+                known(k)
+            )
+            .forEach(k =>
+              once(`pres/${id}/${d}/${k}`, () => notify('resa', k, `sera présent : ${b.name}, ${fmtD(d)}`, lieu))
+            );
           av.filter(k => !ap.includes(k) && k !== me && known(k)).forEach(k =>
             once(`absok/${id}/${d}/${k}`, () => notify('resa', k, `sera finalement là : ${b.name}, ${fmtD(d)}`, lieu))
           );
         });
+      // nommé capitaine ; un élève se retire de mon cours
+      if (coll === 'group' && b.cap === me && a.cap !== me && known(b.coach || 'club'))
+        once(`cap/${id}`, () => notify('team', 'club', `: tu es capitaine de ${b.name}`, { v: 'team', id }));
+      if (b.coach === me && b.cal && !b.nv)
+        (a.mem || [])
+          .filter(k => !(b.mem || []).includes(k) && known(k))
+          .forEach(k =>
+            once(`resa-/${id}/${k}`, () =>
+              notify('resa', k, `se retire : ${b.name}`, { v: 'seance', id: id + '.' + b.once })
+            )
+          );
       const mien = (b.mem || []).some(k => (k === me || kids.includes(k)) && k !== b.annulePar);
+      if (mien && !b.nv && b.coach !== me && known(b.coach)) {
+        added(b.cancel, a.cancel).forEach(d =>
+          once(`cxok/${id}/${d}`, () =>
+            notify('resa', b.coach, `rétablit le cours ${b.name}, ${fmtD(d)}`, { v: 'agenda' })
+          )
+        );
+        Object.keys(b.loc || {})
+          .filter(d => (a.loc || {})[d] !== b.loc[d])
+          .forEach(d =>
+            once(`loc/${id}/${d}/${b.loc[d]}`, () =>
+              notify(
+                'resa',
+                b.coach,
+                `${b.name}, ${fmtD(d)} : le cours aura lieu ${b.loc[d] === 'En salle' ? 'en salle' : 'en extérieur'}`,
+                { v: 'agenda' }
+              )
+            )
+          );
+        added(a.skip, b.skip).forEach(d =>
+          once(`skip/${id}/${d}`, () =>
+            notify('resa', b.coach, `déplace la séance ${b.name} du ${fmtD(d)}`, { v: 'agenda' })
+          )
+        );
+      }
       if (mien && !b.nv && b.coach !== me && known(b.coach)) {
         added(a.cancel, b.cancel).forEach(d =>
           once(`cx/${id}/${d}`, () => notify('resa', b.coach, `annule le cours ${b.name}, ${fmtD(d)}`, { v: 'agenda' }))
@@ -1096,6 +1172,39 @@
           );
       }
     }
+    // un cours posé pour moi ; mon adhésion validée ; un adhérent suivi change de classement ; un signalement
+    if (
+      coll === 'cours' &&
+      !a &&
+      b.once &&
+      !b.cal &&
+      !b.nv &&
+      b.coach !== me &&
+      (b.mem || []).some(k => k === me || kids.includes(k)) &&
+      known(b.coach)
+    )
+      once(`new/${id}`, () =>
+        notify('resa', b.coach, `pose un cours : ${b.name}, ${fmtD(b.once)} à ${b.h}`, { v: 'agenda' })
+      );
+    if (coll === 'member' && a) {
+      if (id === me && b.valid && a.valid !== b.valid)
+        once(`valid/${b.valid}`, () =>
+          notify('club', 'club', `: ton adhésion est validée pour la saison ${b.valid}`, { v: 'home' })
+        );
+      if (
+        id !== me &&
+        S.follow.has(id) &&
+        known(id) &&
+        (a.r !== b.r || (a.pad || '') !== (b.pad || '') || (a.pl || 0) !== (b.pl || 0))
+      )
+        once(`rank/${id}/${b.r}/${b.pad || ''}/${b.pl || 0}`, () =>
+          notify('follow', id, 'met à jour son classement', { v: 'member', id })
+        );
+    }
+    if (coll === 'report' && !a && isBureau() && known(b.by))
+      once(`rep/${id}`, () =>
+        notify('club', b.by, `signale : ${String(b.excerpt || 'un contenu').slice(0, 70)}`, { v: 'admin' })
+      );
     if (coll === 'post' && a) {
       const go = { v: 'post', id },
         mine = b.by === me,
@@ -1106,6 +1215,36 @@
             k !== me &&
             known(k) &&
             once(`like/${id}/${k}`, () => notify('mine', k, 'aime ta publication' + quoted(b), go))
+        );
+      if (
+        b.play &&
+        a.play &&
+        (a.play.in || []).length >= a.play.places &&
+        (b.play.in || []).length < b.play.places &&
+        (b.play.wait || [])[0] === me
+      )
+        once(`lib/${id}/${b.play.in.length}`, () =>
+          notify('play', b.by, `: une place s'est libérée, partie du ${b.play.date}`, go)
+        );
+      if (b.kind === 'event' && b.cap && (b.myBy || {})[me] === 'wait') {
+        const oui = p => Object.values(p.myBy || {}).filter(v => v === 'yes').length,
+          premier = Object.keys(b.myBy).find(k => b.myBy[k] === 'wait');
+        if (premier === me && oui(a) >= b.cap && oui(b) < b.cap)
+          once(`evlib/${id}/${oui(b)}`, () =>
+            notify('club', known(b.by) ? b.by : 'club', `: une place s'est libérée pour${quoted(b)}`, go)
+          );
+      }
+      if (b.kind === 'niveaux' && b.nv && a.nv && b.by === me)
+        Object.keys(a.nv.ins || {}).forEach(q =>
+          (a.nv.ins[q] || [])
+            .filter(k => !((b.nv.ins || {})[q] || []).includes(k) && known(k))
+            .forEach(k =>
+              once(`nv-/${id}/${q}/${k}`, () => notify('mine', k, `se désinscrit du ${fmtD(q.split('|')[0])}`, go))
+            )
+        );
+      if (b.kind === 'event' && !mine && a.date !== b.date && ['yes', 'wait', 'maybe'].includes((b.myBy || {})[me]))
+        once(`evmod/${id}/${b.date}`, () =>
+          notify('club', known(b.by) ? b.by : 'club', `a modifié${quoted(b)} : ${b.date}`, go)
         );
       if (mine || clubEv) {
         const ma = a.myBy || {},
@@ -1321,6 +1460,15 @@
               notify('club', k, `souhaite rejoindre la ${String(b.name).toLowerCase()}`, { v: 'comm', id })
             )
         );
+      if (removed(a.req, b.req).includes(me) && !(b.mem || []).includes(me))
+        once(`cno/${id}`, () =>
+          notify(
+            'club',
+            known(b.resp) ? b.resp : 'club',
+            `n'a pas retenu ta demande : ${String(b.name).toLowerCase()}`,
+            { v: 'comm', id }
+          )
+        );
       if (added(a.mem, b.mem).includes(me))
         once(`cmem/${id}`, () =>
           notify('club', known(b.resp) ? b.resp : 'club', `t'a accepté dans la ${String(b.name).toLowerCase()}`, {
@@ -1523,7 +1671,14 @@
       R.notified.add(nk);
       if (kind === 'post' && canSee(o)) {
         // publications d'un adhérent : ses abonnés sont prévenus (résultats détaillés) ; celles du club : tout le monde
-        const type = o.by === 'club' ? 'club' : o.kind === 'play' ? 'play' : S.follow.has(o.by) ? 'follow' : '';
+        const type =
+          o.by === 'club'
+            ? 'club'
+            : o.kind === 'play' || o.kind === 'niveaux'
+              ? 'play'
+              : S.follow.has(o.by)
+                ? 'follow'
+                : '';
         const r = o.res,
           pr = o.pres;
         const txt =
@@ -1531,11 +1686,15 @@
             ? `${r.w ? (r.fin ? 'remporte le tournoi' : 'gagne') : r.fin ? 'perd en finale' : 'perd'} contre ${r.opp} (${r.or}) : ${r.sc}${r.perf ? ' · perf !' : ''}`
             : o.kind === 'padel' && pr
               ? `termine ${pr.place === '1er' ? '1er' : pr.place} en ${pr.cat} à ${pr.club}`
-              : o.kind === 'play'
-                ? `cherche des joueurs : ${o.play.sport.toLowerCase()}, ${o.play.date} à ${o.play.time}`
-                : /^Classement/.test(ttl(o))
-                  ? `met à jour son ${ttl(o).replace(/^Classement/, 'classement')}`
-                  : 'a publié sur le mur';
+              : o.kind === 'niveaux' && o.nv
+                ? `propose ${o.nv.mode === 'cours' ? 'une séance collective' : 'une partie dirigée'}, ${fmtD((o.nv.dates || [])[0])} à ${o.nv.time}`
+                : o.kind === 'play'
+                  ? `cherche des joueurs : ${o.play.sport.toLowerCase()}, ${o.play.date} à ${o.play.time}`
+                  : /^Nouveau (classement|niveau)/.test(ttl(o))
+                    ? `a un ${ttl(o)
+                        .replace(/^Nouveau/, 'nouveau')
+                        .replace(/ pour .*$/, '')}`
+                    : 'a publié sur le mur';
         if (pr && pr.pid === R.key)
           notify(
             'mine',
@@ -1553,8 +1712,17 @@
         }
       }
     });
+    pullNotifs();
     // tout ce qui me concerne dans ce qui a changé : likes, commentaires, réactions, inscriptions, convocations…
     d.items.forEach(it => {
+      // un événement où je me suis positionné est supprimé
+      if (it.del && it.coll === 'post') {
+        const av = before.get('post/' + it.id);
+        if (av && av.kind === 'event' && ['yes', 'wait', 'maybe'].includes((av.myBy || {})[R.key]))
+          once(`evx/${it.id}`, () =>
+            notify('club', known(av.by) ? av.by : 'club', `: annulé,${quoted(av)}`, { v: 'agenda' })
+          );
+      }
       if (!it.del) {
         try {
           notifyDiff(it.coll, it.id, before.get(it.coll + '/' + it.id), it.data);
@@ -2372,8 +2540,9 @@
     if (fiche && (tab === 'jeu' || tab === 'infos')) h = inside(h, '<button class="btn ghost full logout"', fiche);
     if (id === ME() && isBureau() && R.code)
       h = h.replace(
-        '<div class="phero">',
-        `<div class="card"><span class="kicker">Code du club</span><p><b style="font-size:22px;letter-spacing:.06em">${e(R.code)}</b></p><p class="muted small">Donne ce code aux adhérents : ils l'entrent dans l'appli, puis tu valides leur demande.</p><button class="btn sm ghost" data-a="ramCopy">Copier l'invitation</button></div><div class="phero">`
+        '<button class="btn ghost full logout"',
+        () =>
+          `<div class="card"><span class="kicker">Code du club</span><p><b style="font-size:22px;letter-spacing:.06em">${e(R.code)}</b></p><p class="muted small">Donne ce code aux adhérents : ils l'entrent dans l'appli, puis tu valides leur demande.</p><button class="btn sm ghost" data-a="ramCopy">Copier l'invitation</button></div><button class="btn ghost full logout"`
       );
     if (id !== ME() && isBureau() && !isMinor(id) && R.roles[id]) {
       const r = R.roles[id],
