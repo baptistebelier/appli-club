@@ -1,5 +1,78 @@
 /* /RAM Club — ui/8-ecrans.js : Table des écrans (V) : chaque écran de l'appli et son contenu.
    Morceau de l'ancien ui.js : les fichiers ui/*.js se chargent dans l'ordre de leur numéro (voir index.html). */
+/* ---------- colonne de droite du mur (ordinateur, iPad en paysage) ----------
+   Ce qui est à suivre, sans quitter le mur : le direct, ma prochaine séance, les prochains événements
+   du club et les discussions non lues. Sur téléphone, elle n'existe pas : le mur ne change pas. */
+const MUR_LARGE = matchMedia('(min-width: 1100px)');
+MUR_LARGE.addEventListener('change', () => typeof S !== 'undefined' && S.tab === 'home' && render(true));
+function murSide() {
+  if (!MUR_LARGE.matches) return '';
+  try {
+    const me = ME(),
+      now = new Date(),
+      nowMin = now.getHours() * 60 + now.getMinutes(),
+      // l'agenda, sans les filtres choisis dans l'onglet Agenda
+      items = (scope, days) => {
+        const keep = S.plan,
+          out = [];
+        S.plan = { ...keep, scope, mine: false, cat: {}, sp: new Proxy({}, { get: () => true }) };
+        try {
+          for (let i = 0; i < days; i++) {
+            const d = isoIn(i);
+            planItems(d).forEach(x => {
+              if (x.cx || (i === 0 && x.t && hMin(x.t) + (x.dur || 60) < nowMin)) return;
+              out.push({ ...x, d });
+            });
+          }
+        } finally {
+          S.plan = keep;
+        }
+        return out;
+      },
+      when = x =>
+        (x.d === TODAY ? "Aujourd'hui" : x.d === isoIn(1) ? 'Demain' : fmtD(x.d)) + (x.t ? ' · ' + hhmm(x.t) : ''),
+      row = (x, pic) =>
+        `<button class="msi" data-a="open" data-v="${x.v}" data-id="${x.id}">${ic(pic)}<span class="grow"><b>${esc(x.title)}</b><small>${when(x)}</small></span></button>`,
+      bloc = (titre, pic, corps) =>
+        corps ? `<section class="card msb"><h3 class="kicker">${ic(pic)}${titre}</h3>${corps}</section>` : '';
+    const live = recs.filter(r => r.st === 'live' && !r.arch),
+      mine = items('me', 14).filter(x => x.cat === 'ens' || x.v === 'grp' || x.v === 'ginfo' || x.v === 'chan')[0],
+      evs = items('club', 30)
+        .filter(x => CLUB_CATS.includes(x.cat))
+        .slice(0, 4),
+      unread = chans.filter(c => chanOk(c) && c.un && !c.mute).slice(0, 5);
+    return `<aside class="murside" aria-label="À suivre">${bloc(
+      'En direct',
+      'score',
+      live
+        .map(
+          r =>
+            `<button class="msi" data-a="open" data-v="rec" data-id="${r.id}"><span class="live"><i></i>Direct</span><span class="grow"><b>${esc(teamName(grp(r.tid)))}</b><small>contre ${esc(r.opp)}</small></span><b class="msc" data-live="${r.id}">${teamScore(r).join(' - ')}</b></button>`
+        )
+        .join('')
+    )}${bloc('Ma prochaine séance', 'clock', mine ? row(mine, 'racket') : '<p class="muted small">Aucune séance prévue dans les deux semaines.</p>')}${bloc(
+      'Prochains événements',
+      'cal',
+      evs.length
+        ? evs.map(x => row(x, x.cat === 'eq' ? 'users' : 'cal')).join('') +
+            '<button class="msmore" data-a="tab" data-t="agenda">Tout l\'agenda</button>'
+        : '<p class="muted small">Rien de prévu pour le moment.</p>'
+    )}${bloc(
+      'Discussions non lues',
+      'chat',
+      unread.length
+        ? unread
+            .map(
+              c =>
+                `<button class="msi" data-a="open" data-v="chan" data-id="${c.id}">${ic(c.g === 'team' ? 'users' : 'chat')}<span class="grow"><b>${esc(c.name)}</b></span><span class="mscnt">${c.un}</span></button>`
+            )
+            .join('')
+        : '<p class="muted small">Tout est lu.</p>'
+    )}</aside>`;
+  } catch (e) {
+    return '';
+  }
+}
 /* ---------- écrans ---------- */
 const V = {
   home() {
@@ -7,7 +80,8 @@ const V = {
       feed = posts.filter(p => canSee(p) && p.mur !== false).sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0));
     const st = (a, attrs, inner, l, cls) =>
       `<button class="story" data-a="${a}" ${attrs}><span class="ring ${cls || ''}"><span>${inner}</span></span><span class="sl">${l}</span></button>`;
-    return `<div class="stories">${recs
+    // ordinateur et iPad en paysage : le mur à gauche, une colonne « à suivre » à droite (cachée sur téléphone)
+    return `<div class="murg"><div class="murc"><div class="stories">${recs
       .filter(r => r.st === 'live' && !r.arch)
       .map(r =>
         st(
@@ -41,7 +115,7 @@ const V = {
       );
     })()}</div>
   ${isAdmin() && CLUBINFO.joined < CLUBINFO.members ? `<div class="pad" style="padding-bottom:4px"><button class="note" data-a="open" data-v="join" style="width:100%;text-align:left">${CLUBINFO.joined} adhérents sur ${CLUBINFO.members} ont rejoint l'appli. <b style="color:var(--accent)">Inviter les autres</b></button></div>` : ''}
-  <div class="feed">${feed.length ? feed.map(postHTML).join('') : emptyCard('home', 'Le mur est vide', 'Les annonces et les résultats du club apparaîtront ici.')}</div>${window.RAM && RAM.postsBefore ? '<div class="pad"><button class="btn ghost full" data-a="ramOlderPosts">Publications plus anciennes</button></div>' : ''}`;
+  <div class="feed">${feed.length ? feed.map(postHTML).join('') : emptyCard('home', 'Le mur est vide', 'Les annonces et les résultats du club apparaîtront ici.')}</div>${window.RAM && RAM.postsBefore ? '<div class="pad"><button class="btn ghost full" data-a="ramOlderPosts">Publications plus anciennes</button></div>' : ''}</div>${murSide()}</div>`;
   },
   chans() {
     const list = chans.filter(c => c.g === S.chanTab && chanOk(c));
@@ -157,7 +231,7 @@ const V = {
       return `<div class="pad"><div class="note">En tant que capitaine, tu gères ton équipe : effectif, calendrier, convocations et scores en direct.</div><div class="card adm-sec"><span class="kicker">Mes équipes</span>${mine.map(g => it('open', 'users', teamName(g), g.sub, `data-v="team" data-id="${g.id}"`)).join('')}</div></div>`;
     }
     const nj = JOINREQ.length;
-    return `<div class="pad">${setupCard()}<div class="card adm-sec"><span class="kicker">Adhérents</span>${it('open', 'users', 'Faire entrer les adhérents', nj ? `${nj} demande${nj > 1 ? 's' : ''} à valider · code ${CLUBINFO.code}` : `Code du club ${CLUBINFO.code} · import d'une liste`, 'data-v="join"')}</div>
+    return `<div class="pad">${setupCard()}<div class="card adm-sec"><span class="kicker">Adhérents</span>${it('open', 'users', 'Faire entrer les adhérents', nj ? `${nj} demande${nj > 1 ? 's' : ''} à valider · code ${CLUBINFO.code}` : `Code du club ${CLUBINFO.code} · import d'une liste`, 'data-v="join"')}${pushSuiviLigne()}</div>
   <div class="card adm-sec"><span class="kicker">Publier sur le mur</span>${it('newPost', 'info', 'Annonce', 'Un message du club à tous les adhérents', 'data-k="annonce"')}${it('newPost', 'cal', 'Événement', "Avec inscription dans l'appli ou sur Ten'Up", 'data-k="event"')}${it('newPost', 'score', 'Tournoi', "Tennis ou padel, catégories, lien Ten'Up", 'data-k="tournoi"')}${it('newPost', 'poll', 'Sondage', "Jusqu'à six réponses, date de clôture", 'data-k="poll"')}${it('newPost', 'link', 'Publication avec lien', 'Un titre, un texte et un gros bouton vers un site', 'data-k="cta"')}${CLUBINFO.mods.actus ? it('newPost', 'news', 'Actu', 'Un récit, un portrait, un compte rendu', 'data-k="article"') : ''}</div>
   <div class="card adm-sec"><span class="kicker">Championnats et équipes</span>${CHAMPS.map(c => {
     const n = GROUPS.filter(g => g.champ === c.id).length;
@@ -172,7 +246,7 @@ const V = {
     ''
   )}${it('newPost', 'plus', 'Créer un championnat', 'Puis ajoute ses équipes, leurs capitaines et leur calendrier', 'data-k="champ"')}</div>
   <div class="card adm-sec"><span class="kicker">Groupes</span>${grps('train')}${S.role === 'coach' || S.super ? it('newPost', 'plus', "Créer un groupe d'entraînement", 'Jour, heure, lieu et critères', 'data-k="train"') : ''}${it('newPost', 'chat', 'Créer un groupe de discussion', 'Covoiturage, petites annonces, bénévoles…', 'data-k="chan"')}</div>
-  <div class="card adm-sec"><span class="kicker">Le club</span>${it('open', 'info', 'Aide · guide du bureau', 'Tout ce que fait l’appli, rubrique par rubrique', 'data-v="aide"') + it('open', 'flag', 'Signalements', REPORTS.length ? `${REPORTS.length} contenu${REPORTS.length > 1 ? 's' : ''} à examiner` : 'Aucun contenu signalé', 'data-v="reports"')}${it('clubInfo', 'info', 'Infos du club', 'Courts, horaires, adresse, tarifs, liens, modules')}${
+  <div class="card adm-sec"><span class="kicker">Le club</span>${it('open', 'info', 'Aide · guide du bureau', 'Tout ce que fait l’appli, rubrique par rubrique', 'data-v="aide"') + it('open', 'flag', 'Signalements', REPORTS.length ? `${REPORTS.length} contenu${REPORTS.length > 1 ? 's' : ''} à examiner` : 'Aucun contenu signalé', 'data-v="reports"') + (isBureau() ? it('open', 'clock', 'Journal du club', 'Qui a supprimé, validé, changé un rôle ou un classement', 'data-v="journal"') : '')}${it('clubInfo', 'info', 'Infos du club', 'Courts, horaires, adresse, tarifs, liens, modules')}${
     CLUBINFO.mods.comm && isBureau()
       ? it(
           'goClub',
@@ -253,6 +327,26 @@ const V = {
       : empty('users', 'Aucun adhérent ne correspond', 'Élargis à tout le club.')
   }</div></div>`;
     return h;
+  },
+  /* journal des actions sensibles : le plus récent en haut, regroupé par jour */
+  journal() {
+    const l = JOURNAL.slice().sort((a, b) => (b.at || 0) - (a.at || 0)),
+      jour = t => new Date(t).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
+      heure = t => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }).replace(':', ' h '),
+      qui = k => (k && M[k] ? esc(M[k].n) : 'Ancien membre');
+    let h =
+        '<div class="pad"><div class="note">Le journal garde la trace des actions sensibles : suppression de ce qui n’appartient pas à son auteur, validation d’une adhésion, changement de rôle ou de classement, trophée décerné, retrait d’un adhérent. Seul le bureau le voit ; personne ne peut le modifier.</div>',
+      cur = '';
+    if (!l.length) return h + '<p class="muted">Aucune action enregistrée pour le moment.</p></div>';
+    l.forEach(x => {
+      const j = jour(x.at || 0);
+      if (j !== cur) {
+        h += `<span class="kicker" style="display:block;margin:14px 0 6px">${j}</span>`;
+        cur = j;
+      }
+      h += `<div class="item cv"><span class="tile">${ic(x.act === 'suppr' ? 'trash' : x.act === 'valid' ? 'check' : x.act === 'role' ? 'shield' : x.act === 'trophee' ? 'diploma' : x.act === 'retrait' ? 'ban' : 'chart')}</span><span class="grow"><b>${qui(x.by)}</b> ${esc(x.txt || '')}${x.who ? ' · ' + qui(x.who) : ''}${x.ex ? `<br><span class="muted small">« ${esc(x.ex)} »${x.auteur ? ' · de ' + qui(x.auteur) : ''}</span>` : ''}</span><span class="muted small">${heure(x.at || 0)}</span></div>`;
+    });
+    return h + '</div>';
   },
   reports() {
     const K = { post: 'Publication', msg: 'Message', com: 'Commentaire' };

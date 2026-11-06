@@ -52,6 +52,8 @@
     fol: {},
     roles: {},
     scores: {},
+    profils: null,
+    board: null,
     live: false
   });
   let readyFn;
@@ -515,6 +517,7 @@
     comm: () => COMMS,
     rec: () => recs,
     report: () => REPORTS,
+    journal: () => JOURNAL,
     claim: () => (typeof CLAIMS !== 'undefined' ? CLAIMS : []),
     bar: () => BAR,
     order: () => ORDERS,
@@ -781,7 +784,7 @@
     });
     const mem = Object.keys(M).filter(k => k !== 'club');
     CLUBINFO.joined = mem.filter(
-      k => VALID[k] === S.season || R.roles[k] === 'bureau' || R.roles[k] === 'coach'
+      k => VALID[k] === S.season || R.roles[k] === 'bureau' || R.roles[k] === 'coach' || R.roles[k] === 'anim'
     ).length;
     if (!(CLUBINFO.members >= CLUBINFO.joined)) CLUBINFO.members = CLUBINFO.joined;
     // rôle dans l'appli : bureau → gestion complète, enseignant, capitaine d'une équipe, adhérent
@@ -793,7 +796,8 @@
           : GROUPS.some(g => g.type === 'team' && g.cap === R.key)
             ? 'cap'
             : 'mem';
-    if (R.role === 'bureau' || R.role === 'coach') VALID[R.key] = S.season;
+    S.anim = R.role === 'anim';
+    if (R.role === 'bureau' || R.role === 'coach' || R.role === 'anim') VALID[R.key] = S.season;
     const read = (R.prefs && R.prefs.read) || {},
       mute = (R.prefs && R.prefs.mute) || [];
     chans.forEach(c => {
@@ -836,7 +840,9 @@
         return R.role === 'bureau';
       case 'post':
         return (
-          staff ||
+          R.role === 'bureau' ||
+          R.role === 'anim' ||
+          (staff && d.by === 'club') ||
           d.by === k ||
           (d.by === 'club' &&
             (d.kind === 'result' || d.kind === 'match') &&
@@ -847,7 +853,7 @@
           (d.by === 'club' && d.kind === 'teamfinal' && capOf(d.tid))
         );
       case 'msg':
-        return staff || d.by === k;
+        return staff || R.role === 'anim' || d.by === k;
       case 'chan':
       case 'champ':
       case 'art':
@@ -945,6 +951,10 @@
     });
     return list;
   }
+  /* chaque ouverture d'un club (changement de club, rechargement complet) change de génération : une réponse
+     demandée pour l'ouverture précédente (envoi ou synchronisation encore en route) est ignorée, sinon elle
+     s'appliquerait au club qu'on vient d'ouvrir (données, révision, voire rechargement qui ramène à l'accueil) */
+  let gen = 0;
   async function tick() {
     if (!R.live) return;
     if (busy) {
@@ -952,6 +962,7 @@
       return;
     }
     busy = true;
+    const g = gen;
     try {
       const list = ops();
       if (list.length) {
@@ -962,6 +973,7 @@
           return x;
         });
         const r = await api('/api/ram/c/' + R.club + '/ops', { ops: sent });
+        if (g !== gen) return; // un autre club a été ouvert entre-temps
         const bad = new Set((r.rejected || []).map(x => x.coll + '/' + x.id));
         list.forEach(o => {
           if (bad.has(o.coll + '/' + o.id)) R.bad.set(o.coll + '/' + o.id, J(o.data || o._s));
@@ -988,6 +1000,7 @@
       }
       await pull();
     } catch (x) {
+      if (g !== gen) return; // erreur d'une demande faite pour le club précédent
       if (x.status === 401 || x.status === 404) {
         if (x.status === 401) R.cacheClear();
         else cacheDrop(R.club);
@@ -1589,7 +1602,9 @@
   const newsClubs = () => R.clubs.filter(c => c.id !== R.club && R.badges[c.id] > 0);
   const pastille = c => (R.badges[c.id] > 0 ? `<span class="un">${R.badges[c.id]}</span>` : '');
   async function pull() {
+    const g = gen;
     const d = await api('/api/ram/c/' + R.club + '/sync?since=' + R.rev);
+    if (g !== gen) return; // réponse pour le club précédent : le club ouvert entre-temps a déjà tout reçu
     // accès validé par le bureau ou rôle changé : ce qu'on a le droit de voir change, on recharge tout le club
     if (d.me && (d.me.valid !== R.valid || d.me.role !== R.role)) {
       const opened = d.me.valid && !R.valid;
@@ -1609,6 +1624,8 @@
       R.reads = d.reads;
       if (!d.items.length && view().v === 'chan') safeRender();
     }
+    if (d.profils) R.profils = d.profils;
+    if (d.board) R.board = d.board;
     if (d.scores) {
       const ch = Object.keys(d.scores).some(k => d.scores[k] !== R.scores[k]);
       R.scores = d.scores;
@@ -1851,11 +1868,25 @@
 
   /* ---------- démarrage dans un vrai club ---------- */
   function wipe() {
-    [posts, chans, GROUPS, CHAMPS, OLDG, OLDC, recs, arts, PARTNERS, COMMS, REPORTS, NOTIFS, JOINREQ, FORM].forEach(
-      l => {
-        l.length = 0;
-      }
-    );
+    [
+      posts,
+      chans,
+      GROUPS,
+      CHAMPS,
+      OLDG,
+      OLDC,
+      recs,
+      arts,
+      PARTNERS,
+      COMMS,
+      REPORTS,
+      JOURNAL,
+      NOTIFS,
+      JOINREQ,
+      FORM
+    ].forEach(l => {
+      l.length = 0;
+    });
     Object.keys(M).forEach(k => {
       if (k !== 'club') delete M[k];
     });
@@ -1948,6 +1979,8 @@
         fol: R.fol,
         roles: R.roles,
         scores: R.scores,
+        profils: R.profils,
+        board: R.board,
         reads: R.reads,
         counts: R.counts,
         jaTitles: R.jaTitles,
@@ -1963,10 +1996,12 @@
     }, 4000);
   }
   async function start(id, opts = {}) {
+    const g = ++gen; // les demandes encore en route pour le club précédent seront ignorées
     // /RAM Coach : ouverture allégée, l'historique des cours et des séances arrive à la demande (loadHisto)
     const mem = opts.plein ? null : await cacheGet(id);
     const d =
       mem || (await api('/api/ram/c/' + id + '/sync?since=0' + (window.RAM_APP === 'coach' ? '&fenetre=1' : '')));
+    if (g !== gen) return; // une ouverture plus récente (autre club choisi entre-temps) l'emporte
     R.fullAt = mem ? mem.full : Date.now();
     R.clubInfo = d.club;
     R.cacheFirst = !!mem; // les nouveautés d'après le cache : sans notification, comme à une ouverture normale
@@ -1983,6 +2018,8 @@
     R.fol = d.fol || {};
     R.roles = d.roles || {};
     R.scores = d.scores || {};
+    R.profils = d.profils || null; // profils complets, vérifiés par le serveur (trophée « Carte d'identité »)
+    R.board = d.board || null; // classements du club : cette saison et depuis toujours
     R.reads = d.reads || {}; // coches : jusqu'où tous les autres membres de chaque groupe ont lu
     R.more = d.more || {}; // discussions qui ont des messages plus anciens que ceux reçus à l'ouverture
     R.histoAvant = d.histoAvant || '';
@@ -2552,12 +2589,14 @@
             ? 'mem'
             : r === 'coach'
               ? 'coach'
-              : { Président: 'president', Gérant: 'gerant', Trésorier: 'tresorier', Secrétaire: 'secretaire' }[f] ||
-                'bureau',
+              : r === 'anim'
+                ? 'animateur'
+                : { Président: 'president', Gérant: 'gerant', Trésorier: 'tresorier', Secrétaire: 'secretaire' }[f] ||
+                  'bureau',
         chip = (v, l) =>
           `<button class="chip" data-a="ramRole" data-id="${id}" data-r="${v}" aria-pressed="${cur === v}">${l}</button>`;
       // juste sous l'en-tête du profil : c'est ce que le bureau vient y chercher
-      const carte = `<div class="card"><span class="kicker">Rôle dans le club</span><div class="chips">${chip('mem', 'Adhérent')}${chip('coach', 'Enseignant')}${chip('bureau', 'Membre du bureau')}${chip('president', 'Président')}${chip('gerant', 'Gérant')}${chip('tresorier', 'Trésorier')}${chip('secretaire', 'Secrétaire')}</div><p class="muted small">Bureau, président, gérant, trésorier et secrétaire gèrent tout le club. Un enseignant gère les groupes, les stages et publie au nom du club. Le capitaine d'une équipe se choisit dans l'équipe.</p><button class="btn sm ghost" style="color:var(--hot-tx)" data-a="ramRemove" data-id="${id}">Retirer du club</button></div>`;
+      const carte = `<div class="card"><span class="kicker">Rôle dans le club</span><div class="chips">${chip('mem', 'Adhérent')}${chip('coach', 'Enseignant')}${chip('animateur', 'Animateur')}${chip('bureau', 'Membre du bureau')}${chip('president', 'Président')}${chip('gerant', 'Gérant')}${chip('tresorier', 'Trésorier')}${chip('secretaire', 'Secrétaire')}</div><p class="muted small">Bureau, président, gérant, trésorier et secrétaire gèrent tout le club. Un enseignant gère les groupes, les stages, les niveaux et publie au nom du club ; il ne supprime que ses publications. Un animateur publie au nom du club et modère le mur et les messages, sans accès aux réglages ni aux adhésions. Le capitaine d'une équipe se choisit dans l'équipe.</p><button class="btn sm ghost" style="color:var(--hot-tx)" data-a="ramRemove" data-id="${id}">Retirer du club</button></div>`;
       const i = h.indexOf('<div class="phero">'),
         balise = /<(\/?)div\b[^>]*>/g;
       let n = 0,
