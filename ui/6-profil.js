@@ -94,7 +94,7 @@ function profile(id) {
     parent = (M[ME()].kids || []).includes(id);
   let h = `<div class="pad">${self && pending() ? lockCard() : ''}<div class="phero"><div class="row" style="gap:14px">${self ? `<label class="avedit" aria-label="Changer ma photo de profil">${av(id)}<span class="cam">${ic('image')}</span><input type="file" id="me-photo" accept="image/*"></label>` : m.photo ? `<button class="avbtn" data-a="photo" style="background-image:url(${m.photo})" aria-label="Agrandir la photo de profil">${av(id)}</button>` : av(id)}<div class="grow"><h2 class="tilt">${m.n.replace(' ', '<br>')}</h2></div></div>
  <div class="row" style="flex-wrap:wrap;gap:6px">${m.role ? `<span class="bd ${RC[m.role] || ''}">${m.role}</span>` : ''}<span class="muted small">${m.team}</span></div>
- <div class="rtiles">${m.r && m.r !== 'NC' ? `<span class="rt tennis"><b>${m.r}</b>Tennis</span>` : ''}${m.pl ? `<span class="rt padel"><b>Niv ${m.pl}</b>Padel</span>` : ''}${m.tn && m.tn.n ? `<span class="rt tennis"><b>Niv ${m.tn.n}</b>Tennis${m.tn.t ? ' · ' + esc(m.tn.t) : ''}</span>` : ''}${m.pad ? `<span class="rt"><b>${m.pad}</b>Classement padel</span>` : ''}${(!m.r || m.r === 'NC') && !m.pl && !m.pad && !(m.tn && m.tn.n) ? '<span class="rt"><b>NC</b>Non classé</span>' : ''}</div>
+ <div class="rtiles">${m.r && m.r !== 'NC' ? `<span class="rt tennis"><b>${m.r}</b>Tennis</span>` : ''}${m.pl ? `<span class="rt padel"><b>Niv ${m.pl}${typeof certIc === 'function' ? certIc(m, 'pl') : ''}</b>Padel</span>` : ''}${m.tn && m.tn.n ? `<span class="rt tennis"><b>Niv ${m.tn.n}${typeof certIc === 'function' ? certIc(m, 'tn') : ''}</b>Tennis${m.tn.t ? ' · ' + esc(m.tn.t) : ''}</span>` : ''}${m.pad ? `<span class="rt"><b>${m.pad}</b>Classement padel</span>` : ''}${(!m.r || m.r === 'NC') && !m.pl && !m.pad && !(m.tn && m.tn.n) ? '<span class="rt"><b>NC</b>Non classé</span>' : ''}</div>
  ${self || kid ? '' : `<div class="ctl">${blk ? `<button class="btn grow ghost" data-a="unblock" data-id="${id}">Débloquer ${first(id)}</button>` : `<button class="btn grow ${f ? 'on' : ''}" data-a="follow" data-id="${id}" aria-pressed="${f}">${ic(f ? 'check' : 'plus')}${f ? 'Suivi' : 'Suivre ' + first(id)}</button>`}<button class="ib rnd" data-a="umenu" data-id="${id}" aria-label="Options">${ic('more')}</button></div>`}</div>
  <div class="stats">${stat('users', kid ? '—' : m.fol + (f ? 1 : 0), 'Abonnés', kid ? '' : `data-a="folList" data-id="${id}"`)}${stat('trophy', w, 'Victoires', 'data-a="palmGo"')}${stat('x', m.res.length - w, 'Défaites', 'data-a="palmGo"')}${stat('star', pf, 'Perfs', 'data-a="palmGo"')}</div>${self ? '' : trophyCard(id)}`;
   /* mon profil : la carte d'identité en haut, puis trois onglets au lieu d'une longue colonne */
@@ -124,6 +124,7 @@ function profile(id) {
   else if (kid && !self)
     h += `<div class="note">Compte jeune : pas de messagerie privée ni d'abonnés. Ses résultats ne sont visibles que de son groupe, de ses parents et des encadrants.</div>`;
   h +=
+    (typeof equipeStats === 'function' ? equipeStats(id) : '') +
     contact(id) +
     `<div class="stack" id="palmares"><span class="kicker">Palmarès de la saison</span><div class="chips"><button class="chip" data-a="palm" data-s="tennis" aria-pressed="${S.palm !== 'padel'}">Tennis · ${m.res.length}</button><button class="chip" data-a="palm" data-s="padel" aria-pressed="${S.palm === 'padel'}">Padel · ${(m.pres || []).length}</button></div><div class="palm">${S.palm === 'padel' ? padelList(id) : resList(id)}</div></div>`;
   return h + '</div>';
@@ -135,7 +136,7 @@ function profile(id) {
 function meTabBody(T, id, m, kid) {
   let h = '';
   if (T === 'jeu')
-    return `<div class="meshort"><button class="btn" data-a="result">${ic('score')}Ajouter un résultat</button>${kid ? '' : `<button class="btn ghost" data-a="rankMenu">${ic('chart')}Changer mon classement</button>`}</div><div class="stack" id="palmares"><span class="kicker">Palmarès de la saison</span><div class="chips"><button class="chip" data-a="palm" data-s="tennis" aria-pressed="${S.palm !== 'padel'}">Tennis · ${m.res.length}</button><button class="chip" data-a="palm" data-s="padel" aria-pressed="${S.palm === 'padel'}">Padel · ${(m.pres || []).length}</button></div><div class="palm">${S.palm === 'padel' ? padelList(id) : resList(id)}</div></div>`;
+    return `${typeof equipeStats === 'function' ? equipeStats(id) : ''}<div class="meshort"><button class="btn" data-a="result">${ic('score')}Ajouter un résultat</button>${kid ? '' : `<button class="btn ghost" data-a="rankMenu">${ic('chart')}Changer mon classement</button>`}</div><div class="stack" id="palmares"><span class="kicker">Palmarès de la saison</span><div class="chips"><button class="chip" data-a="palm" data-s="tennis" aria-pressed="${S.palm !== 'padel'}">Tennis · ${m.res.length}</button><button class="chip" data-a="palm" data-s="padel" aria-pressed="${S.palm === 'padel'}">Padel · ${(m.pres || []).length}</button></div><div class="palm">${S.palm === 'padel' ? padelList(id) : resList(id)}</div></div>`;
   if (T === 'infos') {
     h = contact(id);
     // classement du club : on peut ne pas y apparaître, en gardant ses trophées et son score

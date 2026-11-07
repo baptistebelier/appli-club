@@ -425,7 +425,101 @@ button.tro{width:100%;text-align:left}
 .fp-card .av{width:52px;height:52px;font-size:19px}
 .fp-card b{font-family:var(--f-sub);font-size:14px;letter-spacing:.02em;text-transform:uppercase;line-height:1}
 .fp-st.lock .fp-card{background:var(--card2);border-color:var(--line);box-shadow:0 4px 0 #000}
-.fp-st.lock .fp-card .av{filter:grayscale(1) brightness(.75)}
+.fp-st.lock .fp-card .av,.fp-st.lock .fp-card .medal{filter:grayscale(1) brightness(.75)}
+.fp-card .medal{width:52px;height:52px}
+.tp-now{text-align:center;margin:-8px 0 18px}
+/* agenda du club : promouvoir des événements sur le mur */
+.promo-w{position:relative}
+.promo-more{position:absolute;top:6px;right:6px;width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:color-mix(in srgb,var(--card) 88%,transparent);color:var(--fg);z-index:2}
+.promo-more svg{width:20px;height:20px}
+.promo-w.sel>.card{outline:2px dashed var(--line);outline-offset:-2px}
+.promo-w.sel.on>.card{outline:3px solid var(--accent);outline-offset:-3px}
+.promo-ck{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:2px solid var(--line);background:var(--card);display:grid;place-items:center;pointer-events:none;z-index:2}
+.promo-ck svg{width:16px;height:16px}
+.promo-w.on .promo-ck{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.promo-bar{position:sticky;top:8px;z-index:4;display:flex;align-items:center;gap:8px;padding:10px 12px;margin:0 0 12px;background:var(--card);border:2px solid var(--accent);border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.promo-l{display:flex;flex-direction:column;gap:8px;margin:10px 0}
+.promo-d{font-family:var(--f-sub);font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.promo-sn{font-weight:600}
+/* tarif, déroulé d'un stage : formulaire et frise verticale */
+.dl-row{display:grid;grid-template-columns:86px 86px 1fr 40px;gap:6px;align-items:center;margin-bottom:6px}
+.dl-row select,.dl-row input{min-height:42px;min-width:0}
+@media (max-width:420px){.dl-row{grid-template-columns:1fr 1fr 40px}.dl-row .dl-t{grid-column:1/3;grid-row:2}.dl-row .dl-x{grid-row:1;grid-column:3}}
+.ev-prix{font-weight:700}.ev-prix.free{color:var(--accent)}
+.dlb{margin:10px 0 4px;border:1px solid var(--line);border-radius:12px;background:var(--card2);overflow:hidden}
+.dl-tog{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:8px 12px;text-align:left;font-weight:600;color:var(--fg)}
+.dl-pm{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);flex:none}
+.dl-pm svg{width:16px;height:16px}
+.dl-f{list-style:none;margin:0;padding:4px 12px 12px}
+.dl-f li{display:grid;grid-template-columns:62px 18px 1fr;align-items:start;min-height:44px;position:relative}
+.dl-h{font-family:var(--f-sub);font-weight:700;font-size:15px;line-height:1.1;text-align:right;padding-right:8px}
+.dl-h small{display:block;font-size:12px;font-weight:600;color:var(--muted)}
+.dl-pt{position:relative;align-self:stretch}
+.dl-pt::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:2px;transform:translateX(-50%);background:var(--line)}
+.dl-f li:first-child .dl-pt::before{top:6px}.dl-f li:last-child .dl-pt::before{bottom:auto;height:6px}
+.dl-pt::after{content:"";position:absolute;left:50%;top:3px;width:10px;height:10px;border-radius:50%;transform:translateX(-50%);background:var(--accent);box-shadow:0 0 0 3px var(--card2)}
+.dl-tx{padding:0 0 12px 8px;line-height:1.35}
+.evx .evf .dlb{margin:8px 0 0}
+/* club ouvert dans l'appli (Mes clubs) */
+.club-on{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--on-accent)}
+.club-on svg{width:19px;height:19px}
+/* modèles de fourchettes (parties dirigées, séances collectives) */
+.nv-mods .chips{gap:8px}
+.nv-mod{display:inline-flex;align-items:stretch;padding:0;overflow:hidden}
+.nv-mod>button:first-child{display:flex;flex-direction:column;align-items:flex-start;padding:6px 4px 6px 12px;text-align:left;font-weight:700;min-height:44px;justify-content:center}
+.nv-mod small{font-weight:500;font-size:12px;color:var(--muted)}
+.nv-mod-x{width:36px;display:grid;place-items:center;color:var(--muted)}
+.nv-mod-x svg{width:14px;height:14px}
+.nv-save{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:4px 0 8px}
+.nv-save input{flex:1 1 180px;min-height:42px}
+/* formulaires du club */
+.fq-row{display:flex;flex-direction:column;gap:8px;padding:12px}
+.fq-row .fq-t,.fq-row .fq-q,.fq-row .fq-o,.dl-row select,.dl-row input,.nv-save input,#ev-prix-m,#ev-ens-nom,#nv-price{background:var(--card2);border:0;border-radius:var(--rb);min-height:44px;padding:8px 12px;width:100%;color:var(--fg);font:inherit}
+.fq-row .fq-o{min-height:84px;resize:vertical}
+.fq-row .row{gap:8px;align-items:center}
+.fq-row .fq-t{flex:1;min-height:42px;min-width:0}
+.fq-r{white-space:nowrap}
+.fq-opts{border:0;padding:0;margin:0 0 14px}
+.fq-opts legend{font-weight:600;margin-bottom:6px;padding:0}
+.fq-opts .chk{display:flex;min-height:44px;align-items:center}
+.fq-req{color:var(--hot)}
+.fr-bar{display:grid;grid-template-columns:minmax(80px,40%) 1fr 32px;gap:8px;align-items:center;margin:8px 0}
+.fr-l{font-size:14px;overflow-wrap:anywhere}
+.fr-g{height:12px;border-radius:6px;background:var(--card2);overflow:hidden}
+.fr-g i{display:block;height:100%;background:var(--accent);border-radius:6px}
+.fr-bar b{text-align:right}
+.fr-txt{margin:8px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+/* mur : repère entre les nouvelles publications et celles déjà vues */
+.ajour{display:flex;flex-direction:column;align-items:center;gap:2px;margin:6px 16px 14px;padding:10px 0;border-top:2px solid var(--accent);text-align:center}
+.ajour span{display:inline-flex;align-items:center;gap:8px;font-family:var(--f-sub);font-weight:700;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+.ajour span svg{width:18px;height:18px;padding:3px;border-radius:50%;background:var(--accent);color:var(--on-accent);box-sizing:content-box}
+.ajour small{color:var(--muted);font-size:12px}
+/* niveau certifié par un enseignant */
+.certif{display:inline-grid;place-items:center;vertical-align:-3px;margin-left:4px;color:var(--accent)}
+.certif svg{width:16px;height:16px;fill:currentColor;stroke:var(--card);stroke-width:2}
+.rt .certif svg{width:18px;height:18px}
+/* tournoi interne (créé dans /RAM JA) */
+.int-moi{display:flex;flex-direction:column;gap:8px;margin:10px 0;padding:12px;border-radius:12px;background:var(--card2);border-left:4px solid var(--accent)}
+.int-moi>svg{width:22px;height:22px;color:var(--accent)}
+.int-moi.win{flex-direction:row;align-items:center;gap:10px}
+.int-tab{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(190px,78%);gap:12px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x proximity}
+@media (min-width:700px){.int-tab{grid-auto-columns:minmax(200px,1fr)}}
+.int-col{display:flex;flex-direction:column;justify-content:space-around;gap:10px;scroll-snap-align:start}
+.int-m{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:10px;background:var(--card);border:2px solid var(--line)}
+.int-m.mien{border-color:var(--accent)}
+.int-m.att{border-style:dashed}
+.int-m.bye{opacity:.5}
+.int-m small{font-size:12px;color:var(--muted);font-weight:600}
+.int-j{display:flex;justify-content:space-between;gap:8px;font-size:14px;min-height:22px;align-items:center}
+.int-j.w{font-weight:800}.int-j.l{opacity:.55}.int-j.moi span{text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px}
+.int-regle{line-height:1.5}
+/* championnats par équipes : statistiques domicile / extérieur, règlement */
+.eq-st table{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
+.eq-st th,.eq-st td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--line)}
+.eq-st th[scope=row]{text-align:left;font-weight:600}
+.eq-st thead th{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.eq-st tbody tr:last-child th,.eq-st tbody tr:last-child td{font-weight:800;border-bottom:0}
+.eq-regle summary{cursor:pointer;font-weight:700;min-height:40px;display:flex;align-items:center}
 .fp-st.now .fp-card{border-color:var(--accent);box-shadow:0 4px 0 color-mix(in srgb,var(--accent) 45%,#000),0 0 18px color-mix(in srgb,var(--accent) 30%,transparent)}
 .fp-lock{position:absolute;top:-9px;right:-7px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:2px solid var(--line);color:var(--muted)}
 .fp-lock svg{width:15px;height:15px}
@@ -829,6 +923,12 @@ details.aide .aq p{margin:0;line-height:1.5}
 .evf{flex:0 0 100%;display:flex;flex-direction:column;gap:8px;position:relative;z-index:1}
 .evx.cx{opacity:.6}
 .evx.cx .evh{background:var(--hot);color:var(--on-hot)}
+.evh small{display:block;font-family:var(--f-sub);font-size:13px;font-weight:700;opacity:.85;margin-top:3px;letter-spacing:.02em}
+/* liste d'événements sur le mur : la date en grand, l'horaire de début à fin en dessous */
+.evh.evd{min-width:84px;padding:8px 6px;white-space:normal}
+.evh.evd b{display:block;font-size:30px;line-height:1}
+.evh.evd small{text-transform:uppercase;font-size:12px;margin-top:2px}
+.evh.evd i{display:block;font-style:normal;font-family:var(--f-sub);font-weight:700;font-size:13px;line-height:1.15;margin-top:6px;padding-top:5px;border-top:1px solid currentColor}
 /* raccourcis d'un cours (École) : un gros picto au-dessus du libellé, la couleur dit ce que fait le bouton */
 .ecacts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .ecact{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:76px;padding:10px 6px;border-radius:var(--rb);background:var(--card2);color:var(--fg);font-family:var(--f-sub);font-weight:700;font-size:14px;line-height:1.15;text-align:center}

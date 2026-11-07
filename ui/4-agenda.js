@@ -62,13 +62,18 @@ function planItems(iso) {
         all: !!p.d2,
         sport: p.sport || '',
         t: p.d2 ? '' : p.h1,
+        t2: p.d2 ? '' : p.h2,
         dur: du > 0 ? du : 120,
         kind: p.stage ? 'Stage' : p.anim ? 'Animation' : p.trn ? 'Tournoi' : '',
         pic: p.stage ? 'racket' : p.anim ? 'users' : '',
         lines: [
           p.d2 ? ['cal', 'Du ' + fmtD(p.d, 1) + ' au ' + fmtD(p.d2, 1)] : ['clock', p.h1 + ' – ' + p.h2],
-          p.place && ['pin', p.place]
+          p.place && ['pin', p.place],
+          typeof ensTxt === 'function' && ensTxt(p) && ['user', 'Avec ' + ensTxt(p)]
         ],
+        // tarif toujours visible ; déroulé du stage dépliable sous la carte
+        tg1: typeof prixTxt === 'function' && prixTxt(p) ? evTag(prixTxt(p)) : '',
+        foot: typeof dlBlock === 'function' ? dlBlock(p) : '',
         title: p.title.replace(/<[^>]+>/g, ''),
         v: 'post',
         id: p.id,
@@ -139,7 +144,9 @@ function planMore(iso, out, me, mine) {
               ? evTag('Liste d’attente')
               : s === 'in'
                 ? evTag('Inscrit')
-                : '') + (st.win ? '' : evTag('En attente de joueurs')),
+                : '') +
+          (st.win ? '' : evTag('En attente de joueurs')) +
+          (nv.price ? evTag(nv.price) : ''),
         title:
           nv.mode === 'cours'
             ? nv.theme || 'Séance collective'
@@ -148,6 +155,41 @@ function planMore(iso, out, me, mine) {
         id: p.id,
         my: p.by === me || !!s
       });
+    }
+    // tournoi interne : à son premier jour, et le jour limite de mon match
+    if (p.kind === 'jaint' && p.ja && typeof intMoi === 'function') {
+      const J = p.ja,
+        moi = intMoi(J);
+      if (p.d === iso)
+        out.push({
+          cat: 'tour',
+          sport: p.sport || '',
+          all: true,
+          t: '',
+          kind: 'Tournoi interne',
+          lines: [['users', (J.players || []).length + ' participants']],
+          title: p.title,
+          v: 'post',
+          id: p.id,
+          my: moi.length > 0
+        });
+      moi.forEach(pj => {
+        const m = intMonMatch(J, pj);
+        if (!m || intEtat(m) !== 'ready' || ((J.tours || [])[m.r] || {}).fin !== iso) return;
+        out.push({
+          cat: 'tour',
+          sport: p.sport || '',
+          all: true,
+          t: '',
+          kind: 'Date limite',
+          lines: [['users', 'Contre ' + intNom(J, m.a === pj.id ? m.b : m.a)]],
+          title: p.title,
+          v: 'post',
+          id: p.id,
+          my: true
+        });
+      });
+      return;
     }
     // tournoi ou animation /RAM JA
     if (p.kind === 'jatour' && p.ja && p.d && iso >= p.d && iso <= (p.d2 || p.d)) {
@@ -301,11 +343,15 @@ function planFiltersBody() {
 }
 /* les vues Événements et Liste : la carte commune (ui/1-briques.js), sous l'étiquette du jour */
 const PLAN_KIND = { jeu: 'Partie', ani: 'Événement', tour: 'Tournoi', eq: 'Rencontre', repas: 'Repas' };
-const planCard = i =>
+/* dt : la date affichée en grand dans la pastille (liste d'événements promue sur le mur) */
+const planCard = (i, dt) =>
   evCard({
     cat: i.cat,
     pic: i.pic,
     t: i.all ? '' : i.t,
+    // heure de fin : celle de l'événement, sinon calculée depuis la durée (pas pour une rencontre, dont la fin n'est pas connue)
+    t2: i.all ? '' : i.t2 !== undefined ? i.t2 : i.cat === 'eq' ? '' : hFin(i.t, i.dur),
+    dt,
     cx: i.cx,
     go: `data-a="open" data-v="${i.v}" data-id="${i.id}"`,
     title: i.title,
@@ -314,7 +360,8 @@ const planCard = i =>
       (i.tg0 || '') +
       (i.kind || PLAN_KIND[i.cat] ? evTag(i.kind || PLAN_KIND[i.cat]) : '') +
       sportTag(i.sport) +
-      (i.tg1 || '')
+      (i.tg1 || ''),
+    foot: i.foot || ''
   });
 /* Événements de l'agenda du club : ce qu'organise le club (événements, stages, animations,
    tournois du club, tournois et animations /RAM JA, rencontres d'équipes),
@@ -340,7 +387,7 @@ function eventsView() {
     cols.push([iso, (days.find(x => x[0] === iso) || [iso, []])[1]]);
   return `<div class="pad">${
     days.length
-      ? `<div class="plk">${cols.map(([iso, l]) => evDay(iso, l.map(planCard).join('') || '<span class="muted small plc-v">Rien de prévu</span>', l.length ? '' : 'vide')).join('')}</div>`
+      ? `${!me && typeof promoBar === 'function' ? promoBar() : ''}<div class="plk">${cols.map(([iso, l]) => evDay(iso, l.map(i => (!me && typeof promoCard === 'function' ? promoCard(i, iso, planCard(i)) : planCard(i))).join('') || '<span class="muted small plc-v">Rien de prévu</span>', l.length ? '' : 'vide')).join('')}</div>`
       : me
         ? empty(
             'cal',

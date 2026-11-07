@@ -74,7 +74,7 @@ function evBox(p) {
     int = p.reg !== 'ext',
     past = p.done || p.arch,
     full = p.cap && y >= p.cap && p.my !== 'yes',
-    meta = `<div class="meta"><span>${ic('clock')}${p.date}</span><span>${ic('pin')}${p.place}</span></div>`,
+    meta = `<div class="meta"><span>${ic('clock')}${p.date}</span><span>${ic('pin')}${p.place}</span>${typeof evMetaPlus === 'function' ? evMetaPlus(p) : ''}</div>${typeof dlBlock === 'function' ? dlBlock(p) : ''}`,
     cnt = int
       ? `<div class="cnts"><span><b>${y}${p.cap && !past ? '/' + p.cap : ''}</b>${past ? 'participant' : 'inscrit'}${y > 1 ? 's' : ''}</span>${past ? '' : `<span><b>${m}</b>peut-être</span>`}${wl && !past ? `<span><b>${wl}</b>en attente</span>` : ''}</div>`
       : '';
@@ -108,6 +108,9 @@ function trnBox(p) {
 function postBody(p) {
   const k = p.kind;
   if (k === 'teamfinal') return tfPost(p);
+  if (k === 'promo' && typeof promoPost === 'function') return promoPost(p);
+  if (k === 'formp' && typeof formPost === 'function') return formPost(p);
+  if (k === 'jaint' && p.ja && typeof intPost === 'function') return intPost(p);
   if (k === 'annonce' || k === 'event' || k === 'cta') {
     const usePoster = p.img || k === 'event';
     return (
