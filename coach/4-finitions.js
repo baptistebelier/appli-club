@@ -68,7 +68,7 @@ AIDE.splice(
       ],
       [
         'Un élève sans compte',
-        'Élèves, « Ajouter un élève sans compte ». Le jour où il crée son compte /RAM Club, ouvre sa fiche et « Relier à un compte du club » : il retrouve tout.'
+        'Élèves, « Ajouter un élève sans compte ». Le jour où il crée son compte /RAM Club, ouvre sa fiche et « Relier à un compte /RAM » (même si son compte est dans un autre de tes clubs) : il retrouve tout.'
       ]
     ]
   },
@@ -169,6 +169,13 @@ function coApply(cid, it) {
       M[it.id] = c.members[it.id] = Object.assign({ res: [] }, it.data, { _club: cid });
       c.base.set('member/' + it.id, JSON.stringify(coBare(M[it.id])));
     }
+    return;
+  }
+  // les discussions de ce club : seulement savoir lesquelles existent (supprimer ou recréer celle d'un groupe)
+  if (it.coll === 'chan') {
+    c.chans = c.chans || new Set();
+    if (it.del) c.chans.delete(it.id);
+    else c.chans.add(it.id);
     return;
   }
   if (!CO_COLL[it.coll] || (it.coll === 'group' && it.data && (it.data.type !== 'train' || it.data.old))) return;

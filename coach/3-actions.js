@@ -21,6 +21,7 @@ Object.assign(TITLES, {
   seance: () => {
     const id = view().id,
       g = grp(id.slice(0, id.lastIndexOf('.')));
+    if (REGLES.planDe(id)) return [g ? g.name : 'Séance', 'À planifier'];
     return [g ? g.name : 'Séance', fmtD(id.slice(id.lastIndexOf('.') + 1))];
   },
   eleve: () => [svName(view().id), 'Fiche élève'],
@@ -62,6 +63,12 @@ function coPop(sel, burst) {
   el.classList.add('copop');
   if (burst && typeof fxBurst === 'function') fxBurst(fxAt(el));
 }
+/* la dernière date qui garde l'ancien enseignant : hier, ou aujourd'hui si l'appel du jour est fait */
+const coCoupure = g =>
+  REGLES.coupureDe(
+    TODAY,
+    trainOn(g, TODAY) && Object.values(REGLES.presDe(sesFind(g, TODAY), g, TODAY)).some(v => v === 'P')
+  );
 const coSave = msg => {
   render(true);
   if (msg) toast(msg);
@@ -171,10 +178,11 @@ Object.assign(A, {
     $('co-note').required = false;
     $('co-tel').type = 'tel';
   },
-  /* élève sans compte : rattaché à l'adhérent qui vient de créer le sien ; il retrouve tout */
+  /* élève sans compte : rattaché à l'adhérent qui vient de créer le sien ; il retrouve tout.
+     Tous les comptes de mes clubs sont proposés, pas seulement ceux du club où les cours ont eu lieu :
+     le club qui compte est celui du compte /RAM (un élève a pu changer de club). */
   coLink(d) {
-    const cid = coClubOf(coEl(d.id)),
-      cands = Object.keys(M).filter(k => k !== 'club' && k !== d.id && !isMinor(k) && coClubOf(M[k]) === cid),
+    const cands = Object.keys(M).filter(k => k !== 'club' && k !== d.id && !isMinor(k)),
       el = coEl(d.id),
       mots = fold(el.n || '')
         .split(/\s+/)
@@ -183,7 +191,9 @@ Object.assign(A, {
         (M[k].mail && el.mail && fold(M[k].mail) === fold(el.mail) ? 9 : 0) +
         mots.filter(x => fold(name(k)).includes(x)).length;
     if (!cands.length)
-      return toast('Aucun compte dans ce club : l’élève doit d’abord rejoindre le club dans /RAM Club');
+      return toast(
+        'Aucun compte /RAM Club dans tes clubs : l’élève doit d’abord créer son compte et rejoindre un club'
+      );
     sheet(
       'Relier ' + svFirst(d.id),
       `<form class="body" id="co-link" data-id="${d.id}">${Who(
@@ -307,7 +317,9 @@ Object.assign(A, {
     const g = grp(d.g);
     g.mem = g.mem.filter(k => k !== d.k);
     if (g.ext) g.ext = g.ext.filter(k => k !== d.k);
-    coSave(svFirst(d.k) + ' retiré du groupe');
+    // il garde ce qu'il a consommé de l'attribution du groupe, sans les séances suivantes
+    const n = typeof coGrpLeave === 'function' ? coGrpLeave(g, d.k) : 0;
+    coSave(svFirst(d.k) + ' retiré du groupe' + (n ? ' · sa formule du groupe s’arrête aujourd’hui' : ''));
   }
 });
 /* fiche d'un élève (créée à la première écriture, pour un adhérent qui n'en a pas encore) */
@@ -422,15 +434,19 @@ document.addEventListener('submit', e => {
   if (f.id === 'co-link') {
     const k = val('co-who'),
       old = coEl(id);
-    if (!k || !old) return;
-    // la fiche, les groupes, les séances et le suivi passent sur le compte de l'adhérent
-    const deja = coEl(k);
+    if (!k || !old || !M[k]) return;
+    // la fiche, les groupes, les séances et le suivi passent sur le compte de l'adhérent ;
+    // ils restent rangés dans le club où les cours ont eu lieu, même si son compte est dans un autre club
+    const ici = coClubOf(old),
+      membreIci = coClubOf(M[k]) === ici,
+      deja = ELEVES.find(e => e.id === k && coClubOf(e) === ici);
     ELEVES.splice(ELEVES.indexOf(old), 1);
     if (deja) ELEVES.splice(ELEVES.indexOf(deja), 1);
     ELEVES.push(
       Object.assign({}, old, deja, {
         id: k,
         n: name(k),
+        ...(M[k].mail || old.mail ? { mail: M[k].mail || old.mail } : {}),
         ...(old.achats || (deja && deja.achats)
           ? { achats: [...((deja && deja.achats) || []), ...(old.achats || [])] }
           : {})
@@ -439,7 +455,10 @@ document.addEventListener('submit', e => {
     GROUPS.forEach(g => {
       if ((g.ext || []).includes(id)) {
         g.ext = g.ext.filter(x => x !== id);
-        if (!g.mem.includes(k)) g.mem.push(k);
+        // adhérent de ce club : parmi les membres ; compte d'un autre club : reste parmi les élèves extérieurs
+        if (membreIci) {
+          if (!g.mem.includes(k)) g.mem.push(k);
+        } else if (!g.ext.includes(k)) g.ext.push(k);
       }
     });
     SEANCES.forEach(s => {
@@ -470,7 +489,8 @@ document.addEventListener('submit', e => {
       prix = parseFloat(val('co-prix').replace(',', '.')) || 0,
       max = parseInt(val('co-max'), 10) || 0;
     if ($('co-coach') && val('co-coach') && val('co-coach') !== g.coach) {
-      g.coach = val('co-coach');
+      // les séances passées gardent leur enseignant (regles.js coachDe, historique g.coachH)
+      REGLES.changeCoach(g, val('co-coach'), coCoupure(g));
       g.sub = g.sub ? g.sub.replace(/ · [^·]+$/, ' · ' + first(g.coach)) : g.sub;
     }
     g.tarif = { mode, prix };
@@ -507,13 +527,18 @@ document.addEventListener('submit', e => {
   if (f.id === 'co-add') {
     const g = grp(id),
       ks = [...f.querySelectorAll('input[type=checkbox]:checked')].map(i => i.value);
+    let att = 0;
     ks.forEach(k => {
       if (M[k]) {
         if (!g.mem.includes(k)) g.mem.push(k);
       } else g.ext = [...new Set((g.ext || []).concat(k))];
+      // l'attribution du groupe (pack ou abonnement du cycle) le suit, à partir de son arrivée
+      if (typeof coGrpJoin === 'function') att += coGrpJoin(g, k);
     });
     closeSheet();
-    return coSave(ks.length ? plural(ks.length, 'élève ajouté', 'élèves ajoutés') : '');
+    return coSave(
+      ks.length ? plural(ks.length, 'élève ajouté', 'élèves ajoutés') + (att ? ' · formule du groupe notée' : '') : ''
+    );
   }
 });
 
@@ -610,34 +635,36 @@ Object.assign(A, {
 /* couleurs de /RAM JA (nuit bordeaux, jour rosé, lime et rose /RAM), jamais celles du club : un logiciel de gestion */
 const CO_THEME = {
   true: {
-    bg: '#120A0C',
-    card: '#1C1215',
-    card2: '#2A1C20',
-    line: '#3A2A30',
+    bg: '#2A1B21',
+    card: '#46303A',
+    card2: '#533A45',
+    line: '#5C4450',
+    field: '#33222A',
     fg: '#F7EFF0',
-    muted: '#B5A0A6',
+    muted: '#DCCBD0',
     accent: '#E0F50A',
     'on-accent': '#1A0509',
     accent2: '#FF3D6B',
     hot: '#FF3D6B',
-    'hot-tx': '#FF6F8F',
+    'hot-tx': '#FF8FA8',
     'on-hot': '#FFFFFF',
-    stage: '#0A0506'
+    stage: '#1C1116'
   },
   false: {
-    bg: '#F6F1F1',
+    bg: '#F2EBE4',
     card: '#FFFFFF',
-    card2: '#F1E6E8',
-    line: '#E0D0D4',
-    fg: '#2A0A12',
-    muted: '#86717A',
+    card2: '#F8F1EC',
+    line: '#E6DCD6',
+    field: '#F8F1EC',
+    fg: '#1A0509',
+    muted: '#6E5A61',
     accent: '#A30F35',
     'on-accent': '#FFFFFF',
     accent2: '#D0103A',
     hot: '#D0103A',
     'hot-tx': '#B3123D',
     'on-hot': '#FFFFFF',
-    stage: '#E9DDE0'
+    stage: '#E6DCD6'
   }
 };
 const coSetTheme = setTheme;
@@ -649,7 +676,7 @@ setTheme = function (i) {
   r.setProperty('--rail-logo', `url("img/coach-v2-logo-${dk ? 'blanc' : 'noir'}.png")`);
   r.colorScheme = dk ? 'dark' : 'light';
   const m = document.querySelector('meta[name="theme-color"]');
-  if (m) m.content = dk ? '#120A0C' : '#74102A';
+  if (m) m.content = dk ? '#2A1B21' : '#74102A';
 };
 /* ma fiche enseignant : rangée dans mon profil du club, visible de tous les adhérents (École, Enseignants) */
 A.coPro = () => {
