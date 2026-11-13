@@ -44,6 +44,15 @@
     // une semaine sur deux (every : 2), compté depuis la première séance
     return !(g.every > 1 && g.from) || Math.round((Date.parse(iso) - Date.parse(g.from)) / 6048e5) % g.every === 0;
   }
+  /* heure d'une séance : celle réglée pour ce jour-là (g.hr[date], séance déplacée à une autre heure), sinon celle du créneau */
+  const hAt = (g, iso) => (g && g.hr && iso && g.hr[iso]) || (g && g.h) || '';
+  /* durée d'une séance : celle réglée pour ce jour-là (g.du[date]), sinon celle de son cycle (c.dur), sinon celle du groupe */
+  const durAt = (g, iso) => {
+    if (!g) return '';
+    if (g.du && iso && g.du[iso]) return g.du[iso];
+    const c = iso && (g.cycles || []).find(x => (x.dates || []).includes(iso));
+    return (c && c.dur) || g.dur || '';
+  };
   /* « 1 h 30 », « 1 h », « 45 min » → minutes (1 h par défaut) */
   function durMin(d) {
     const m = String(d || '').match(/(\d+) h(?: (\d+))?|(\d+) min/);
@@ -315,7 +324,7 @@
       if (x.d > to) return;
       // format de la séance : ses inscrits (n), sinon ses présents (un duo reste un duo si l'un manque)
       const n = x.n || (x.presents || []).length,
-        min = durMin(x.g && x.g.dur),
+        min = durMin(x.g && durAt(x.g, x.d)),
         sport = x.sport || (x.g && x.g.sport);
       const gid = x.gid != null ? x.gid : x.g && x.g.id,
         cy = x.cy != null ? x.cy : x.g && gid != null ? (cycleDe(x.g, x.d) || {}).id : undefined;
@@ -440,6 +449,17 @@
       aVenir: n('next') + n('now')
     };
   }
+  /* ce qu'il reste à faire sur un cycle : 'obj' (objectifs à fixer : il commence dans les 14 jours ou a commencé,
+     sans objectifs) ou 'bilan' (bilan de fin de cycle à écrire : toutes ses dates sont passées depuis moins de 60
+     jours, sans bilan) ; null sinon. c.obj et c.bilan s'écrivent dans les réglages du cycle (/RAM Coach). */
+  function cycleTodo(g, c, today) {
+    const l = (c.dates || []).filter(d => !(g.cancel || []).includes(d)).sort();
+    if (!l.length) return null;
+    const fin = l[l.length - 1],
+      plein = !(+c.n > 0) || l.length >= +c.n;
+    if (fin <= today && plein) return !c.bilan && fin >= addDays(today, -60) ? 'bilan' : null;
+    return !c.obj && l[0] <= addDays(today, 14) ? 'obj' : null;
+  }
   /* le cycle en cours : le premier qui a encore une séance à venir, sinon le dernier */
   function cycleCourant(g, today) {
     const prem = c => [...(c.dates || [])].sort()[0] || '9999',
@@ -508,6 +528,7 @@
     aPlanifier,
     planDe,
     cycleDe,
+    cycleTodo,
     cycleEtat,
     cycleCourant,
     cycleOuvert,
@@ -518,6 +539,8 @@
     chanRegle,
     chanOuvert,
     trainOn,
+    hAt,
+    durAt,
     durMin,
     fmt,
     formuleDe,

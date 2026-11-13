@@ -304,7 +304,7 @@ function coDayCard0() {
           })
           .join(''),
         chan = typeof chans !== 'undefined' && chans.some(c => c.id === g.id);
-      return `<div class="codayses"><div class="row" style="gap:14px;align-items:flex-start"><span class="codh"><b>${esc(g.h || '')}</b><small>${esc(g.dur || '')}</small></span><span class="grow"><span class="h3">${esc(g.name)}</span>${s.theme ? `<br><span class="muted">Thème : ${esc(s.theme)}</span>` : ''}${g.goal && !g.nv ? `<br><span class="evl cogoal">${ic('target')}Objectif : ${esc(g.goal)}</span>` : ''}<br>${g.sport ? `<span class="tag ${g.sport === 'Padel' ? 'padel' : 'tennis'}">${esc(g.sport)}</span> ` : ''}<span class="tag ac">${nP}/${st.length} présents</span></span></div><div class="codayl">${rows || '<p class="muted small">Aucun élève.</p>'}</div><div class="ecacts"><button class="btn grow" data-a="open" data-v="seance" data-id="${g.id}.${x.d}">${ic('check')}Faire l’appel</button>${chan ? `<button class="btn ghost grow" data-a="open" data-v="chan" data-id="${g.id}">${ic('chat')}Écrire au groupe</button>` : ''}</div></div>`;
+      return `<div class="codayses"><div class="row" style="gap:14px;align-items:flex-start"><span class="codh"><b>${esc(hAt(g, x.d))}</b><small>${esc(durAt(g, x.d))}</small></span><span class="grow"><span class="h3">${esc(g.name)}</span>${s.theme ? `<br><span class="muted">Thème : ${esc(s.theme)}</span>` : ''}${g.goal && !g.nv ? `<br><span class="evl cogoal">${ic('target')}Objectif : ${esc(g.goal)}</span>` : ''}<br>${g.sport ? `<span class="tag ${g.sport === 'Padel' ? 'padel' : 'tennis'}">${esc(g.sport)}</span> ` : ''}<span class="tag ac">${nP}/${st.length} présents</span></span></div><div class="codayl">${rows || '<p class="muted small">Aucun élève.</p>'}</div><div class="ecacts"><button class="btn grow" data-a="open" data-v="seance" data-id="${g.id}.${x.d}">${ic('check')}Faire l’appel</button>${chan ? `<button class="btn ghost grow" data-a="open" data-v="chan" data-id="${g.id}">${ic('chat')}Écrire au groupe</button>` : ''}</div></div>`;
     })
     .join('');
   return `<div class="card coday"><div class="calh">${ic('cal')}<b>Aujourd’hui · ${fmtD(TODAY)}</b></div>${body}</div>`;
@@ -353,7 +353,7 @@ function coTomorrowCard() {
   return `<div class="card coday cotom"><div class="calh">${ic('cal')}<b>Demain · ${fmtD(d)}</b></div>${l
     .map(
       x =>
-        `<button class="item" data-a="open" data-v="seance" data-id="${x.g.id}.${x.d}"><span class="codh sm"><b>${esc(String(x.g.h || '').replace(' h', ''))}</b></span><span class="grow"><span class="nm">${esc(x.g.name)}</span><br><span class="muted small">${[(sesDu(x.g, x.d) || {}).theme, x.g.sport ? x.g.sport.toLowerCase() : '', plural(coStu(x.g).length, 'élève')].filter(Boolean).map(esc).join(' · ')}</span></span>${x.g.sport ? `<span class="tag ${x.g.sport === 'Padel' ? 'padel' : 'tennis'}">${esc(x.g.sport)}</span>` : ''}${ic('back')}</button>`
+        `<button class="item" data-a="open" data-v="seance" data-id="${x.g.id}.${x.d}"><span class="codh sm"><b>${esc(String(hAt(x.g, x.d)).replace(' h', ''))}</b></span><span class="grow"><span class="nm">${esc(x.g.name)}</span><br><span class="muted small">${[(sesDu(x.g, x.d) || {}).theme, x.g.sport ? x.g.sport.toLowerCase() : '', plural(coStu(x.g).length, 'élève')].filter(Boolean).map(esc).join(' · ')}</span></span>${x.g.sport ? `<span class="tag ${x.g.sport === 'Padel' ? 'padel' : 'tennis'}">${esc(x.g.sport)}</span>` : ''}${ic('back')}</button>`
     )
     .join('')}</div>`;
 }
@@ -415,26 +415,12 @@ A.coPlMore = () =>
   );
 /* au téléphone, le planning s'ouvre sur le jour */
 if (!coWide() && !S.pl.v) S.pl.v = 'jour';
-/* Statistiques : 4 périodes, les trimestres dans « Autre période » */
-const coTopStats = coTopActions;
-coTopActions = function () {
-  coTopStats();
-  if (!coWide() || S.stack.length || S.tab !== 'dash') return;
-  const box = $('top') && $('top').querySelector('.topact .chips');
-  if (!box) return;
-  const tri = [...box.querySelectorAll('[data-a="coDashP"]')].filter(b => /^T\d/.test(b.textContent.trim()));
-  if (!tri.length) return;
-  const on = tri.find(b => b.getAttribute('aria-pressed') === 'true');
-  tri.forEach(b => b.remove());
-  box.insertAdjacentHTML(
-    'beforeend',
-    `<button class="chip${on ? ' on' : ''}" data-a="coDashTri" aria-pressed="${!!on}">${on ? esc(on.textContent) : 'Autre période'} ▾</button>`
-  );
-};
-A.coDashTri = () =>
+/* Statistiques : 4 périodes (mois en cours, mois dernier, trimestre en cours, saison), le reste dans « Autre période »
+   (3 ou 12 derniers mois, un trimestre passé : coAutrePer, coach/2-ecrans.js) */
+A.coDashAutre = () =>
   sheet(
     'Autre période',
-    `<div class="body"><div class="menu">${coQuarters()
+    `<div class="body"><div class="menu">${CO_AUTRES()
       .map(([v, l]) => `<button data-a="coDashP" data-v="${v}" data-close="1">${l}</button>`)
       .join('')}</div></div>`
   );

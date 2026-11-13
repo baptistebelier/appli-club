@@ -101,7 +101,7 @@ function coFormules() {
       .map(n => {
         const l = OFFRES.abos.filter(a => a.ens === n),
           px = l.map(a => +a.prix || 0);
-        return `<details class="card coens"><summary><span class="tile">${ic('cal')}</span><span class="grow"><span class="nm">${esc(n)}</span><br><span class="muted small">${plural(l.length, 'variante')} · ${Math.min(...px) === Math.max(...px) ? eur(px[0]) : 'de ' + eur(Math.min(...px)) + ' à ' + eur(Math.max(...px))}</span></span><span class="chev" aria-hidden="true">${ic('back')}</span></summary><div class="list">${l.map(abRow).join('')}</div><button class="btn sm ghost full" data-a="coAbEdit" data-id="new" data-ens="${esc(n)}">${ic('plus')}Ajouter une variante</button></details>`;
+        return `<details class="card coens"><summary><span class="tile">${ic('cal')}</span><span class="grow"><span class="nm">${esc(n)}</span><br><span class="muted small">${plural(l.length, 'variante')} · ${Math.min(...px) === Math.max(...px) ? eur(px[0]) : 'de ' + eur(Math.min(...px)) + ' à ' + eur(Math.max(...px))}</span></span><span class="chev" aria-hidden="true">${ic('back')}</span></summary><div class="list">${l.map(abRow).join('')}</div><button class="btn sm ghost full" data-a="coAbEdit" data-id="${l[0].id}" data-plus="1">${ic('plus')}Ajouter une variante</button></details>`;
       })
       .join(''),
     ab = OFFRES.abos.filter(a => !a.ens).map(abRow);
@@ -334,7 +334,7 @@ function coPayTodo(depuis) {
       Object.keys(x.s.pres)
         .filter(k => x.s.pres[k] === 'P' && coDue(k, x.d) && !((coEl(k) || {}).payIgn || []).includes(x.d))
         .forEach(k => {
-          const f = REGLES.formuleDe(OFFRES, Math.max(1, coStu(x.g).length), durMin(x.g.dur), x.g.sport);
+          const f = REGLES.formuleDe(OFFRES, Math.max(1, coStu(x.g).length), durMin(durAt(x.g, x.d)), x.g.sport);
           out.push({
             id: 's|' + k + '|' + x.d,
             t: esc(svName(k)),
@@ -399,13 +399,89 @@ function coPayPage(C) {
       if ((a.t === 'pack' || a.t === 'abo') && REGLES.etatAchat(a, TODAY) !== 'termine') enCours.push([e, a]);
     })
   );
-  const cycles = coGroups().filter(g => coIsGrp(g) && !coOver(g) && g.offre);
+  const cycles = coGroups().filter(g => coIsGrp(g) && !coOver(g) && g.offre),
+    selF = !!S.coSelF,
+    pickF = S.coPickF || [];
+  S.coFIds = enCours.map(([e, a]) => e.id + '|' + a.id);
   return `<div class="cotiles n3">${coTile('euro', eurs(C.encaisse), 'Encaissé cette saison')}${coTile('timer', eurs(C.aEncaisser), 'À encaisser')}${coTile('ball', eurs(C.prepaye), 'Packs pas encore utilisés')}</div>
 ${hd(ic('euro') + 'À régulariser · ' + todo.length)}${todo.length ? list(todo.map(p => `<button class="item" ${p.go}><span class="tile">${ic('euro')}</span><span class="grow"><span class="nm">${p.t}</span><br><span class="muted small">${p.sub}</span></span>${p.m ? `<span class="tag cost todo">${eur(p.m)}</span>` : ''}</button>`).join('')) : none('check', 'Rien à régulariser', 'Les paiements attendus et les séances non réglées apparaissent ici.')}
-${hd(ic('ball') + 'Formules en cours · ' + enCours.length)}${enCours.length ? list(enCours.map(([e, a]) => `<button class="item" data-a="coPay" data-id="${e.id}" data-x="${a.id}"><span class="tile">${ic(a.t === 'pack' ? 'ball' : 'cal')}</span><span class="grow"><span class="nm">${esc(svName(e.id))}</span><br><span class="muted small">${esc(a.nom || ofLabel(a.t, a.ref))}${a.t === 'pack' ? ' · ' + a.used + ' sur ' + a.n + ' séances' : ''} · ${coPayLine(a)}</span></span>${coEtatTag(REGLES.etatAchat(a, TODAY))}${coPayTag(coPayState(a))}</button>`).join('')) : '<div class="card"><p class="muted small">Aucun pack ni abonnement en cours.</p></div>'}
+${hd(ic('ball') + 'Formules en cours · ' + enCours.length, enCours.length ? `<button class="chip" data-a="coSelModeF" aria-pressed="${selF}">${selF ? 'Terminé' : 'Sélectionner'}</button>` : '')}${
+    enCours.length
+      ? list(
+          (selF ? coSelBarF() : '') +
+            enCours
+              .map(([e, a]) => {
+                const fid = e.id + '|' + a.id,
+                  on = pickF.includes(fid);
+                return `<button class="item${selF ? ' cosel' : ''}" ${selF ? `data-a="coPickF" data-id="${esc(fid)}" aria-pressed="${on}"` : `data-a="coPay" data-id="${e.id}" data-x="${a.id}"`}><span class="${selF ? 'cochk' : 'tile'}"${selF ? ' aria-hidden="true"' : ''}>${ic(selF ? 'check' : a.t === 'pack' ? 'ball' : 'cal')}</span><span class="grow"><span class="nm">${esc(svName(e.id))}</span><br><span class="muted small">${esc(a.nom || ofLabel(a.t, a.ref))}${a.t === 'pack' ? ' · ' + a.used + ' sur ' + a.n + ' séances' : ''} · ${coPayLine(a)}</span><span class="cotags">${coEtatTag(REGLES.etatAchat(a, TODAY))}${coPayTag(coPayState(a))}</span></span></button>`;
+              })
+              .join('')
+        )
+      : '<div class="card"><p class="muted small">Aucun pack ni abonnement en cours.</p></div>'
+  }
 ${cycles.length ? hd(ic('cal') + 'Cycles en cours') + `<div class="card">${cycles.map(g => `<button class="coact2" data-a="open" data-v="cgroupe" data-id="${g.id}"><span class="cokv2"><span class="grow">${esc(g.name)}</span></span>${coCycleBar(g)}</button>`).join('')}</div>` : ''}
 <div class="card"><p class="muted small">Encaissé : les règlements notés dans les fiches des élèves. À encaisser : les paiements attendus, et ${plural(C.nonCouvertes, 'présence')} sans achat qui la couvre, au prix de ta formule correspondante. Aucun rappel n'est envoyé aux élèves.</p></div>`;
 }
+/* Statistiques : sélection des formules en cours, pour valider leur paiement ou les supprimer d'un coup */
+function coSelBarF() {
+  const all = S.coFIds || [],
+    pick = (S.coPickF || []).filter(id => all.includes(id)),
+    every = all.length && pick.length === all.length;
+  return `<div class="card cosbar"><button class="item cosel" data-a="coPickAllF" aria-pressed="${!!every}"><span class="cochk" aria-hidden="true">${ic('check')}</span><span class="grow"><span class="nm">Tout sélectionner</span><br><span class="muted small">${pick.length ? plural(pick.length, 'formule sélectionnée', 'formules sélectionnées') : 'Touche les formules à valider ou à supprimer'}</span></span></button><div class="cotools"><button class="btn sm grow" data-a="coPickOkF" ${pick.length ? '' : 'disabled'}>${ic('check')}Valider le paiement</button><button class="btn sm hot grow" data-a="coPickDelF" ${pick.length ? '' : 'disabled'}>${ic('trash')}Supprimer</button></div></div>`;
+}
+const coPickedF = () =>
+  (S.coPickF || [])
+    .filter(id => (S.coFIds || []).includes(id))
+    .map(id => {
+      const [k, x] = id.split('|'),
+        e = coEl(k);
+      return { e, a: e && (e.achats || []).find(h => h.id === x) };
+    })
+    .filter(o => o.a);
+Object.assign(A, {
+  coSelModeF() {
+    S.coSelF = !S.coSelF;
+    S.coPickF = [];
+    render(true);
+  },
+  coPickF(d) {
+    const l = (S.coPickF = S.coPickF || []),
+      i = l.indexOf(d.id);
+    if (i >= 0) l.splice(i, 1);
+    else l.push(d.id);
+    render(true);
+  },
+  coPickAllF() {
+    const all = S.coFIds || [];
+    S.coPickF = (S.coPickF || []).length === all.length ? [] : all.slice();
+    render(true);
+  },
+  // valider : chaque paiement attendu est noté réglé aujourd'hui (un achat sans calendrier est déjà réglé)
+  coPickOkF() {
+    const l = coPickedF();
+    if (!l.length) return;
+    l.forEach(({ a }) => (coPayEch(a) || []).forEach(x => x.ok || (x.ok = TODAY)));
+    S.coSelF = false;
+    S.coPickF = [];
+    coSave(plural(l.length, 'formule validée', 'formules validées') + ' : paiement réglé');
+  },
+  coPickDelF() {
+    const l = coPickedF();
+    if (!l.length) return;
+    sheet(
+      'Supprimer des formules',
+      `<div class="body"><p>${plural(l.length, 'formule')} ${l.length > 1 ? 'seront retirées' : 'sera retirée'} de la fiche de ${l.length > 1 ? 'leurs élèves' : 'son élève'} : ${l.map(o => `<b>${esc(svName(o.e.id))}</b> (${esc(o.a.nom || ofLabel(o.a.t, o.a.ref))})`).join(', ')}. Les séances faites restent, sans achat qui les couvre.</p><button class="btn full hot" data-a="coPickDelFOk">${ic('trash')}Supprimer</button><button class="btn full ghost" data-a="closeSheet">Annuler</button></div>`
+    );
+  },
+  coPickDelFOk() {
+    const l = coPickedF();
+    l.forEach(({ e, a }) => (e.achats = e.achats.filter(h => h !== a)));
+    closeSheet();
+    S.coSelF = false;
+    S.coPickF = [];
+    coSave(plural(l.length, 'formule supprimée', 'formules supprimées'));
+  }
+});
 /* séance individuelle : payée ou non. « Payée » note un achat à la séance : le reste des calculs suit tout seul */
 function coSesPay(g, d, id, st, s) {
   const row = st
@@ -495,6 +571,14 @@ document.addEventListener('submit', e => {
 });
 
 /* ---------- fenêtres de saisie ---------- */
+/* une variante d'abonnement (libellé, fréquence, prix, période, engagement, vente en ligne) */
+let coAbN = 0;
+function coAbVRow(a, nom) {
+  const k = 'co-av' + ++coAbN,
+    f = (c, l, v, step, req) =>
+      `<div class="fld"><label for="${k}-${c}">${l}</label><input id="${k}-${c}" class="co-av${c}" type="number" inputmode="decimal" min="0" step="${step || 'any'}" value="${v == null ? '' : v}"${req ? ' required' : ''}></div>`;
+  return `<div class="card coabv" data-id="${a.id || ''}"><div class="row" style="gap:8px;align-items:flex-end"><div class="fld grow"><label for="${k}-n">Libellé de la variante</label><input id="${k}-n" class="co-avn" maxlength="60" placeholder="1 fois par semaine, formule annuelle…" value="${esc(nom || '')}"></div><button type="button" class="ib" data-a="coAbVDel" aria-label="Retirer cette variante">${ic('x')}</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0 8px">${f('w', 'Séances par semaine', a.parSemaine, 1)}${f('p', 'Prix en euros', a.prix, 0, 1)}<div class="fld"><label for="${k}-e">Par</label><select id="${k}-e" class="co-ave">${PERIODES.map(x => `<option ${x === a.periode ? 'selected' : ''}>${x}</option>`).join('')}</select></div>${f('d', 'Engagement', a.duree, 1)}</div><details class="coabvs"${a.sku || a.url ? ' open' : ''}><summary class="muted small">Vente sur Shopify (facultatif)</summary><div class="fld"><label for="${k}-s">Référence Shopify (SKU)</label><input id="${k}-s" class="co-avs" value="${esc(a.sku || '')}" placeholder="ABO-1"></div><div class="fld"><label for="${k}-u">Lien d’achat Shopify</label><input id="${k}-u" class="co-avu" value="${esc(a.url || '')}" placeholder="https://…"></div></details></div>`;
+}
 const ofSel = (id, l, opts, sel) =>
   `<div class="fld"><label for="${id}">${l}</label><select id="${id}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
 const ofNum = (id, l, v, step) =>
@@ -560,28 +644,34 @@ Object.assign(A, {
     closeSheet();
     ofSave('Pack supprimé');
   },
+  /* un abonnement et ses variantes, dans une seule fenêtre : le nom, la formule et le moyen de paiement sont
+     communs ; chaque variante a son libellé, sa fréquence, son prix, sa période et son engagement.
+     Enregistrement : une variante = un abonnement de OFFRES.abos (les achats des élèves y renvoient), réunies par
+     leur ensemble (ens = nom de l'abonnement) dès qu'il y en a deux ; une seule variante = un abonnement simple. */
   coAbEdit(d) {
-    const a = OFFRES.abos.find(x => x.id === d.id) || {
-      nom: '',
-      formule: '',
-      periode: 'mois',
-      duree: 1,
-      prix: '',
-      parSemaine: 1,
-      ens: d.ens || ''
-    };
+    const a0 = d.id !== 'new' && OFFRES.abos.find(x => x.id === d.id),
+      ens = (a0 ? a0.ens : d.ens) || '',
+      l = ens ? OFFRES.abos.filter(x => x.ens === ens) : a0 ? [a0] : [],
+      base = l[0] || { formule: '', moyen: '' },
+      vide = { periode: 'mois', duree: 1, parSemaine: 1, prix: '' },
+      rows = (l.length ? l : [vide]).concat(d.plus ? [vide] : []);
     sheet(
-      d.id === 'new' ? 'Nouvel abonnement' : 'Abonnement',
-      `<form class="body" id="co-ab" data-id="${d.id}">${F('co-an', 'Nom', 'Academy, abonnement performance…', a.nom)}${O('co-ag', 'Ensemble (facultatif)', 'Pour regrouper des variantes : Academy', a.ens)}${O('co-amy', 'Moyen de paiement (facultatif)', 'Espèces, virement, Shopify', a.moyen)}${ofSel('co-af', 'Formule comprise', [['', 'Aucune en particulier']].concat(OFFRES.formules.map(f => [f.id, ofLabel('f', f.id) + ' · ' + foKind(f)])), a.formule)}${ofNum('co-aw', 'Séances par semaine', a.parSemaine, 1)}${ofNum('co-ap', 'Prix en euros', a.prix)}${ofSel(
-        'co-ae',
-        'Par',
-        PERIODES.map(x => [x, x]),
-        a.periode
-      )}${ofNum('co-ad', 'Engagement (nombre de périodes)', a.duree, 1)}${ofVente('co-av', a)}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coAbDel', d.id)}</div></form>`
+      l.length ? 'Abonnement' : 'Nouvel abonnement',
+      `<form class="body" id="co-ab" data-ids="${l.map(x => x.id).join(',')}">${F('co-an', 'Nom de l’abonnement', 'Academy, abonnement performance…', ens || base.nom || '')}${ofSel('co-af', 'Formule comprise', [['', 'Aucune en particulier']].concat(OFFRES.formules.map(f => [f.id, ofLabel('f', f.id) + ' · ' + foKind(f)])), base.formule)}${O('co-amy', 'Moyen de paiement (facultatif)', 'Espèces, virement, Shopify', base.moyen)}<span class="kicker">Variantes</span><p class="muted small">Une ou plusieurs : 1 ou 2 fois par semaine, au mois ou à l’année… Chacune a son prix ; l’engagement se compte en périodes (6 par mois : 6 mois).</p><div id="co-avl">${rows.map((x, i) => coAbVRow(x, rows.length > 1 || l.length > 1 ? x.nom : '')).join('')}</div><button type="button" class="btn sm ghost full" data-a="coAbVAdd">${ic('plus')}Ajouter une variante</button><div class="cotools"><button class="btn">Enregistrer</button>${l.length ? `<button type="button" class="btn ghost" data-a="coAbDel" data-ids="${l.map(x => x.id).join(',')}">${ic('trash')}Supprimer</button>` : ''}</div></form>`
     );
   },
+  coAbVAdd() {
+    $('co-avl').insertAdjacentHTML('beforeend', coAbVRow({ periode: 'mois', duree: 1, parSemaine: 1, prix: '' }, ''));
+    const l = document.querySelectorAll('#co-avl .coabv');
+    l[l.length - 1].querySelector('.co-avn').focus();
+  },
+  coAbVDel(d, el) {
+    if (document.querySelectorAll('#co-avl .coabv').length < 2) return toast('Il faut au moins une variante');
+    el.closest('.coabv').remove();
+  },
   coAbDel(d) {
-    OFFRES.abos = OFFRES.abos.filter(a => a.id !== d.id);
+    const ids = String(d.ids || d.id || '').split(',');
+    OFFRES.abos = OFFRES.abos.filter(a => !ids.includes(a.id));
     closeSheet();
     ofSave('Abonnement supprimé');
   },
@@ -665,25 +755,43 @@ document.addEventListener('submit', e => {
   }
   if (f.id === 'co-ab') {
     e.preventDefault();
-    const x = {
-      nom: v('co-an') || 'Abonnement',
-      formule: v('co-af'),
-      parSemaine: Math.round(n('co-aw')),
-      prix: n('co-ap'),
-      periode: v('co-ae'),
-      duree: Math.max(1, Math.round(n('co-ad'))),
-      ens: v('co-ag'),
-      moyen: v('co-amy'),
-      ...ofVenteLue('co-av')
-    };
-    if (f.dataset.id === 'new') OFFRES.abos.push(Object.assign({ id: nid('a') }, x));
-    else
-      Object.assign(
-        OFFRES.abos.find(a => a.id === f.dataset.id),
-        x
-      );
+    const nom = (v('co-an') || 'Abonnement').slice(0, 60),
+      vs = [...f.querySelectorAll('#co-avl .coabv')],
+      num = (r, c) => +(r.querySelector('.co-av' + c).value || 0),
+      plusieurs = vs.length > 1,
+      old = String(f.dataset.ids || '')
+        .split(',')
+        .filter(Boolean),
+      neuf = vs.map(r => {
+        const w = Math.round(num(r, 'w')),
+          x = {
+            formule: v('co-af'),
+            moyen: v('co-amy'),
+            parSemaine: w,
+            prix: num(r, 'p'),
+            periode: r.querySelector('.co-ave').value,
+            duree: Math.max(1, Math.round(num(r, 'd'))),
+            sku: r.querySelector('.co-avs').value.trim(),
+            url: r.querySelector('.co-avu').value.trim()
+          },
+          lib = r.querySelector('.co-avn').value.trim().slice(0, 60);
+        // plusieurs variantes : chacune porte son libellé, l'abonnement est leur ensemble
+        x.nom = plusieurs ? lib || (w ? plural(w, 'séance') + ' par semaine' : eur(x.prix) + ' ' + abPer(x)) : nom;
+        x.ens = plusieurs ? nom : '';
+        const a = (r.dataset.id && OFFRES.abos.find(y => y.id === r.dataset.id)) || { id: nid('a') };
+        return Object.assign(a, x);
+      });
+    // l'abonnement garde sa place dans la liste ; une variante retirée disparaît
+    const i = OFFRES.abos.findIndex(a => old.includes(a.id)),
+      reste = OFFRES.abos.filter(a => !old.includes(a.id) && !neuf.includes(a));
+    reste.splice(
+      i < 0 ? reste.length : OFFRES.abos.slice(0, i).filter(a => !old.includes(a.id) && !neuf.includes(a)).length,
+      0,
+      ...neuf
+    );
+    OFFRES.abos = reste;
     closeSheet();
-    ofSave('Abonnement enregistré');
+    ofSave(plusieurs ? `Abonnement enregistré · ${plural(neuf.length, 'variante')}` : 'Abonnement enregistré');
   }
   if (f.id === 'co-ac') {
     e.preventDefault();
@@ -736,4 +844,27 @@ document.addEventListener('submit', e => {
     closeSheet();
     coSave('Achat noté' + plan);
   }
+});
+/* rappels des bilans de séance : facultatifs, coupés par défaut (les bilans et objectifs de cycle restent rappelés) */
+A.coRappelBil = () => {
+  if (OFFRES.rappelBilans) delete OFFRES.rappelBilans;
+  else OFFRES.rappelBilans = true;
+  ofSave(OFFRES.rappelBilans ? 'Rappels des bilans de séance activés' : 'Plus de rappel pour les bilans de séance');
+};
+/* « Premiers pas » : une étape se coche (ou se décoche) à la main en touchant sa case */
+A.coSetupTick = d => {
+  const i = +d.i,
+    l = (OFFRES.setup = (OFFRES.setup || []).slice()),
+    j = l.indexOf(i);
+  if (j >= 0) l.splice(j, 1);
+  else l.push(i);
+  if (!l.length) delete OFFRES.setup;
+  ofSave(j >= 0 ? 'Étape à faire' : 'Étape cochée');
+};
+// la case des « Premiers pas » au clavier : Espace ou Entrée la coche
+document.addEventListener('keydown', e => {
+  const c = e.target.closest && e.target.closest('.card.setup .chk[data-a]');
+  if (!c || (e.key !== ' ' && e.key !== 'Enter')) return;
+  e.preventDefault();
+  A.coSetupTick(c.dataset);
 });
