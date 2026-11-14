@@ -75,13 +75,13 @@ function murSide() {
 }
 /* ---------- écrans ---------- */
 /* mur : les publications nouvelles depuis ma dernière visite d'abord (badge « Nouveau »), puis un repère
-   « Vous êtes à jour » avant celles déjà vues ; sans nouveauté, le repère se place en tête du mur */
+   « Tu es à jour » avant celles déjà vues ; sans nouveauté, le repère se place en tête du mur */
 function murJour(feed) {
   if (SEEN.prev.home == null) return feed.map(postHTML).join('');
   const neuf = p => isNew('home', p.at, p.by, p.wr),
     nb = feed.filter(neuf).length,
     i = feed.findIndex(p => !p.pin && !neuf(p)),
-    rep = `<div class="ajour" role="separator"><span>${ic('check')}Vous êtes à jour</span><small>${nb ? 'Publications déjà vues' : 'Aucune nouvelle publication depuis ta dernière visite'}</small></div>`;
+    rep = `<div class="ajour" role="separator"><span>${ic('check')}Tu es à jour</span><small>${nb ? 'Publications déjà vues' : 'Aucune nouvelle publication depuis ta dernière visite'}</small></div>`;
   return feed.map((p, j) => (j === i ? rep : '') + postHTML(p)).join('') + (i < 0 && nb ? rep : '');
 }
 const V = {
@@ -106,7 +106,7 @@ const V = {
       const F = typeof favStrip === 'function' ? favStrip(st) : null;
       if (F && F.any) return F.tiles + F.tail;
       return (
-        (S.role === 'kid' ? '' : st('newPost', 'data-k="play"', ic('search'), 'Chercher une partie', 'calm')) +
+        (S.role === 'kid' ? '' : st('newPost', 'data-k="play"', ic('search'), 'Proposer une partie', 'calm')) +
         chans
           .filter(c => chanOk(c) && c.g !== 'club' && (S.role === 'kid' || !c.kid || (v.kids && v.kids.length)))
           .slice(0, 4)
