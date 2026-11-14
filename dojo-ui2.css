@@ -1,0 +1,46 @@
+/* /Dojo — nouvelle organisation, à l'essai (?ui=2) : seulement ce que la navigation change, le style reste celui de ds.css et dojo.css */
+
+/* Aujourd'hui | Statistiques : sous-onglet dans la page */
+:root[data-ui="2"] #main > .seg.u2sous { margin: 0 16px 16px; width: max-content; max-width: calc(100% - 32px); }
+
+@media (max-width: 1023px) {
+  /* les 5 rubriques dans la barre du bas, Groupes compris */
+  :root[data-ui="2"] #phone .tabs > button[data-t="clubs"] { display: flex; }
+  :root[data-ui="2"] #phone .tabs > button { min-width: 0; letter-spacing: 0; }
+}
+@media (min-width: 1024px) {
+  /* Réglages en bas du menu, à la place de Profil */
+  :root[data-ui="2"] .rbot button[data-t="me"] { display: flex; }
+}
+
+/* Aujourd'hui : la prochaine séance */
+:root[data-ui="2"] .u2next .h3 { display: block; margin: 6px 0 4px; }
+:root[data-ui="2"] .u2avs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 14px; }
+:root[data-ui="2"] .u2mois .btn, :root[data-ui="2"] .u2suivi { margin-top: 12px; }
+/* « Nouveau » : trois choix, chacun avec sa phrase */
+:root[data-ui="2"] .u2new button { align-items: flex-start; text-align: left; white-space: normal; }
+:root[data-ui="2"] .u2new button .muted { font-weight: 400; }
+/* titres des cartes ajoutées (même rendu que les cartes du jour) */
+:root[data-ui="2"] .u2c .calh { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+:root[data-ui="2"] .u2c .calh b { font-family: var(--f-sub); font-weight: 700; font-size: 19px; }
+:root[data-ui="2"] .u2c .calh > svg { width: 20px; height: 20px; color: var(--c-lime); flex: none; }
+/* Aujourd'hui : la semaine en lignes */
+:root[data-ui="2"] .u2sem .item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; }
+:root[data-ui="2"] .u2sem .item > svg { width: 18px; height: 18px; transform: scaleX(-1); flex: none; }
+:root[data-ui="2"] .u2d { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 4px 6px; border: var(--bw, 2px) solid #000000; background: var(--surface-2, #F8F1EC); font-family: var(--f-sub); font-weight: 700; font-size: 13px; text-transform: uppercase; flex: none; }
+:root[data-ui="2"] .u2d span { font-size: 15px; text-transform: none; }
+:root[data-ui="2"] .u2cx { text-decoration: line-through; }
+:root[data-ui="2"] .u2sem .btn { margin-top: 12px; }
+/* Élèves > À encaisser */
+:root[data-ui="2"] .u2encl { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line, rgba(0,0,0,.12)); }
+:root[data-ui="2"] .u2encl:first-of-type { border-top: 0; }
+:root[data-ui="2"] .u2encl .nm { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; text-align: left; cursor: pointer; color: inherit; }
+:root[data-ui="2"] .u2encm { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+:root[data-ui="2"] .u2encm b { font-family: var(--f-sub); font-size: 19px; color: var(--hot-tx, #A30F35); }
+@media (max-width: 600px) { :root[data-ui="2"] .u2encl { flex-wrap: wrap; } :root[data-ui="2"] .u2encl .grow { flex: 1 1 calc(100% - 60px); min-width: 0; } :root[data-ui="2"] .u2encm { flex-direction: row; align-items: baseline; justify-content: space-between; gap: 8px; width: 100%; } :root[data-ui="2"] .u2encl .btn { width: 100%; } }
+/* Noter un achat : options repliées */
+:root[data-ui="2"] .u2opt { margin: 6px 0 14px; }
+:root[data-ui="2"] .u2opt > summary { cursor: pointer; font-family: var(--f-sub); font-weight: 700; padding: 8px 0; }
+/* Élèves : la liste sur toute la largeur (plus d'aperçu), un clic ouvre la fiche */
+:root[data-ui="2"] .cobento.u2one { display: block; }
+:root[data-ui="2"] .u2one .colist > :not(.item) { grid-column: 1 / -1; }
