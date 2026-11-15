@@ -1941,7 +1941,7 @@ select option { background: var(--c-surface); color: var(--c-text); }
 .card.bvmenu { padding: 0; gap: 0; }
 .bvmrow { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; min-height: 64px; background: none; color: var(--c-text); text-align: left; font: inherit; border-top: 1px solid color-mix(in srgb, var(--c-ink) 18%, transparent); }
 .bvmrow:first-child { border-top: 0; }
-.bvmrow .tile { width: 40px; height: 40px; background: var(--c-surface); }
+.bvmrow .tile { width: 40px; height: 40px; background: var(--c-lime); color: var(--c-dark); }
 .bvmrow .grow { min-width: 0; }
 .bvmrow b { display: block; font-weight: 600; font-size: 16px; }
 .bvmrow small { display: block; color: var(--c-muted); font-size: 13px; margin-top: 2px; }
@@ -1957,3 +1957,43 @@ select option { background: var(--c-surface); color: var(--c-text); }
 :is(:root[data-style],:root) #phone #main .tcard.cf3 { box-shadow: 5px 5px 0 var(--b-or); }
 /* étape 7 : finitions — boutons du bar à 44 px au moins */
 #main .bar-it .ctl .btn { min-height: 44px; }
+
+/* Photo de profil : l'image entière, recadrée au centre (sans cette règle, seul son coin haut gauche s'affichait) */
+.av[style*="url("] { background-size: cover; background-position: center; background-repeat: no-repeat; }
+/* Cadre de trophée autour de chaque avatar, partout (et plus seulement dans l'en-tête de Moi) : anneau de la couleur du niveau, filet encre */
+.av.fr1, :has(> .av.fr1) { --lvl: var(--b-bronze); }
+.av.fr2, :has(> .av.fr2) { --lvl: var(--b-argent); }
+.av.fr3, :has(> .av.fr3) { --lvl: var(--b-or); }
+.av.fr4, :has(> .av.fr4) { --lvl: var(--b-platine); }
+.av.fr5, :has(> .av.fr5) { --lvl: var(--b-legende); }
+.av:is(.fr1,.fr2,.fr3,.fr4,.fr5,.fr6) { box-shadow: 0 0 0 3px var(--lvl), 0 0 0 5px var(--c-ink); }
+.av.sm:is(.fr1,.fr2,.fr3,.fr4,.fr5,.fr6) { box-shadow: 0 0 0 2px var(--lvl), 0 0 0 3px var(--c-ink); }
+.av.xl:is(.fr1,.fr2,.fr3,.fr4,.fr5,.fr6), .phero .av:is(.fr1,.fr2,.fr3,.fr4,.fr5,.fr6) { box-shadow: 0 0 0 5px var(--lvl), 0 0 0 7px var(--c-ink); margin: 8px; }
+/* en-tête au téléphone : l'avatar remplit son bouton, c'est le bouton qui porte le cadre */
+.top .bvme:has(> .av:is(.fr1,.fr2,.fr3,.fr4,.fr5,.fr6)) { box-shadow: 0 0 0 3px var(--lvl), 0 0 0 5px var(--c-ink); }
+/* Palier Légende (10000 pts) : anneau citron, filet encre, ombre citron et couronne posée en haut du cadre */
+.av.fr6, :has(> .av.fr6) { --lvl: var(--c-lime, #E0F50A); }
+.av.fr6 { position: relative; margin: 12px 8px 8px; box-shadow: 0 0 0 3px var(--c-ink), 0 0 0 6px var(--lvl), 0 0 0 8px var(--c-ink), 6px 6px 0 6px var(--lvl); }
+.av.sm.fr6 { margin: 9px 5px 5px; box-shadow: 0 0 0 2px var(--lvl), 0 0 0 3px var(--c-ink), 3px 3px 0 3px var(--lvl); }
+.av.fr6::after { content: ''; position: absolute; left: 50%; top: 0; width: 44%; aspect-ratio: 1; min-width: 14px; transform: translate(-50%, -78%); background: var(--lvl) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2316191E' stroke-width='2.2' stroke-linejoin='round'%3E%3Cpath d='M3 18h18l-1.5-10-4.5 4-3-6-3 6-4.5-4z'/%3E%3C/svg%3E") center / 72% no-repeat; border: 2px solid var(--c-ink); border-radius: 2px; }
+.top .bvme > .av.fr6::after { display: none; }   /* en-tête : bouton trop petit pour la couronne, le cadre suffit */
+/* Légende : le nom en bandeau noir, texte citron, couronne devant */
+#phone h2.leg, #main h2.leg { display: inline-flex; align-items: center; gap: 10px; width: fit-content; max-width: 100%; padding: 6px 12px; background: var(--b-charbon, #1A1A1A); color: var(--c-lime, #E0F50A); box-shadow: 4px 4px 0 var(--c-lime, #E0F50A); text-transform: uppercase; letter-spacing: .03em; transform: none; }
+#phone h2.leg::before, #main h2.leg::before { content: ''; flex: none; width: 1em; height: 1em; background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linejoin='round'%3E%3Cpath d='M3 18h18l-1.5-10-4.5 4-3-6-3 6-4.5-4z'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linejoin='round'%3E%3Cpath d='M3 18h18l-1.5-10-4.5 4-3-6-3 6-4.5-4z'/%3E%3C/svg%3E") center / contain no-repeat; }
+/* étiquette du sport : accrochée au coin haut droit de la publication (collée aux bords, filet encre à gauche et en bas) */
+#main .post:has(> .sp) { position: relative; }
+#main .post > .sp { top: 0; right: 0; border: 0; border-left: var(--bw) solid var(--c-ink); border-bottom: var(--bw) solid var(--c-ink); border-radius: 0 0 0 var(--rb); padding: 4px 10px; box-shadow: none; z-index: 1; }
+#main .post > .sp.duo { padding: 0; }
+#main .post > .sp.duo i { padding: 4px 10px; }
+#main .post:has(> .sp) [data-a="pmenu"] { margin-top: 26px; }
+
+/* Déroulé du stage : l'heure à gauche de la frise, l'intitulé à droite sur toute la largeur restante */
+.stdl .dl-f li { grid-template-columns: 64px 22px minmax(0, 1fr); }
+.stdl .dl-f li::before { grid-row: 1; }
+.stdl .dl-f .dl-h { grid-column: 1; grid-row: 1; }
+.stdl .dl-f .dl-t { grid-column: 3; grid-row: 1; min-width: 0; overflow-wrap: anywhere; }
+/* Promouvoir sur le mur : seul sur sa ligne, au-dessus des autres boutons, sur toute la largeur de la carte */
+.ecacts .btn[data-a="promo"] { flex: 1 0 100%; order: -1; }
+/* Intercalaires (sous-menus) : plus collés en haut de l'écran pendant le défilement, ils restent au-dessus de leur carte */
+@media (max-width: 1023px) { #main > .seg, #main > .seg:not(.haut) { position: relative; top: auto; } }
+@media (min-width: 1024px) { #main > .seg.haut { position: relative; top: auto; } }
