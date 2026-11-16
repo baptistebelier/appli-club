@@ -1,6 +1,6 @@
 /* ---------- Service worker de l'appli du club : hors connexion + notifications push ----------
    Changer VERSION à chaque mise en ligne : l'ancien cache est supprimé à l'activation. */
-const VERSION = '2026-11-15-stage-intercalaires';
+const VERSION = '2026-11-17-entete-sans-logo';
 /* /RAM Coach (coach.html) enregistre ce même fichier avec « ?app=coach » : sa page et ses fichiers à lui */
 const APP = new URL(location.href).searchParams.get('app') === 'coach' ? 'coach' : 'club';
 const SHELL = APP === 'coach' ? 'coach.html' : 'index.html';
@@ -24,6 +24,14 @@ const CORE = [
   'img/favicon.png',
   'icon-192.png',
   'logo.js',
+  'fonts/fonts.css',
+  'fonts/Anton-400-latin.woff2',
+  'fonts/BarlowCondensed-500-latin.woff2',
+  'fonts/BarlowCondensed-600-latin.woff2',
+  'fonts/BarlowCondensed-700-latin.woff2',
+  'fonts/WorkSans-400-latin.woff2',
+  'fonts/WorkSans-500-latin.woff2',
+  'fonts/WorkSans-600-latin.woff2',
   'regles.js',
   'fil-notif.js',
   'data.js',

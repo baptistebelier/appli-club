@@ -164,14 +164,10 @@ function render(keep) {
     sub = 'Profil';
   }
   if (typeof favVisit === 'function') favVisit();
-  if (key !== lastKey) {
-    $('top').classList.remove('hide');
-    lastY = 0;
-    turnY = 0;
-  }
+  if (key !== lastKey) $('top').classList.remove('hide');
   $('top').innerHTML =
     (S.stack.length ? `<button class="ib" data-a="back" aria-label="Retour">${ic('back')}</button>` : '') +
-    (clubLogo()
+    (clubLogo() && typeof coGroups !== 'function'
       ? `<img class="toplogo${S.stack.length ? ' sub' : ''}" src="${clubLogo()}" alt="${esc(club().name)}">`
       : '') +
     `<h1>${t}<span class="sub">${sub}</span></h1>${v.v === 'chan' && chans.some(c => c.id === v.id) && typeof chanCfgBtn === 'function' ? chanCfgBtn(chans.find(c => c.id === v.id)) : ''}${typeof favHere === 'function' && favHere() ? `<button class="ib favb" data-a="fav" aria-pressed="${isFav(favHere())}" aria-label="${isFav(favHere()) ? 'Retirer de mes favoris' : 'Ajouter à mes favoris'}">${ic('star')}</button>` : ''}<button class="ib${v.v === 'chan' ? ' nochan' : ''}${typeof fxBellCls === 'function' ? fxBellCls() : ''}" style="${typeof fxBellStyle === 'function' ? fxBellStyle() : ''}" data-a="notifs" aria-label="Notifications">${ic('bell')}${!pending() && NOTIFS.some(n => n.n && nVis(n)) ? '<span class="dot"></span>' : ''}</button>`;
@@ -246,6 +242,7 @@ function render(keep) {
      élément fixe resté dans #main dès que la page défilait (vues Jour et Liste de l'Agenda, École, Club) */
   nav.querySelectorAll(':scope > .seg:not(.seg-out)').forEach(e => e.remove());
   if (wide && newSeg) nav.appendChild(newSeg);
+  if (!wide && newSeg) segHint(newSeg);
   if (wide && lastKey && key !== lastKey) {
     if (newSeg && !oldSeg) newSeg.classList.add('seg-in');
     else if (oldSeg && !newSeg) {

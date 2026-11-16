@@ -39,43 +39,39 @@ setInterval(() => {
   if (['home', 'chans'].includes(v.v) && !$('sheet')) render(true);
 }, 24000);
 
-/* Le bandeau du haut se retire quand on fait défiler vers le bas, revient quand on remonte */
-/* Il faut remonter d'au moins 160 px (ou revenir tout en haut) pour le faire revenir : le rebond en bas de page ne le rappelle plus */
-/* Le bandeau flotte au-dessus de la page : il glisse sans changer la taille de la zone qui défile, donc le défilement reste collé au doigt */
-var lastY = 0,
-  turnY = 0;
+/* Le bandeau du haut reste toujours affiché (demande de Baptiste) : il flotte au-dessus de la page, fond opaque,
+   et le contenu défile dessous ; la zone qui défile commence juste sous lui */
 function topPad() {
   const t = $('top'),
     m = $('main');
-  m.style.paddingTop = t.offsetHeight + 'px';
-  m.style.setProperty(
-    '--segt',
-    t.classList.contains('hide') ? 'calc(env(safe-area-inset-top,0px) - ' + t.offsetHeight + 'px)' : '0px'
-  );
+  if (!t || !m) return;
+  const h = Math.ceil(t.getBoundingClientRect().height) + 'px';
+  /* La marge du haut est une BORDURE transparente, pas un padding : la zone qui défile commence sous l'en-tête, donc le contenu
+     ET tout ce qui reste collé en haut (sticky, top: 0) se placent sous lui, dans tous les navigateurs. Avec un padding, Safari (iPhone,
+     appli installée) collait ces éléments derrière l'en-tête alors que Chrome les décalait de la marge. */
+  m.style.paddingTop = '0px';
+  m.style.borderTop = h + ' solid transparent';
+  m.style.scrollPaddingTop = '0px';
+  /* --top-h : hauteur réelle de l'en-tête (zone sûre de l'iPhone comprise, une ou deux rangées), lisible par les styles */
+  document.documentElement.style.setProperty('--top-h', h);
+  m.style.setProperty('--segt', '0px');
 }
-$('main').addEventListener(
-  'scroll',
-  () => {
-    const m = $('main'),
-      max = m.scrollHeight - m.clientHeight,
-      y = Math.min(Math.max(m.scrollTop, 0), max),
-      t = $('top'),
-      hid = t.classList.contains('hide');
-    if (y > lastY) {
-      turnY = y;
-      if (y > 80 && !hid && !['chan', 'rec'].includes(view().v)) {
-        t.classList.add('hide');
-        m.style.setProperty('--segt', 'calc(env(safe-area-inset-top,0px) - ' + t.offsetHeight + 'px)');
-      }
-    } else if (y < lastY && hid && (turnY - y > 160 || y < 30)) {
-      t.classList.remove('hide');
-      m.style.setProperty('--segt', '0px');
-    }
-    lastY = y;
-  },
-  { passive: true }
-);
+/* recalcul à chaque changement de taille de l'en-tête (retour à la ligne, bouton ajouté), au chargement des polices (le titre
+   change de largeur), à la rotation, au redimensionnement et à chaque changement de page */
 new ResizeObserver(topPad).observe($('top'), { box: 'border-box' });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(topPad);
+addEventListener('resize', topPad);
+addEventListener('load', () => [0, 300, 1000, 2500].forEach(t => setTimeout(topPad, t)));   // en-tête recomposé après coup (polices, sélecteur de club)
+if (document.fonts) document.fonts.addEventListener('loadingdone', topPad);
+if (window.visualViewport) visualViewport.addEventListener('resize', topPad);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) topPad(); });
+addEventListener('orientationchange', () => setTimeout(topPad, 200));
+const renderSansMarge = render;
+render = function () {
+  const r = renderSansMarge.apply(this, arguments);
+  topPad();
+  return r;
+};
 /* Glisser le doigt le long de la barre du bas pour choisir sa page, comme Instagram */
 /* Curseur de la barre du bas (comme Instagram) : il suit le doigt pendant le glissé, puis se cale sur l'onglet le plus proche.
    Il fait exactement la largeur d'un onglet : la marge entre le curseur et le bord de la barre est la même en haut, en bas et sur les côtés. */
@@ -553,7 +549,7 @@ function installGuide(force) {
  <li><span class="ig-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span>Fais défiler et choisis <b>Sur l'écran d'accueil</b>.</span></li>
  <li><span class="ig-ic">${ic('check')}</span><span>Touche <b>Ajouter</b>, puis ouvre l'appli depuis son icône.</span></li>
  <li><span class="ig-ic">${ic('bell')}</span><span>Dans <b>Profil</b>, « Mes notifications » : touche <b>Activer</b>, puis <b>M'envoyer une notification d'essai</b>.</span></li></ol>
- <div class="ig-demo" aria-hidden="true"><span class="ig-bar"><i></i><i class="hl"></i><i></i></span><span class="ig-arrow">↓</span></div>
+ <div class="ig-demo" aria-hidden="true"><span class="ig-bar"><i></i><i class="hl"></i><i></i></span><span class="ig-arrow"><svg class="ic" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></span></div>
  <button class="btn full ghost" data-a="installLater">Plus tard</button></div></div>`;
   $('layer').appendChild(d);
 }
@@ -834,6 +830,22 @@ A.motif = d => {
   });
 })();
 
+/* téléphone : la bande d'onglets sous l'en-tête défile ; un fondu marque le côté où il en reste (classes plus-g / plus-d,
+   lues par club.css) et l'onglet actif est ramené en vue */
+function segHint(seg) {
+  const maj = () => {
+    seg.classList.toggle('plus-d', seg.scrollLeft + seg.clientWidth < seg.scrollWidth - 2);
+    seg.classList.toggle('plus-g', seg.scrollLeft > 14);
+  };
+  if (!seg._hint) {
+    seg._hint = 1;
+    seg.addEventListener('scroll', maj, { passive: true });
+  }
+  const on = seg.querySelector('[aria-selected="true"]');
+  if (on && seg.scrollWidth > seg.clientWidth && (on.offsetLeft < seg.scrollLeft || on.offsetLeft + on.offsetWidth > seg.scrollLeft + seg.clientWidth)) seg.scrollLeft = Math.max(0, on.offsetLeft - 24);
+  maj();
+  setTimeout(maj, 300);
+}
 /* ---------- version ordinateur, comme /RAM JA : bas du menu (mode jour/nuit, profil, sortie) et titre du sous-menu ---------- */
 function ramRail(title, sub) {
   let rb = $('rbot');

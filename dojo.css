@@ -13,7 +13,7 @@
 :root { --b-bordeaux-3: #2E0914; --b-bordeaux-6: #1A060C; --b-rose-gris: #E9D3D9; --b-bordeaux-5: #22060F; --b-creme: #F7EFF0; --b-bordeaux-ram: #74102A; --b-noir: #0B0B0B; --b-bronze: #C8834B; --b-argent: #DDE3EA; --b-acier: #8E99A6; --b-or: #F2C230; --b-platine: #7FE3D8; --b-turquoise: #3FB8C9; --b-legende: #6FB7FF; --b-lavande: #A78BFA; --b-bordeaux-2: #4D0818; --b-rose-pale: #F6DDE3; --b-citron-pale: #DAF35C; --b-bordeaux: #5E0A1F; --b-bordeaux-4: #2A0610; --b-charbon: #1A1A1A; --b-gris: #888888; --b-menthe: #C9FFF6; --b-ambre: #C97A0A; --b-bleu-lu: #2F9BFF; --b-creme-2: #F8F1EC; --b-orange-vif: #FF8A00; --b-brun: #1A0A00; --b-gris-bleu: #B9C3CE; --b-ambre-2: #C77D0A; --b-gris-clair: #F3F5FA; --b-graphite: #333333; --b-nuit: #0B0306; }
 
 /* ---------- 1. Base de la page et coque ---------- */
-:root { --f-display: Anton,"Arial Narrow",Impact,sans-serif; --f-sub: "Barlow Condensed","Arial Narrow",sans-serif; --f-body: "Work Sans",system-ui,sans-serif; --t1: 13px; --t2: 15px; --t3: 17px; --bw: 2px; --sh: 4px 4px 0 var(--c-ink); --sh-sm: 2px 2px 0 var(--c-ink); --rpill: 0px; --lime: var(--c-lime); --pink: var(--c-pink); --green: var(--c-green); --dk: var(--c-dark); --r: 0px; --rb: 0px; --ram-hard: color-mix(in srgb, #000000 55%, transparent); --mebub: color-mix(in srgb, var(--accent) 25%, var(--c-surface)); --co-rail-on: color-mix(in srgb, #FFFFFF 7.84%, transparent); --co-side: linear-gradient(180deg, var(--b-bordeaux-3) 0%, var(--b-bordeaux-6) 100%); --co-side-tx: var(--b-rose-gris); --co-side-on: color-mix(in srgb, #FFFFFF 10.98%, transparent); --co-lime: var(--c-lime); --co-rail: var(--b-bordeaux-5); --co-rail-tx: var(--b-creme); --dj-rail: var(--b-bordeaux-5); --dj-sub: var(--b-bordeaux-ram); }
+:root { --f-display: Anton,"Arial Narrow",Impact,sans-serif; --f-sub: "Barlow Condensed","Arial Narrow",sans-serif; --f-body: "Work Sans",system-ui,sans-serif; --t1: 13px; --t2: 15px; --t3: 17px; --bw: 2px; --sh: 4px 4px 0 var(--c-ink); --sh-sm: 2px 2px 0 var(--c-ink); --rpill: 0px; --lime: var(--c-lime); --pink: var(--c-pink); --green: var(--c-green); --dk: var(--c-dark); --r: 0px; --rb: 0px; --ram-hard: color-mix(in srgb, #000000 55%, transparent); --mebub: color-mix(in srgb, var(--accent) 25%, var(--c-surface)); --co-rail-on: color-mix(in srgb, #FFFFFF 7.84%, transparent); --co-side: linear-gradient(180deg, var(--b-bordeaux-3) 0%, var(--b-bordeaux-6) 100%); --co-side-tx: var(--b-rose-gris); --co-side-on: color-mix(in srgb, #FFFFFF 10.98%, transparent); --co-lime: var(--c-lime); --co-rail: var(--b-bordeaux-5); --co-rail-tx: var(--b-creme); --dj-rail: #74102A; --dj-sub: #4A0A1B; }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden]:not(#phone .tabs) { display: none !important; }
 html, body { margin: 0; touch-action: manipulation; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
@@ -220,7 +220,7 @@ html, body { background: var(--c-bg); }
 @media (max-width: 330px) {
   .tabs button { font-size: 0; gap: 0; }
 }
-:root[style*='color-scheme: light'] { --co-rail-on: color-mix(in srgb, #FFFFFF 10.98%, transparent); --co-side: linear-gradient(180deg, var(--b-bordeaux-ram) 0%, var(--b-bordeaux-2) 100%); --co-side-tx: var(--b-rose-pale); --co-side-on: color-mix(in srgb, #FFFFFF 13.33%, transparent); --co-lime: var(--b-citron-pale); --co-rail: var(--b-bordeaux); --co-rail-tx: var(--b-creme); --dj-rail: var(--b-bordeaux-4); --dj-sub: var(--b-bordeaux-ram); }
+:root[style*='color-scheme: light'] { --co-rail-on: color-mix(in srgb, #FFFFFF 10.98%, transparent); --co-side: linear-gradient(180deg, var(--b-bordeaux-ram) 0%, var(--b-bordeaux-2) 100%); --co-side-tx: var(--b-rose-pale); --co-side-on: color-mix(in srgb, #FFFFFF 13.33%, transparent); --co-lime: var(--b-citron-pale); --co-rail: var(--b-bordeaux); --co-rail-tx: var(--b-creme); --dj-rail: #74102A; --dj-sub: #4A0A1B; }
 .toplogo, .segt > span { display: none; }
 .tabs, :root[style*='color-scheme: light'] .tabs { border-color: var(--co-rail); }
 @media (min-width: 1024px) {
@@ -230,18 +230,6 @@ html, body { background: var(--c-bg); }
   :is(#main, #subnav) > .seg button:hover { color: #FFFFFF; background: color-mix(in srgb, #FFFFFF 5.88%, transparent); }
   :is(#main, #subnav) > .seg button[aria-selected='true'] { transform: none; }
 }
-@media (max-width: 1023px) {
-  :is(#main, #subnav) > .seg { max-width: none; margin-left: 0; margin-right: 0; -webkit-mask-image: none; mask-image: none; background: var(--co-side); border: 0; padding: 6px; }
-  :is(#main, #subnav) > .seg button[aria-selected='true'] { color: #FFFFFF; background: var(--co-side-on); border-color: color-mix(in srgb, #FFFFFF 14.9%, transparent); box-shadow: inset 0 -3px 0 var(--co-lime); }
-  :is(#main, #subnav) > .seg button[aria-selected='true']::before { display: none; }
-  :is(#main, #subnav) > .seg button[aria-selected='true'] svg { color: var(--co-lime); }
-}
-:root[data-style='street'] .coey { display: inline-block; width: fit-content; max-width: 100%; background: var(--accent2); padding: 2px 8px; transform: rotate(-1.5deg); margin-bottom: 6px; }
-:root[data-style='street'] .cohero .coey { background: var(--co-lime); }
-:root[data-style='street'] .cohd span { flex: none; display: inline-block; max-width: 100%; background: var(--accent); color: var(--on-accent); padding: 2px 8px; transform: rotate(-1.5deg); }
-:root[data-style='street'] #main .card .kicker { display: inline-block; width: fit-content; max-width: 100%; background: var(--accent2); padding: 2px 8px; transform: rotate(-1.5deg); }
-:root[data-style='street'] .evl.cotheme { display: inline-flex; width: fit-content; background: var(--accent); color: var(--on-accent); padding: 2px 8px; transform: rotate(-1.5deg); }
-:root[data-style='street'] .evl.cotheme svg { color: var(--on-accent); }
 @media (max-width: 1023px) {
   .top { flex-wrap: wrap; row-gap: 6px; }
   .top.hide { transform: none; }
@@ -280,10 +268,6 @@ button.copp:hover span:last-child { text-decoration: underline; }
   #phone .tabs > button[aria-current="page"] { background: var(--c-lime); color: var(--c-dark); border-color: #000000; box-shadow: 2px 2px 0 #000000; }
   #phone .tabs > button[aria-current="page"] svg { color: var(--c-dark); }
   #main, .phone.withfoot #main { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  #main > .seg:not(.haut) { position: sticky; top: 0; z-index: 4; margin: 0 0 14px; padding: 10px 12px; background: var(--dj-sub); border: 0; border-top: var(--bw, 2px) solid #000000; border-bottom: var(--bw, 2px) solid #000000; box-shadow: none; gap: 6px; overflow-x: auto; border-radius: 0; -webkit-mask-image: none; mask-image: none; }
-  #main > .seg:not(.haut) button { flex: 0 0 auto; flex-direction: column; gap: 4px; min-height: 52px; padding: 6px 10px; border: var(--bw, 2px) solid transparent; background: transparent; color: var(--b-creme); box-shadow: none; font-family: var(--f-sub); font-weight: 700; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; position: relative; }
-  #main > .seg:not(.haut) button .lb { display: block; }
-  #main > .seg:not(.haut) button[aria-selected="true"] { background: var(--c-lime); color: var(--c-dark); border-color: #000000; box-shadow: 2px 2px 0 #000000; }
 }
 @media (min-width: 1024px) {
   :root { --side: 92px; --sub: 224px; }
@@ -309,7 +293,7 @@ button.copp:hover span:last-child { text-decoration: underline; }
   .phone.subfold :is(#main, #subnav) > .seg > button, .phone.subfold .segt span, .phone.subfold .segt b { display: none; }
   .phone.subfold .segt { grid-template-columns: 1fr; padding: 0; }
   .phone.subfold .segx { grid-row: 1; transform: scaleX(-1); }
-  #phone .top { background: transparent; border: 0; box-shadow: none; padding: calc(22px + env(safe-area-inset-top, 0px)) 28px 8px; min-height: 92px; align-items: center; }
+  #phone .top { background: var(--c-bg); border: 0; box-shadow: none; padding: calc(22px + env(safe-area-inset-top, 0px)) 28px 8px; min-height: 92px; align-items: center; }
   #phone .top h1 { font-size: 48px; }
   .cobm > .pad { padding: 0; }
   #main > .cobento { padding: 16px 24px 40px; box-sizing: border-box; max-width: none; }
@@ -1124,10 +1108,6 @@ select { -webkit-appearance: none; appearance: none; padding-right: 38px; text-o
 .ct:last-of-type { border-bottom: 0; }
 .ct>svg { width: 34px; height: 34px; padding: 6px; box-sizing: border-box; background: var(--c-accent); color: var(--c-on-accent); border: var(--bw) solid var(--c-ink); box-shadow: var(--sh-sm); flex: none; }
 .ct .v { user-select: all; overflow-wrap: anywhere; }
-.tg { width: 52px; height: 44px; position: relative; flex: none; }
-.tg::before { content: ""; position: absolute; transition: background .2s; box-shadow: inset 0 0 0 2px color-mix(in srgb,var(--c-text) 14%,transparent); inset: 7px 0; border: var(--bw) solid var(--c-ink); border-radius: var(--rpill); background: var(--c-off); }
-.tg::after { content: ""; position: absolute; transition: transform .38s cubic-bezier(.3,1.6,.5,1),background .2s; left: 5px; width: 20px; height: 20px; border-radius: var(--rpill); border: var(--bw) solid var(--c-ink); background: var(--b-creme); top: 10px; }
-.tg[aria-checked="true"]::after { transform: translateX(24px); }
 .two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; }
 .bub[data-lp] { touch-action: pan-y; }
 details.more { background: var(--c-surface-2); padding: 0 12px; }
@@ -2172,3 +2152,28 @@ select option { background: var(--c-surface); color: var(--c-text); }
 /* Intercalaires (sous-menus) : plus collés en haut de l'écran pendant le défilement, ils restent au-dessus de leur carte */
 @media (max-width: 1023px) { #main > .seg, #main > .seg:not(.haut) { position: relative; top: auto; } }
 @media (min-width: 1024px) { #main > .seg.haut { position: relative; top: auto; } }
+
+/* téléphone : fondu sur le côté de la bande d'onglets où il reste des onglets (app/8-demarrage.js, segHint) */
+@media (max-width: 1023px) {
+  #main > .seg:not(.haut).plus-d { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
+  #main > .seg:not(.haut).plus-g { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px); mask-image: linear-gradient(90deg, transparent, #000 40px); }
+  #main > .seg:not(.haut).plus-g.plus-d { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent); }
+}
+
+/* pictos jaune citron : la couleur citron reste la nuit ; le jour, un vert-olive foncé lisible sur fond clair (contraste 6:1) */
+:root { --c-ico: #E0F50A; }
+:root[style*='color-scheme: light'] { --c-ico: #4F6200; }
+.cobs .calh > svg, .coday .calh > svg, :root[data-ui="2"] .u2c .calh > svg, #main > .seg.haut button[aria-selected="true"] svg { color: var(--c-ico) !important; }
+
+/* titres des sections : simples et lisibles, sans surlignage incliné (le texte garde la couleur de la page) */
+
+/* sélecteur de club de l'en-tête : sur téléphone, un bouton carré (même taille que +, … et réglages) avec le picto du club ;
+   une pastille dit qu'un club précis est filtré. Sur ordinateur et iPad : le bouton avec son libellé. */
+.cotopclub .cotc-i { display: none; }
+@media (max-width: 700px) {
+  .cotopclub { position: relative; flex: none; width: 44px; height: 44px; max-width: none; margin-left: auto; display: grid; place-items: center; background: var(--c-surface); color: var(--c-text); border: var(--bw, 2px) solid var(--c-ink); box-shadow: var(--sh-sm); }
+  .cotopclub .cotc-i { display: grid; place-items: center; position: relative; }
+  .cotopclub .cotc-i svg { width: 23px; height: 23px; }
+  .cotopclub .cotc-d { position: absolute; top: -9px; right: -9px; width: 12px; height: 12px; border: var(--bw, 2px) solid var(--c-ink); background: var(--c-pink); }
+  .cotopclub select { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; padding: 0; opacity: 0; }
+}

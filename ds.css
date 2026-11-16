@@ -38,6 +38,7 @@
   --c-green: #9BD43C;
   --c-orange: #F2A93B;
   --c-dark: #1A0509;
+  --c-bordeaux: #8E1838;
   /* traits, ombres, coins */
   --bw: 2px;
   --sh: 4px 4px 0 var(--c-ink);
@@ -243,6 +244,21 @@
 .r-poster h3 { font: 400 34px/1.02 var(--f-display); text-transform: uppercase; margin: 0; }
 .r-post__acts { display: flex; gap: var(--s2); flex-wrap: wrap; padding-top: var(--s2); border-top: var(--bw) solid color-mix(in srgb, var(--c-ink) 12%, transparent); }
 
+/* Intercalaires (Figma « Intercalaire (.ps-itabs) ») : 2 à 5 onglets collés au-dessus d'une carte, sans espace.
+   Actif : fond surface, 39 px, se fond dans la carte ; inactif : surface 2, 35 px, texte gris. Bord 2 px encre. */
+.r-itabs { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 6px; padding-left: var(--s3); margin-bottom: calc(-1 * var(--bw)); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.r-itabs > button, .r-itabs > a { flex: none; display: inline-flex; align-items: center; gap: var(--s2); min-height: 35px; padding: 0 14px; border: var(--bw) solid var(--c-ink); border-bottom: 0; border-radius: var(--rad-sm) var(--rad-sm) 0 0; background: var(--c-surface-2); color: var(--c-muted); font: 700 14px/1.1 var(--f-label); letter-spacing: .02em; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.r-itabs > [aria-selected='true'], .r-itabs > [aria-current] { min-height: 39px; padding-bottom: var(--bw); background: var(--c-surface); color: var(--c-text); }
+.r-itabs.plus-d { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent); }
+.r-itabs.plus-g { -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px); mask-image: linear-gradient(90deg, transparent, #000 44px); }
+.r-itabs.plus-g.plus-d { -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent); mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent); }
+.r-itabs > :focus-visible { outline: 3px solid var(--c-pink); outline-offset: 2px; }
+/* Pastille de compte : nombre court (paires, rang). Bordeaux par défaut, --rose pour le premier ou une tête de série, --citron pour « Fidèle » */
+.r-pastille { display: inline-flex; align-items: center; flex: none; padding: 2px 7px; border: var(--bw) solid var(--c-ink); border-radius: var(--rad-pill); background: var(--c-bordeaux); color: #FFFFFF; font: 700 12px/1.2 var(--f-label); letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }
+.r-pastille--rose { background: var(--c-pink); color: var(--c-dark); }
+.r-pastille--citron { background: var(--c-lime); color: var(--c-dark); }
+:root[data-mode='nuit'] .r-pastille:not(.r-pastille--rose):not(.r-pastille--citron) { background: var(--c-menu-2); }
+
 /* ---------- Navigation à deux niveaux ---------- */
 /* en-tête de page : surtitre, grand titre, actions à droite */
 .r-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s3); padding: var(--s5) var(--s6) var(--s2); }
@@ -283,3 +299,87 @@
   .r-bento__side { position: sticky; top: var(--s2); display: flex; flex-direction: column; gap: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { .r-btn, .r-switch::after { transition: none; } }
+
+/* ---------- Interrupteur (switch) : un seul dessin pour /Buvette et /Dojo (button.tg, role="switch") ----------
+   Bouton de 20 px dans une piste de 52 x 30 px (bordure de 2 px comprise), centré en hauteur, 3 px de marge intérieure des deux côtés
+   (5 px depuis le bord extérieur de la piste), déplacement exact de 22 px : jamais de débordement sur la bordure.
+   box-sizing explicite sur les pseudo-éléments (« * » ne les couvre pas : le bouton faisait 24 px et débordait de 1 px sur iOS),
+   et apparence native du bouton retirée (Safari). Piste éteinte : mi-chemin entre le texte et la carte, au moins 3:1 jour et nuit. */
+.tg { -webkit-appearance: none; appearance: none; box-sizing: border-box; display: block; position: relative; flex: none; width: 52px; height: 44px; margin: 0; padding: 0; border: 0; background: none; color: inherit; font-size: 0; cursor: pointer; }
+.tg::before, .tg::after { content: ''; position: absolute; box-sizing: border-box; }
+.tg::before { left: 0; top: 7px; width: 52px; height: 30px; border: var(--bw) solid var(--c-ink); border-radius: var(--rad-pill); background: color-mix(in srgb, var(--c-text) 50%, var(--c-surface)); transition: background .2s; }
+.tg::after { left: 5px; top: 12px; width: 20px; height: 20px; border: var(--bw) solid var(--c-ink); border-radius: var(--rad-pill); background: var(--b-creme, #F7EFF0); transition: transform .2s ease; }
+.tg[aria-checked='true']::before { background: var(--c-green); }
+.tg[aria-checked='true']::after { transform: translateX(22px); }
+.tg:focus-visible { outline: 3px solid var(--c-pink); outline-offset: 2px; }
+
+/* ---------- Téléphone : gouttière commune et intercalaires de classeur (toutes les bandes d'onglets des trois applis) ----------
+   --gut : l'écart entre le bord de l'écran et les cartes, l'en-tête et les intercalaires (10 px sur téléphone, inchangé ailleurs).
+   Toute bande d'onglets sous l'en-tête (#main > .seg) prend le dessin des intercalaires de l'ordinateur : onglet actif à liseré citron,
+   compteur dans l'onglet, collé au haut de la carte qui suit (aucun espace ni liseré), défilement horizontal avec fondu (segHint). */
+:root { --gut: 16px; }
+@media (max-width: 700px) {
+  :root { --gut: 10px; }
+  :root:root #main > .pad { padding-left: var(--gut); padding-right: var(--gut); }
+  :root:root #phone .top { padding-left: max(var(--gut), env(safe-area-inset-left, 0px)) !important; padding-right: max(var(--gut), env(safe-area-inset-right, 0px)) !important; }
+}
+@media (max-width: 1023px) {
+  :root:root #main > .seg.seg { display: flex; flex-direction: row; flex-wrap: nowrap; align-items: flex-end; gap: 6px; width: auto; max-width: none; min-width: 0; margin: 0 var(--gut) -2px; padding: 0; background: transparent; border: 0; box-shadow: none; border-radius: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; position: relative; top: auto; z-index: 2; }
+  :root:root #main > .seg.seg::-webkit-scrollbar { display: none; }
+  :root:root #main > .seg.seg > button { flex: none; width: auto; min-width: 0; min-height: 44px; padding: 0 16px; display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 8px; background: var(--c-bg); color: var(--c-text); border: var(--bw) solid var(--c-ink); border-bottom: 0; border-radius: 0; box-shadow: none; transform: none; font: 700 16px/1.1 var(--f-label); letter-spacing: .02em; text-transform: none; }
+  :root:root #main > .seg.seg > button::before { display: none; }
+  :root:root #main > .seg.seg > button .lb { display: inline; font: inherit; }
+  :root:root #main > .seg.seg > button svg { width: 20px; height: 20px; flex: none; color: var(--c-muted); }
+  :root:root #main > .seg.seg > button[aria-selected='true'] { background: var(--card, var(--c-surface)); color: var(--c-text); box-shadow: inset 0 4px 0 var(--c-lime); padding-bottom: 2px; }
+  :root:root #main > .seg.seg > button[aria-selected='true'] svg { color: var(--c-ico, var(--c-text)); }
+  :root:root #main > .seg.seg > button .cnt { position: static; margin: 0 0 0 2px; min-width: 0; height: auto; padding: 1px 6px; border: var(--bw) solid var(--c-ink); border-radius: 0; background: var(--c-pink); color: var(--c-dark); font: 700 13px/1.2 var(--f-label); }
+  /* la carte qui suit : collée à la bande (plus de marge ni de remplissage au-dessus) */
+  :root:root #main > .seg.seg + * { margin-top: 0; }
+  :root:root #main > .seg.seg + .pad, :root:root #main > .seg.seg + .pad.pad { padding-top: 0; margin: 0; }
+  :root:root #main > .seg.seg + .pad > :first-child { margin-top: 0; }
+  :root:root #phone #main > .seg.seg + .lis { margin: 0 var(--gut) 12px; }
+  /* page qui commence par des chiffres, des filtres ou un bouton (pas par une carte) : un peu d'air sous l'onglet */
+  :root:root #main > .seg.seg + .pad > :first-child:not(.card):not(.cobento):not(.u2fiche) { margin-top: 12px; }
+}
+
+/* ---------- Objectifs et compétences (fiche élève et fiche de groupe de /Dojo, École > Mon espace de /Buvette) ---------- */
+.obj-card { display: flex; flex-direction: column; gap: 4px; }
+.obj { display: flex; flex-direction: column; gap: 10px; padding: 12px 0; border-top: 1px solid color-mix(in srgb, var(--c-ink) 16%, transparent); }
+.obj:first-of-type, .objlibre + .obj { border-top: 0; }
+.objh { display: flex; align-items: center; gap: 10px; }
+.objh b { flex: 1; min-width: 0; font: 700 19px/1.15 var(--f-label); overflow-wrap: anywhere; }
+.objp { flex: none; font: 700 16px var(--f-label); color: var(--c-muted); white-space: nowrap; }
+.objb { display: block; height: 12px; border: var(--bw) solid var(--c-ink); background: var(--c-bg); }
+.objb i { display: block; height: 100%; background: var(--c-green); transition: width .25s; }
+.objl { display: flex; flex-direction: column; gap: 6px; }
+.objc { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 6px 10px; border: var(--bw) solid var(--c-ink); background: var(--c-surface-2); color: var(--c-text); text-align: left; font: inherit; cursor: pointer; }
+.objc.ro { cursor: default; }
+.objk { flex: none; display: grid; place-items: center; width: 26px; height: 26px; border: var(--bw) solid var(--c-ink); background: var(--c-surface); color: var(--c-dark); }
+.objk svg { width: 18px; height: 18px; opacity: 0; }
+.objc.on .objk { background: var(--c-green); }
+.objc.on .objk svg { opacity: 1; }
+.objc.on { background: color-mix(in srgb, var(--c-green) 18%, var(--c-surface-2)); }
+.objt { align-self: flex-start; }
+.objlibre { margin: 0 0 6px; color: var(--c-muted); }
+.objr { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: var(--bw) solid var(--c-ink); background: var(--c-surface-2); }
+.objn { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-weight: 600; }
+.objn small { color: var(--c-muted); font: 700 14px var(--f-label); }
+.objg { display: flex; flex-wrap: wrap; gap: 6px; }
+.objs { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px 0 6px; border: var(--bw) solid var(--c-ink); background: var(--c-surface); color: var(--c-text); font: 700 14px var(--f-label); cursor: pointer; }
+.objs i { display: grid; place-items: center; width: 18px; height: 18px; border: var(--bw) solid var(--c-ink); background: var(--c-bg); }
+.objs i svg { width: 12px; height: 12px; opacity: 0; color: var(--c-dark); }
+.objs.on { background: color-mix(in srgb, var(--c-green) 28%, var(--c-surface)); }
+.objs.on i { background: var(--c-green); }
+.objs.on i svg { opacity: 1; }
+.objer { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.objer input { flex: 1; min-width: 0; }
+.objmv { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+
+/* ---------- Sur-titres et titres d'étiquette : jamais de fond coloré ni d'inclinaison, lisibles jour et nuit ----------
+   (demande de Baptiste : un texte rose clair sur un bandeau rose surligné était illisible). Le style « street » ne les surligne plus. */
+:root :is(.kicker, .coey, .segt span, .top h1 .sub, .cohd > span, .evl.cotheme) { background: none !important; transform: none !important; box-shadow: none !important; border: 0 !important; padding: 0 !important; width: auto !important; }
+:root :is(.kicker, .coey, .segt span, .top h1 .sub) { color: color-mix(in srgb, var(--c-kick) 78%, var(--c-text)) !important; opacity: 1 !important; }
+:root :is(.cohero, .hero-t, .r-hero) :is(.kicker, .coey) { color: var(--c-on-hero) !important; opacity: .85 !important; }
+:root :is(.poster, .promo-w, .card.setup) :is(.kicker, .coey) { color: var(--c-on-accent) !important; }
+:root :is(.cohd > span, .evl.cotheme, .evl.cotheme svg) { color: inherit !important; }
+:root :is(.kicker, .coey, .cohd > span) svg { color: currentColor !important; }

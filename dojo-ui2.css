@@ -1,7 +1,10 @@
 /* /Dojo — nouvelle organisation, à l'essai (?ui=2) : seulement ce que la navigation change, le style reste celui de ds.css et dojo.css */
 
 /* Aujourd'hui | Statistiques : sous-onglet dans la page */
-:root[data-ui="2"] #main > .seg.u2sous { margin: 0 16px 16px; width: max-content; max-width: calc(100% - 32px); }
+:root[data-ui="2"] #main > .seg.u2sous { margin: 0 var(--gut) -2px; position: relative; z-index: 2; width: max-content; max-width: calc(100% - 2 * var(--gut)); }
+/* l'onglet actif est collé au bord supérieur de sa carte : il passe sur son trait et en prend la couleur (pas de liseré sombre dessous) */
+:root[data-ui="2"] #main > .seg.u2sous button[aria-selected="true"] { background: var(--card, var(--c-surface)); padding-bottom: 2px; margin-bottom: 0; }
+:root[data-ui="2"] #main > .seg.u2sous + * { margin-top: 0; }
 
 @media (max-width: 1023px) {
   /* les 5 rubriques dans la barre du bas, Groupes compris */
@@ -27,7 +30,7 @@
 /* Aujourd'hui : la semaine en lignes */
 :root[data-ui="2"] .u2sem .item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; }
 :root[data-ui="2"] .u2sem .item > svg { width: 18px; height: 18px; transform: scaleX(-1); flex: none; }
-:root[data-ui="2"] .u2d { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 4px 6px; border: var(--bw, 2px) solid #000000; background: var(--surface-2, #F8F1EC); font-family: var(--f-sub); font-weight: 700; font-size: 13px; text-transform: uppercase; flex: none; }
+:root[data-ui="2"] .u2d { display: flex; flex-direction: column; align-items: center; min-width: 58px; padding: 4px 6px; border: var(--bw, 2px) solid #000000; background: var(--c-surface-2, #F8F1EC); color: var(--c-text); font-family: var(--f-sub); font-weight: 700; font-size: 13px; text-transform: uppercase; flex: none; }
 :root[data-ui="2"] .u2d span { font-size: 15px; text-transform: none; }
 :root[data-ui="2"] .u2cx { text-decoration: line-through; }
 :root[data-ui="2"] .u2sem .btn { margin-top: 12px; }
@@ -41,9 +44,8 @@
 /* Noter un achat : options repliées */
 :root[data-ui="2"] .u2opt { margin: 6px 0 14px; }
 :root[data-ui="2"] .u2opt > summary { cursor: pointer; font-family: var(--f-sub); font-weight: 700; padding: 8px 0; }
-/* Élèves : la liste sur toute la largeur (plus d'aperçu), un clic ouvre la fiche */
-:root[data-ui="2"] .cobento.u2one { display: block; }
-:root[data-ui="2"] .u2one .colist > :not(.item) { grid-column: 1 / -1; }
+/* Élèves, grand écran : une seule grande colonne pour la liste, l'aperçu de l'élève choisi à droite */
+#main .cobm .colist { grid-template-columns: minmax(0, 1fr); }
 
 /* Messages, grand écran : conversations et conversation ouverte côte à côte (comme les groupes de /Buvette) */
 @media (min-width: 1024px) {
@@ -60,3 +62,104 @@
   :root[data-ui="2"] .u2split .schf .ta { flex: 1 1 auto; }
   :root[data-ui="2"] .u2dmact { margin-top: 8px; }
 }
+
+/* ---------- historique : petites cartes de séance empilées, date et heure dans l'encart coloré (élève, groupe) ---------- */
+:root[data-ui="2"] .u2hl { display: flex; flex-direction: column; gap: 8px; }
+:root[data-ui="2"] .u2hs { display: flex; align-items: stretch; gap: 12px; width: 100%; padding: 0; text-align: left; border: var(--bw, 2px) solid var(--c-ink); background: var(--c-surface); color: var(--c-text); box-shadow: var(--sh-sm); min-height: 56px; cursor: pointer; font: inherit; }
+:root[data-ui="2"] div.u2hs { cursor: default; }
+:root[data-ui="2"] .u2hd { flex: none; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 68px; padding: 6px 8px; background: var(--c-surface-2); color: var(--c-text); border-right: var(--bw, 2px) solid var(--c-ink); font-family: var(--f-sub); font-weight: 700; line-height: 1.15; text-transform: uppercase; }
+:root[data-ui="2"] .u2hd b { font-size: 15px; }
+:root[data-ui="2"] .u2hd span { font-size: 13px; }
+:root[data-ui="2"] .u2hd i { font-style: normal; font-size: 15px; margin-top: 2px; text-transform: none; }
+:root[data-ui="2"] .u2hs.ok .u2hd { background: var(--c-lime); color: var(--c-dark); }
+:root[data-ui="2"] .u2hs.ex .u2hd { background: var(--c-orange); color: var(--c-dark); }
+:root[data-ui="2"] .u2hs.ab .u2hd { background: var(--c-pink); color: var(--c-dark); }
+:root[data-ui="2"] .u2hb { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 8px 0; }
+:root[data-ui="2"] .u2ht { flex: none; display: flex; align-items: center; padding-right: 10px; }
+
+/* ---------- fiche élève : une seule grande carte (identité, coordonnées, boutons, onglets en intercalaires) ---------- */
+:root[data-ui="2"] .u2fiche { padding: 0; }
+:root[data-ui="2"] .u2fh { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "av nm ac" "ct ct ct"; gap: 14px 18px; align-items: center; padding: 20px 20px 0; }
+:root[data-ui="2"] .u2fh > :first-child { grid-area: av; }
+:root[data-ui="2"] .u2fn { grid-area: nm; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+:root[data-ui="2"] .u2fp { font: 700 19px/1.1 var(--f-sub); }
+:root[data-ui="2"] .u2fl { font: 400 36px/1 var(--f-display); text-transform: uppercase; overflow-wrap: anywhere; }
+:root[data-ui="2"] .u2fa { grid-area: ac; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+:root[data-ui="2"] .u2fc { grid-area: ct; display: flex; flex-wrap: wrap; gap: 12px; }
+:root[data-ui="2"] .u2ct { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 14px 8px 8px; border: var(--bw, 2px) solid var(--c-ink); background: var(--c-surface-2); color: var(--c-text); text-decoration: none; font: inherit; text-align: left; cursor: pointer; }
+:root[data-ui="2"] .u2cti { flex: none; display: grid; place-items: center; width: 36px; height: 36px; background: var(--c-lime); color: var(--c-dark); border: var(--bw, 2px) solid var(--c-ink); }
+:root[data-ui="2"] .u2cti svg { width: 20px; height: 20px; color: var(--c-dark); }
+:root[data-ui="2"] .u2ctt { display: flex; flex-direction: column; min-width: 0; }
+:root[data-ui="2"] .u2ctt small { font: 700 11px/1.2 var(--f-sub); letter-spacing: .1em; text-transform: uppercase; color: var(--c-muted); }
+:root[data-ui="2"] .u2ctt b { font-size: 15px; overflow-wrap: anywhere; }
+:root[data-ui="2"] .u2ctadd .u2ctt b { color: var(--c-muted); font-weight: 600; }
+:root[data-ui="2"] .u2itabs { padding: 0 20px; margin-top: 18px; }
+:root[data-ui="2"] .u2fb { border-top: var(--bw, 2px) solid var(--c-ink); padding: 18px 20px 22px; display: flex; flex-direction: column; gap: 16px; }
+:root[data-ui="2"] .u2fb .cobento { margin: 0; }
+@media (max-width: 700px) {
+  :root[data-ui="2"] .u2fh { grid-template-areas: "av nm" "ac ac" "ct ct"; padding: 16px 14px 0; }
+  :root[data-ui="2"] .u2fa { justify-content: flex-start; }
+  :root[data-ui="2"] .u2fa .btn { flex: 1 1 auto; }
+  :root[data-ui="2"] .u2fc { flex-direction: column; }
+  :root[data-ui="2"] .u2itabs { padding: 0 14px; margin-top: 14px; }
+  :root[data-ui="2"] .u2fb { padding: 14px; }
+  :root[data-ui="2"] .u2fl { font-size: 28px; }
+}
+
+/* ---------- fiche de groupe ---------- */
+:root[data-ui="2"] .u2gh { display: flex; flex-direction: column; gap: 16px; }
+:root[data-ui="2"] .u2gc { display: flex; flex-direction: column; gap: 10px; }
+:root[data-ui="2"] .u2gcl { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+:root[data-ui="2"] .u2gct { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+:root[data-ui="2"] .u2gct svg { width: 22px; height: 22px; color: var(--c-ico); flex: none; }
+:root[data-ui="2"] .u2gct b { font: 700 21px/1.1 var(--f-sub); }
+:root[data-ui="2"] .u2gj { display: block; width: 100%; height: 16px; border: var(--bw, 2px) solid var(--c-ink); background: var(--c-bg); }
+:root[data-ui="2"] .u2gj i { display: block; height: 100%; background: var(--c-green); }
+:root[data-ui="2"] .u2ga { display: flex; flex-wrap: wrap; gap: 10px; }
+:root[data-ui="2"] .u2g2 { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr); }
+:root[data-ui="2"] .u2gl, :root[data-ui="2"] .u2gr { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+@media (min-width: 1024px) { :root[data-ui="2"] .u2g2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); align-items: start; } }
+:root[data-ui="2"] .u2gs .calh .chip, :root[data-ui="2"] .u2gs .calh .tag { margin-left: auto; }
+
+:root[data-ui="2"] .u2gt { display: flex; flex-direction: column; gap: 4px; }
+:root[data-ui="2"] .u2gt .h3 { font: 400 26px/1.05 var(--f-display); text-transform: uppercase; }
+
+/* ---------- Aujourd'hui : une carte par séance du jour, l'appel directement dessus ---------- */
+:root[data-ui="2"] .u2apw { display: flex; flex-direction: column; gap: 14px; }
+:root[data-ui="2"] .u2ap { display: flex; flex-direction: column; gap: 0; padding: 0; background: var(--c-surface); }
+:root[data-ui="2"] .u2ap > .u2hs { border: 0; border-bottom: var(--bw, 2px) solid var(--c-ink); box-shadow: none; }
+:root[data-ui="2"] .u2ap.cx { opacity: .75; }
+:root[data-ui="2"] .u2apl { display: flex; flex-direction: column; padding: 4px 12px; }
+:root[data-ui="2"] .u2apr { display: flex; align-items: center; gap: 10px; min-height: 52px; border-top: 1px solid color-mix(in srgb, var(--c-ink) 14%, transparent); }
+:root[data-ui="2"] .u2apr:first-child { border-top: 0; }
+:root[data-ui="2"] .u2apn { flex: 1; min-width: 0; overflow-wrap: anywhere; line-height: 1.2; }
+:root[data-ui="2"] .u2apb { flex: none; display: flex; gap: 6px; }
+:root[data-ui="2"] .u2apb button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: var(--bw, 2px) solid var(--c-ink); background: var(--c-surface-2); color: var(--c-text); font: 700 14px var(--f-sub); cursor: pointer; transition: background .12s, transform .12s; }
+:root[data-ui="2"] .u2apb button svg { width: 18px; height: 18px; flex: none; }
+:root[data-ui="2"] .u2apb button.on.P { background: var(--c-green); color: var(--c-dark); transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--c-ink); }
+:root[data-ui="2"] .u2apb button.on.A { background: var(--c-pink); color: var(--c-dark); transform: translate(-1px, -1px); box-shadow: 2px 2px 0 var(--c-ink); }
+:root[data-ui="2"] .u2apf { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px 10px; border-top: 1px solid color-mix(in srgb, var(--c-ink) 14%, transparent); }
+:root[data-ui="2"] .u2apf .btn { min-height: 36px; padding: 4px 12px; font-size: 14px; box-shadow: none; }
+:root[data-ui="2"] .u2lnk { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; padding: 6px 4px; color: var(--c-muted); font: 700 14px var(--f-sub); cursor: pointer; text-decoration: underline; }
+:root[data-ui="2"] .u2lnk svg { width: 14px; height: 14px; transform: scaleX(-1); }
+/* collectif nombreux (plus de 8 élèves) : liste compacte sur deux colonnes à grand écran, boutons réduits à leur picto */
+:root[data-ui="2"] .u2ap.many .u2apr { min-height: 44px; }
+:root[data-ui="2"] .u2ap.many .u2apb button { min-height: 34px; padding: 0 8px; }
+:root[data-ui="2"] .u2ap.many .u2apb button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+@media (min-width: 700px) { :root[data-ui="2"] .u2ap.many .u2apl { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; } }
+
+
+/* téléphone : Présent / Absent réduits à leur picto (coche, croix), le nom garde la place */
+@media (max-width: 560px) {
+  :root[data-ui="2"] .u2apb button { min-width: 46px; justify-content: center; padding: 0 8px; }
+  :root[data-ui="2"] .u2apb button span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  :root[data-ui="2"] .u2apl { padding: 2px 10px; }
+  :root[data-ui="2"] .u2apn { min-width: 0; }
+  :root[data-ui="2"] .u2auj { padding: 12px; }
+}
+
+/* bouton discret « Supprimer le groupe », en bas de la fiche (style danger) */
+:root[data-ui="2"] .u2gdel { display: flex; justify-content: flex-start; padding-top: 6px; }
+:root[data-ui="2"] .u2dng { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; background: none; border: var(--bw, 2px) solid transparent; color: var(--hot-tx, #E0284A); font: 700 15px var(--f-sub); cursor: pointer; text-decoration: underline; }
+:root[data-ui="2"] .u2dng:hover, :root[data-ui="2"] .u2dng:focus-visible { border-color: currentColor; text-decoration: none; }
+:root[data-ui="2"] .u2dng svg { width: 18px; height: 18px; }

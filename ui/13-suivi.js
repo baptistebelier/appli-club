@@ -116,10 +116,29 @@ function cycBilans(k) {
           .join('')
     : '';
 }
+/* mes objectifs et mes compétences, en lecture seule : ceux de l'élève et ceux de ses groupes (l'enseignant les tient dans /Dojo) */
+function objMes(k) {
+  const gs = GROUPS.filter(g => g.type === 'train' && (g.mem || []).concat(g.ext || []).includes(k)).map(g => g.id),
+    L = REGLES.objDe(OBJECTIFS, k, gs);
+  if (!L.length) return '';
+  return (
+    '<span class="kicker">Mes objectifs</span>' +
+    L.map(o => {
+      const p = REGLES.objProgres(o, [k]),
+        pct = p.total ? Math.round((100 * p.ok) / p.total) : 0;
+      return `<div class="card obj-card"><div class="obj"><div class="objh"><b>${esc(o.nom)}</b><span class="objp">${p.ok}/${p.total}</span></div><span class="objb" role="img" aria-label="${p.ok} compétences validées sur ${p.total}"><i style="width:${pct}%"></i></span><div class="objl">${(o.comps || [])
+        .map(c => {
+          const on = !!(o.ok && o.ok[c.id] && o.ok[c.id][k]);
+          return `<div class="objc ro${on ? ' on' : ''}" role="img" aria-label="${esc(c.nom)} : ${on ? 'validée' : 'à acquérir'}"><span class="objk">${ic('check')}</span><span class="grow">${esc(c.nom)}</span></div>`;
+        })
+        .join('')}</div></div></div>`;
+    }).join('')
+  );
+}
 /* École, Mon espace : tout ce que l'enseignant m'a envoyé (et à mes enfants), et l'historique des séances */
 function persoBody() {
   const ids = svMine().filter(k => M[k]),
-    withSv = ids.filter(k => svOf(k).length || SEANCES.some(s => s.pres && s.pres[k]) || cycBilans(k));
+    withSv = ids.filter(k => svOf(k).length || SEANCES.some(s => s.pres && s.pres[k]) || cycBilans(k) || objMes(k));
   if (!withSv.length)
     return empty(
       'user',
@@ -152,6 +171,7 @@ function persoBody() {
               : '')
           : '') +
         cycBilans(k) +
+        objMes(k) +
         (hist.length
           ? `<span class="kicker">Historique des séances · ${nP} présence${nP > 1 ? 's' : ''} sur ${hist.length}</span>` +
             evDays(
@@ -163,8 +183,8 @@ function persoBody() {
                 return evCard({
                   cat: 'ens',
                   fixe: true,
-                  t: g ? hAt(g, s.d) : '',
-                  title: g ? g.name : 'Séance',
+                  t: g ? hAt(g, s.d) : s.gh || '',
+                  title: g ? g.name : s.gnom || 'Séance',
                   lines: [s.theme && ['ladder', esc(s.theme)], s.recap && ['doc', esc(s.recap)]],
                   tags: st === 'P' ? evTag('Présent') : evCx(st === 'E' ? 'Excusé' : 'Absent')
                 });
@@ -198,6 +218,11 @@ function proBody(k) {
     yrs = p.since ? +TODAY.slice(0, 4) - +p.since : 0,
     tile = (i, v, l) => (v ? `<div class="ptile">${ic(i)}<b>${v}</b><span>${l}</span></div>` : ''),
     web = svLink(toUrlP(p.web)),
+    /* sa page publique de réservation, quand elle est ouverte dans ce club */
+    resaUrl =
+      window.RAM && RAM.live && off && (off.page === true || off.page === RAM.club)
+        ? location.origin + '/r/' + encodeURIComponent(RAM.club) + '/' + encodeURIComponent(k)
+        : '',
     tel = String(p.tel || '').replace(/[^+\d]/g, ''),
     bouton = (cl, href, i, t, v, ext) =>
       `<a class="pbtn ${cl}" href="${esc(href)}"${ext ? ' target="_blank" rel="noopener"' : ''}><span class="pbi">${ic(i)}</span><span class="pbt"><b>${t}</b><span class="small">${esc(v)}</span></span></a>`,
@@ -229,7 +254,7 @@ function proBody(k) {
     tarifs
       ? `<details class="ptarifs"><summary><span class="tile">${ic('euro')}</span><span class="grow nm">Tarifs</span><span class="chev" aria-hidden="true">${ic('back')}</span></summary>${tarifs}</details>`
       : ''
-  }${k !== ME() ? `<div class="ctl"><button class="btn grow ghost" data-a="member" data-id="${k}">${ic('user')}Profil</button></div>` : ''}</div>`;
+  }${resaUrl ? `<a class="btn sm ghost full" href="${esc(resaUrl)}" target="_blank" rel="noopener" style="margin-bottom:8px">${ic('globe')}Page de réservation</a>` : ''}${k !== ME() ? `<div class="ctl"><button class="btn grow ghost" data-a="member" data-id="${k}">${ic('user')}Profil</button></div>` : ''}</div>`;
 }
 /* le raccourci en haut de la carte, même repliée : la réservation de l'appli dès que l'enseignant a des disponibilités ;
    sinon son outil (Calendly…), pour qu'on puisse toujours réserver */

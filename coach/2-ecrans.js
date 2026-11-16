@@ -486,7 +486,7 @@ const coPlanTools = () =>
 /* la sélection du club, dans l'en-tête de Planning, Élèves, Statistiques et Historique (quand j'enseigne dans plusieurs clubs) */
 const coTopClub = () =>
   coMulti()
-    ? `<label class="cotopclub"><span class="sr">Club affiché</span><select id="co-topclub"><option value="all"${!S.coClub || S.coClub === 'all' ? ' selected' : ''}>Tous mes clubs</option>${coClubList()
+    ? `<label class="cotopclub" title="Club affiché"><span class="sr">Club affiché</span><span class="cotc-i" aria-hidden="true">${ic('club')}${S.coClub && S.coClub !== 'all' ? '<i class="cotc-d"></i>' : ''}</span><select id="co-topclub" data-rl-hote=".cotopclub" data-rl-min="240"><option value="all"${!S.coClub || S.coClub === 'all' ? ' selected' : ''}>Tous mes clubs</option>${coClubList()
         .map(c => `<option value="${c.id}"${S.coClub === c.id ? ' selected' : ''}>${esc(c.name)}</option>`)
         .join('')}</select></label>`
     : '';
@@ -726,7 +726,7 @@ function coEleves() {
     l = coStudents()
       .filter(k => !q || fold(svName(k)).includes(q))
       .filter(k => coInClub(M[k] || coEl(k) || {}))
-      .filter(k => f === 'all' || (f === 'nc' ? !M[k] : f === 'jeunes' ? M[k] && isMinor(k) : coSport(k) === f))
+      .filter(k => f === 'all' || (f === 'act' ? coEnActivite(k) : f === 'abo' ? coAbonne(k) : f === 'nc' ? !M[k] : f === 'jeunes' ? M[k] && isMinor(k) : coSport(k) === f))
       .sort((a, b) => svName(a).localeCompare(svName(b)));
   const chip = (v, t, i) =>
       `<button class="chip" data-a="coElF" data-v="${v}" aria-pressed="${f === v}">${ic(i)}${t}</button>`,
@@ -799,9 +799,9 @@ ${(e.parents || []).length ? hd(ic('kid') + 'Parents') + `<div class="card">${e.
             s =>
               evCard({
                 cat: 'ens',
-                t: (grp(s.g) || {}).h || '',
+                t: (grp(s.g) || {}).h || s.gh || '',
                 go: `data-a="open" data-v="seance" data-id="${s.id}"`,
-                title: esc((grp(s.g) || {}).name || 'Séance'),
+                title: esc((grp(s.g) || {}).name || s.gnom || 'Séance'),
                 lines: [s.theme && ['ladder', esc(s.theme), 'muted']],
                 tags: s.pres[id] === 'P' ? evTag(presLbl[s.pres[id]]) : evCx(presLbl[s.pres[id]])
               })
@@ -1037,7 +1037,7 @@ const CO_AUTRES = () =>
   ].concat(coQuarters().slice(1));
 function coAutrePer(per) {
   const on = CO_AUTRES().find(x => x[0] === per);
-  return `<button class="chip${on ? ' on' : ''}" data-a="coDashAutre" aria-pressed="${!!on}">${on ? esc(on[1]) : 'Autre période'} ▾</button>`;
+  return `<button class="chip${on ? ' on' : ''}" data-a="coDashAutre" aria-pressed="${!!on}">${on ? esc(on[1]) : 'Autre période'} ${ic('chevD')}</button>`;
 }
 /* les quatre derniers trimestres */
 function coQuarters() {

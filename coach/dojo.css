@@ -4,8 +4,9 @@
    en-tête surtitre + grand titre + actions, menu principal sombre (« /Dojo »), sous-menu bordeaux,
    élément actif carré citron ; au téléphone, barre du bas à 5 entrées.
    ========================================================================= */
-:root { --dj-rail: #22060F; --dj-sub: #74102A; }
-:root[style*='color-scheme: light'] { --dj-rail: #2A0610; --dj-sub: #74102A; }
+/* même rouge bordeaux que /Pista : menu #74102A, sous-menu #4A0A1B, jour comme nuit */
+:root { --dj-rail: #74102A; --dj-sub: #4A0A1B; }
+:root[style*='color-scheme: light'] { --dj-rail: #74102A; --dj-sub: #4A0A1B; }
 
 /* ---------- en-tête : surtitre au-dessus du titre ---------- */
 #phone .top h1 { display: flex !important; flex-direction: column-reverse; justify-content: center; gap: 6px; white-space: normal; line-height: 1.12 !important; font-style: normal !important; flex: 1 1 auto !important; }
@@ -146,3 +147,16 @@
 .codayl { border-top: var(--bw, 2px) solid rgba(0, 0, 0, .25); margin-top: 12px; }
 .codayl .item { min-height: 48px; }
 .coday .ecacts { display: flex; gap: 10px; flex-wrap: wrap; padding: 12px 0 0; }
+
+/* téléphone : fondu sur le côté de la bande d'onglets où il reste des onglets (app/8-demarrage.js, segHint) ;
+   plus fort que le « mask-image: none !important » ci-dessus */
+@media (max-width: 1023px) {
+  #main > .seg:not(.haut).plus-d { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent) !important; mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent) !important; }
+  #main > .seg:not(.haut).plus-g { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px) !important; mask-image: linear-gradient(90deg, transparent, #000 40px) !important; }
+  #main > .seg:not(.haut).plus-g.plus-d { -webkit-mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; mask-image: linear-gradient(90deg, transparent, #000 40px, #000 calc(100% - 40px), transparent) !important; }
+}
+
+/* pictos jaune citron : la couleur citron reste la nuit ; le jour, un vert-olive foncé lisible sur fond clair (contraste 6:1) */
+:root { --c-ico: #E0F50A; }
+:root[style*='color-scheme: light'] { --c-ico: #4F6200; }
+.cobs .calh > svg, .coday .calh > svg, :root[data-ui="2"] .u2c .calh > svg, #main > .seg.haut button[aria-selected="true"] svg { color: var(--c-ico) !important; }
