@@ -175,7 +175,7 @@ function coAttribAchat(g, c, o, d0, du, i) {
   if (t === 'pack') a.n = du ? reste : o.seances;
   if (t === 'abo') {
     a.fin = coAboFin(o, a.d);
-    if (+o.parSemaine > 0) a.freq = +o.parSemaine;
+    if (REGLES.parMoisDef(o) > 0) a.pm = REGLES.parMoisDef(o);
   }
   return a;
 }
@@ -231,9 +231,32 @@ function coCycleUsed(a, k) {
 function coSesCycle(g, d) {
   if (g.once) {
     const l = coGroups('', true).filter(x => !x.once && coClubOf(x) === coClubOf(g) && (x.cycles || []).length);
-    return l.length
-      ? `<form class="card" id="co-s-att" data-id="${g.id}" data-d="${d}"><div class="fld"><label for="co-s-ac">Rattacher ce cours à un cycle</label><select id="co-s-ac" required><option value="">Choisir un cycle</option>${l.flatMap(x => x.cycles.map(k => `<option value="${x.id}|${k.id}">${esc(x.name)} · ${esc(k.nom)}</option>`)).join('')}</select></div><button class="btn sm ghost full">Rattacher</button><p class="muted small">Le cours devient une séance du groupe, à l’horaire du groupe, avec ses élèves et son appel.</p></form>`
-      : '';
+    // un cours d'un seul élève : ses achats (pack, abonnement, séance à l'unité) avec leur décompte, puis les cycles des groupes
+    const st = coStu(g),
+      parEl = st.map(k => [k, coPacks(k).slice().reverse()]).filter(x => x[1].length),
+      n0 = st.filter(k => REGLES.achatDe(g, k) && coPacks(k).some(a => a.id === REGLES.achatDe(g, k)));
+    if (!l.length && !parEl.length) return '';
+    const mois = d.slice(0, 7),
+      lib = a => {
+        const m = a.t === 'abo' ? REGLES.moisAbo(a, d) : null,
+          plein = a.t === 'pack' ? a.used >= a.n : a.t === 'seance' ? a.used >= 1 : false;
+        return (
+          (a.nom || ofLabel(a.t, a.ref)) +
+          ' · ' +
+          (a.t === 'pack'
+            ? a.used + '/' + a.n
+            : a.t === 'abo'
+              ? m.quota
+                ? (a.parMois || {})[mois] || 0
+                : 'abonnement'
+              : a.used >= 1
+                ? 'utilisée'
+                : 'à l’unité') +
+          (a.t === 'abo' && m.quota ? '/' + m.quota + ' ce mois-ci' : '') +
+          (plein ? ' · complet' : '')
+        );
+      };
+    return `<form class="card" id="co-s-att" data-id="${g.id}" data-d="${d}"><div class="fld"><label for="co-s-ac">Rattacher cette séance</label><select id="co-s-ac"><option value="">${n0.length ? 'Aucun achat (règle par défaut)' : 'Choisir un achat ou un cycle'}</option>${parEl.map(([k, ach]) => `<optgroup label="${st.length > 1 ? 'Achats de ' + esc(svFirst(k)) : 'Ses achats'}">${ach.map(a => `<option value="a|${k}|${a.id}" ${REGLES.achatDe(g, k) === a.id ? 'selected' : ''}>${esc(lib(a))}</option>`).join('')}</optgroup>`).join('')}${l.length ? `<optgroup label="Groupes">${l.flatMap(x => x.cycles.map(c => `<option value="${x.id}|${c.id}">${esc(x.name)} · ${esc(c.nom)}</option>`)).join('')}</optgroup>` : ''}</select></div><button class="btn sm ghost full">Rattacher</button><p class="muted small">À un achat : la séance compte dans son décompte (même complet : 11/10), elle garde son nom, son heure et sa durée. À un groupe : elle devient une séance du groupe, à son horaire, avec ses élèves et son appel.</p></form>`;
   }
   if (!(g.cycles || []).length) return '';
   const c = REGLES.cycleDe(g, d),
@@ -245,9 +268,29 @@ document.addEventListener('submit', e => {
   e.preventDefault();
   const o = grp(e.target.dataset.id),
     d = e.target.dataset.d,
-    [gid, cid] = $('co-s-ac').value.split('|'),
+    val = $('co-s-ac').value,
+    [gid, kA, cid0] = val.split('|'),
+    cid = gid === 'a' ? cid0 : kA,
     g = grp(gid),
     c = g && (g.cycles || []).find(x => x.id === cid);
+  // un achat de l'élève (ou plus aucun) : le lien séance → achat (g.achat), que REGLES.couverture lit
+  if (o && (gid === 'a' || val === '')) {
+    const a = gid === 'a' ? coPacks(kA).find(x => x.id === cid) : null,
+      st = coStu(o);
+    if (gid === 'a' && !a) return;
+    // un seul élève : le lien est g.achat ; un cours de plusieurs élèves : un achat par élève (g.achatPar)
+    if (a && st.length === 1) {
+      o.achat = a.id;
+      o.couvert = a.t;
+    } else if (a) o.achatPar = Object.assign({}, o.achatPar, { [kA]: a.id });
+    else {
+      delete o.achat;
+      delete o.couvert;
+      delete o.achatPar;
+    }
+    coSave(a ? 'Séance rattachée à ' + (a.nom || ofLabel(a.t, a.ref)) : 'Séance détachée de son achat');
+    return;
+  }
   if (!o || !c) return;
   const v = sesFind(o, d),
     t = sesGet(g.id + '.' + d),
@@ -905,7 +948,7 @@ function coPlanDetect(g, start, n, step) {
     d => !isCx(g, d) && !REGLES.cycleDe(g, d)
   );
   const out = deja.slice(0, n);
-  if (out.length >= n) return out;
+  if (out.length >= n || g.libre) return out; // groupe sans créneau : seulement les dates déjà posées, jamais de dates inventées
   const suite = out.length ? isoIn(step || 7, out[out.length - 1]) : start;
   return out.concat(coPlanDates(suite, n - out.length, step || 7, coVacOff(g)));
 }
@@ -1170,22 +1213,25 @@ Object.assign(A, {
         )
         .concat(OFFRES.formules.map(f => ['f:' + f.id, 'À la séance · ' + ofLabel('f', f.id)]))
         .concat(OFFRES.abos.map(a => ['abo:' + a.id, 'Abonnement · ' + a.nom])),
-      cyc = !!g.to || !!d.c || !!courant || (g.offre || '').startsWith('pack:');
+      cyc = g.libre ? !!g.to : !!g.to || !!d.c || !!courant || (g.offre || '').startsWith('pack:');
     sheet(
       'Séances de ' + g.name,
-      `<form class="body" id="co-plan" data-id="${g.id}" data-c="${courant ? courant.id : d.c === 'new' ? 'new' : ''}"><p class="muted small">Choisis une formule : un pack donne le nombre de séances et le tarif. Les séances déjà faites à partir de cette date sont reprises dans le cycle.</p>${O('co-pl-nom', 'Nom du cycle', 'Cycle automne, Pack 10 séances…', courant ? courant.nom : '')}${ofSel('co-pl-o', 'Formule suivie par le groupe', opts, (courant && courant.offre) || g.offre || '')}${O('co-pl-pay', 'Paiement demandé aux séances n° (facultatif)', '4  ou 1, 4, 8', ((courant && courant.pay) || []).join(', '))}<div class="fld"><label class="chk" for="co-pl-att"><input type="checkbox" id="co-pl-att">Noter ce pack ou cet abonnement pour les élèves du groupe</label></div><div class="row" style="gap:8px"><div class="fld grow"><label for="co-pl-s">À partir du</label><input id="co-pl-s" type="date" value="${cur[0] || coPlanStart(g)}"></div><div class="fld" style="width:96px"><label for="co-pl-n">Séances</label><input id="co-pl-n" type="number" inputmode="numeric" min="1" max="60" value="${cur.length || 10}"></div></div>${ofSel(
+      `<form class="body" id="co-plan" data-id="${g.id}" data-c="${courant ? courant.id : d.c === 'new' ? 'new' : ''}"><p class="muted small">Choisis une formule : un pack donne le nombre de séances et le tarif. Les séances déjà faites à partir de cette date sont reprises dans le cycle.</p>${O('co-pl-nom', 'Nom du cycle', 'Cycle automne, Pack 10 séances…', courant ? courant.nom : '')}${ofSel('co-pl-o', 'Formule suivie par le groupe', opts, (courant && courant.offre) || g.offre || '')}${O('co-pl-pay', 'Paiement demandé aux séances n° (facultatif)', '4  ou 1, 4, 8', ((courant && courant.pay) || []).join(', '))}<div class="fld"><label class="chk" for="co-pl-att"><input type="checkbox" id="co-pl-att">Noter ce pack ou cet abonnement pour les élèves du groupe</label></div><div class="row" style="gap:8px"><div class="fld grow"><label for="co-pl-s">À partir du</label><input id="co-pl-s" type="date" value="${cur[0] || coPlanStart(g)}"></div><div class="fld" style="width:96px"><label for="co-pl-n">Séances</label><input id="co-pl-n" type="number" inputmode="numeric" min="1" max="60" value="${(courant && courant.n) || cur.length || 10}"></div></div>${ofSel(
         'co-pl-r',
         'Rythme',
         [
           ['7', 'Chaque semaine'],
-          ['14', 'Une semaine sur deux']
+          ['14', 'Une semaine sur deux'],
+          ['0', 'Sans récurrence · dates libres']
         ],
-        g.every > 1 ? '14' : '7'
+        g.libre ? '0' : g.every > 1 ? '14' : '7'
       )}<button type="button" class="btn sm ghost full" data-a="coPlanGen">${ic('cal')}Proposer les dates</button><span class="kicker" style="margin-top:12px">Dates · <span id="co-pl-cnt">${plural(cur.length, 'séance')}</span></span><div id="co-pl-dates" class="copl"></div><button type="button" class="btn sm ghost full" data-a="coPlanAdd">${ic('plus')}Ajouter une date</button><div class="fld"><label class="chk" for="co-pl-c"><input type="checkbox" id="co-pl-c" ${cyc ? 'checked' : ''}>Le groupe s'arrête après la dernière date (pack ou cycle)</label></div><button class="btn full">Enregistrer les séances</button><p class="muted small">Les séances apparaissent dans ton planning et dans l'Agenda et l'École de /RAM Club.</p></form>`
     );
     coPlanPaint(cur);
   },
   coPlanGen() {
+    // sans récurrence : pas de dates proposées, seulement celles posées une à une
+    if ($('co-pl-r').value === '0') return coPlanPaint(coPlanRead());
     const o = coPlanOf($('co-pl-o').value),
       n = parseInt($('co-pl-n').value, 10) || o.n || 10,
       s = $('co-pl-s').value || TODAY;
@@ -1343,7 +1389,7 @@ document.addEventListener('submit', e => {
     garder = $('co-pl-c').checked || !!cid,
     // les séances des autres cycles restent
     autres = (g.cycles || []).filter(x => x.id !== cid).flatMap(x => x.dates || []);
-  coPlanApply(g, [...new Set(list.concat(autres))].sort(), $('co-pl-c').checked);
+  coPlanApply(g, [...new Set(list.concat(autres))].sort(), $('co-pl-c').checked && !g.libre);
   let note = '';
   if (garder) {
     g.cycles = g.cycles || [];

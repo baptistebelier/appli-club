@@ -94,7 +94,7 @@
      il passe avant les achats individuels. Les autres achats se décomptent dans l'ordre, du plus ancien au plus récent :
      un pack ou une séance à l'unité couvre une séance de sa formule (même format, même durée), faite au plus tôt
      14 jours avant l'achat (« payé au mois ») ; un abonnement couvre les séances faites pendant sa durée, et au plus
-     son nombre de séances quand sa fréquence est notée (a.freq séances par semaine).
+     son quota mensuel (a.pm séances par mois civil, ou l'ancienne a.freq par semaine) se compte à part (moisAbo) et ne bloque rien.
      Une venue sans groupe connu (gid) se décompte comme avant, par sa formule.
      Renvoie { achats: [achat + { used }], couvre: Map(venue → achat) }. */
   const lienDe = a => {
@@ -106,6 +106,25 @@
   };
   const gidOf = v => (v.gid != null ? v.gid : v.g && typeof v.g === 'object' ? v.g.id : v.g);
   /* nombre de séances d'un abonnement à fréquence notée : sa durée en semaines × sa fréquence ; sinon sans limite */
+  /* séances par mois d'un abonnement : celles de sa définition (parMois, 4 par défaut ; l'ancien « par semaine » s'y convertit :
+     parSemaine × 52 / 12, arrondi). 0 : sans limite. */
+  const parMoisDef = def =>
+    def && def.parMois != null && def.parMois !== ''
+      ? Math.max(0, Math.round(+def.parMois) || 0)
+      : def && +def.parSemaine > 0
+        ? Math.round((+def.parSemaine * 52) / 12)
+        : 4;
+  /* le quota mensuel d'un achat d'abonnement : pm (noté à l'attribution), sinon l'ancienne fréquence par semaine convertie ;
+     0 : aucun quota noté (comme avant : sans limite, rien à afficher) */
+  const quotaMois = a => (+a.pm > 0 ? Math.round(+a.pm) : +a.freq > 0 ? Math.round((+a.freq * 52) / 12) : 0);
+  /* le compteur du mois civil : séances de cet abonnement faites ce mois-ci (o.parMois, calculé par couverture) sur son quota ;
+     remis à zéro le 1er, sans report, jamais bloquant : 5 sur 4 reste possible (depasse) */
+  function moisAbo(a, today) {
+    const fait = ((a && a.parMois) || {})[String(today).slice(0, 7)] || 0,
+      quota = quotaMois(a || {});
+    return { fait, quota, depasse: quota > 0 && fait > quota };
+  }
+  /* ancien calcul (séances par semaine sur la durée) : gardé pour lire d'anciennes données, plus utilisé pour décompter */
   function seancesAbo(a) {
     if (!(+a.freq > 0) || !a.fin || !a.d) return Infinity;
     const j = Math.round((Date.parse(a.fin) - Date.parse(a.d)) / 864e5) + 1;
@@ -145,25 +164,43 @@
         f = formuleOf(a),
         L = lienDe(a),
         ok = v => {
+          // une séance ponctuelle rattachée à un achat (v.ac) ne se décompte que de cet achat, quel que soit son format,
+          // tant que cet achat existe ; sinon la règle de la formule s'applique
+          if (v.ac != null) {
+            if (v.ac === a.id) return true;
+            if (all.some(x => x.id === v.ac)) return false;
+          }
           const x = L ? dansLien(a, L, v) : null;
           return x === null ? fits(v, f) : x;
         };
       out.set(a, o);
       if (a.t === 'abo') {
-        const max = seancesAbo(a);
+        // un abonnement couvre toutes les séances faites pendant sa durée : le quota mensuel (quotaMois) ne bloque rien, il se compte
+        // par mois civil (o.parMois : { 'AAAA-MM': séances })
+        o.parMois = {};
         vs.forEach(v => {
-          if (o.used < max && !couvre.has(v) && v.d >= (a.du || a.d) && (!a.fin || v.d <= a.fin) && ok(v)) {
+          // une séance rattachée à cet abonnement (v.ac) y compte dans le mois de sa date, même hors de ses dates
+          if (!couvre.has(v) && (v.ac === a.id || (v.d >= (a.du || a.d) && (!a.fin || v.d <= a.fin))) && ok(v)) {
             couvre.set(v, o);
             o.used++;
+            const m = String(v.d).slice(0, 7);
+            o.parMois[m] = (o.parMois[m] || 0) + 1;
           }
         });
         return;
       }
       const max = a.t === 'pack' ? +a.n || 0 : 1,
         from = L ? '' : addDays(String(a.d), -14);
+      // les séances rattachées à cet achat d'abord, sans limite : un achat complet rattaché à une séance de plus donne 11/10, rien ne bloque
+      for (const v of vs) {
+        if (v.ac === a.id && !couvre.has(v)) {
+          couvre.set(v, o);
+          o.used++;
+        }
+      }
       for (const v of vs) {
         if (o.used >= max) break;
-        if (couvre.has(v) || v.d < from || !ok(v)) continue;
+        if (couvre.has(v) || (v.d < from && v.ac !== a.id) || !ok(v)) continue;
         couvre.set(v, o);
         o.used++;
       }
@@ -182,7 +219,7 @@
   function etatAchat(a, today) {
     const used = +a.used || 0;
     if (a.t === 'abo' && a.fin && a.fin < today) return 'termine';
-    const total = a.sortie ? used : a.t === 'pack' ? +a.n || 0 : a.t === 'abo' ? seancesAbo(a) : 1;
+    const total = a.sortie ? used : a.t === 'pack' ? +a.n || 0 : a.t === 'abo' ? Infinity : 1;
     if (used < total) return 'encours';
     const ech = a.pay && Array.isArray(a.pay.ech) && !a.pay.off ? a.pay.ech : [],
       solde = ech.filter(x => (+x.s || 0) <= total).every(x => x.ok);
@@ -200,6 +237,9 @@
     );
   }
 
+  /* l'achat auquel une séance (cours particulier) est rattachée pour l'élève k : g.achatPar[k] (cours de plusieurs élèves), sinon g.achat ;
+     un achat qui n'est pas à l'élève est simplement ignoré (couverture) */
+  const achatDe = (g, k) => ((g && g.achatPar) || {})[k] || (g && g.achat) || undefined;
   /* les séances faites par un élève (présent à l'appel de /RAM Coach ou de /RAM Club), pour la couverture ;
      seances : [{ g, d, pres }], groupes : groupes et cours du club (avec leur id). Même calcul que /RAM Coach (coVenues). */
   function venuesDe(k, seances, groupes, today) {
@@ -218,7 +258,8 @@
         n: (g.mem || []).length + (g.ext || []).length,
         sport: g.sport,
         gid: g.id,
-        cy: (cycleDe(g, d) || {}).id
+        cy: (cycleDe(g, d) || {}).id,
+        ac: achatDe(g, k)
       });
     };
     ses.forEach(s => {
@@ -272,7 +313,7 @@
       if (etat === 'termine') return termines++;
       const ech = a.pay && Array.isArray(a.pay.ech) && !a.pay.off ? a.pay.ech : [],
         f = faites(a),
-        max = a.t === 'pack' ? +a.n || 0 : a.t === 'abo' ? seancesAbo(a) : 1;
+        max = a.t === 'pack' ? +a.n || 0 : a.t === 'abo' ? Infinity : 1;
       out.push({
         id: a.id,
         t: a.t,
@@ -284,7 +325,8 @@
         freq: +a.freq || 0,
         etat,
         aPayer: somme(ech.filter(x => !x.ok && f >= (+x.s || 0))),
-        reste: somme(ech.filter(x => !x.ok))
+        reste: somme(ech.filter(x => !x.ok)),
+        ...(a.t === 'abo' ? { mois: moisAbo(a, today) } : {})
       });
     });
     out.sort((x, y) => String(y.d).localeCompare(String(x.d)));
@@ -420,7 +462,7 @@
       const gid = x.gid != null ? x.gid : x.g && x.g.id,
         cy = x.cy != null ? x.cy : x.g && gid != null ? (cycleDe(x.g, x.d) || {}).id : undefined;
       (x.presents || []).forEach(k =>
-        (venues[k] = venues[k] || []).push({ d: x.d, min, n, sport, gid: gid == null ? undefined : gid, cy })
+        (venues[k] = venues[k] || []).push({ d: x.d, min, n, sport, gid: gid == null ? undefined : gid, cy, ac: x.g && achatDe(x.g, k) })
       );
     });
     const keys = new Set(Object.keys(eleves || {}).concat(Object.keys(venues)));
@@ -633,7 +675,7 @@
   /* séances à venir déjà rattachées à chaque achat : { idAchat: nombre } (séances ponctuelles « achat », dates de cycle exclues) */
   function progParAchat(groupes, today) {
     const m = {};
-    (groupes || []).forEach(g => { if (g && g.achat && g.once && g.once > today) m[g.achat] = (m[g.achat] || 0) + 1; });
+    (groupes || []).forEach(g => { if (g && g.once && g.once > today && !(g.cancel || []).includes(g.once)) new Set([g.achat].concat(Object.values(g.achatPar || {})).filter(Boolean)).forEach(id => { m[id] = (m[id] || 0) + 1; }); });
     return m;
   }
   /* les achats qu'une séance peut décompter : pack ou abonnement non terminé (état « En cours »), avec ce qu'il en reste.
@@ -643,7 +685,7 @@
     return (achats || [])
       .filter(a => (a.t === 'pack' || a.t === 'abo') && etatAchat(a, today) === 'encours')
       .map(a => {
-        const total = a.t === 'pack' ? +a.n || 0 : seancesAbo(a),
+        const total = a.t === 'pack' ? +a.n || 0 : Infinity,
           fini = Number.isFinite(total),
           restantes = fini ? Math.max(0, total - (+a.used || 0)) : null,
           prog = (programmees && programmees[a.id]) || 0,
@@ -678,6 +720,10 @@
     objProgres,
     objBascule,
     seancesAbo,
+    achatDe,
+    moisAbo,
+    quotaMois,
+    parMoisDef,
     etatAchat,
     ETATS,
     aboEnCours,
