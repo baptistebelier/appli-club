@@ -613,10 +613,14 @@ if (UI2) {
   const U2M = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
   /* petite carte de séance de l'historique (élève, groupe) : l'encart coloré porte la date et l'heure ; les cartes
      s'empilent, ce n'est pas un agenda. tone : ok (faite), ex (excusé), ab (absent ou annulée), '' (à venir) */
-  const u2Hist = o => {
+  const u2HistCarte = o => {
     const el = o.go ? 'button' : 'div';
     return `<${el} class="u2hs ${o.tone || ''}"${o.go ? ' ' + o.go : ''}><span class="u2hd"><b>${esc(DA[new Date(o.d + 'T12:00').getDay()])} ${+o.d.slice(8)}</b><span>${U2M[+o.d.slice(5, 7) - 1]}</span>${o.h ? `<i>${esc(o.h)}</i>` : ''}</span><span class="u2hb"><span class="nm${o.cx ? ' u2cx' : ''}">${o.title}</span>${o.sub ? `<span class="muted small">${o.sub}</span>` : ''}</span>${o.tags ? `<span class="u2ht">${o.tags}</span>` : ''}</${el}>`;
   };
+  const u2Hist = o =>
+    o.del
+      ? `<div class="u2sw"><button class="u2swd" type="button" ${o.del} aria-label="Supprimer cette séance">${ic('trash')}</button>${u2HistCarte(o)}</div>`
+      : u2HistCarte(o);
   /* une séance d'un groupe (à venir ou faite), en petite carte */
   const u2Ses = (g, d) => {
     const s = sesFind(g, d),
@@ -653,7 +657,8 @@ if (UI2) {
       cx,
       tone: cx ? 'ab' : past ? 'ok' : '',
       tags: tag ? `<span class="tag cost ${tag[1]}">${tag[0]}</span>` : '',
-      go: `data-a="open" data-v="seance" data-id="${sesKey(g, d)}"`
+      go: `data-a="open" data-v="seance" data-id="${sesKey(g, d)}"`,
+      del: `data-a="u2SesDel" data-g="${g.id}" data-d="${d}"`
     });
   };
 
@@ -693,13 +698,14 @@ if (UI2) {
                   sub: s.theme ? esc(s.theme) : '',
                   tone: s.pres[id] === 'P' ? 'ok' : s.pres[id] === 'E' ? 'ex' : 'ab',
                   tags: `<span class="tag">${presLbl[s.pres[id]]}</span>`,
-                  go: `data-a="open" data-v="seance" data-id="${s.id}"`
+                  go: `data-a="open" data-v="seance" data-id="${s.id}"`,
+                  del: `data-a="u2SesDel" data-g="${s.g}" data-d="${s.d}" data-k="${id}"`
                 })
               )
               .join('')}</div>`
           : none('cal', 'Aucune séance', ''));
     }
-    return `<div class="pad"><div class="card u2fiche"><div class="u2fh">${coAv(id, 'lg')}<div class="u2fn"><span class="u2fp">${esc(fn)}</span><b class="u2fl">${esc(ln)}</b><span class="tag">${M[id] ? 'Compte /RAM Club' : 'Sans compte'}</span></div><div class="u2fc">${cell('phone', 'Téléphone', tel, 'tel:' + esc(String(tel).replace(/[^+\d]/g, '')))}${cell('mail', 'E-mail', mail, 'mailto:' + esc(mail))}</div><div class="u2fa"><button class="btn ghost" data-a="coEditEl" data-id="${id}">${ic('edit')}Modifier la fiche</button>${M[id] ? '' : `<button class="btn" data-a="coLink" data-id="${id}">${ic('link')}Relier à un compte /RAM</button>`}</div></div>${tabs}<div class="u2fb">${body}</div></div></div>`;
+    return `<div class="pad"><div class="card u2fiche"><div class="u2fh">${coAv(id, 'lg')}<div class="u2fn"><span class="u2fp">${esc(fn)}</span><b class="u2fl">${esc(ln)}</b><span class="tag">${M[id] ? 'Compte /RAM Club' : 'Sans compte'}</span></div><div class="u2fc">${cell('phone', 'Téléphone', tel, 'tel:' + esc(String(tel).replace(/[^+\d]/g, '')))}${cell('mail', 'E-mail', mail, 'mailto:' + esc(mail))}</div><div class="u2fa"><button class="btn" data-a="u2Prog" data-id="${id}">${ic('cal')}Programmer une séance</button><button class="btn ghost" data-a="coEditEl" data-id="${id}">${ic('edit')}Modifier la fiche</button>${M[id] ? '' : `<button class="btn" data-a="coLink" data-id="${id}">${ic('link')}Relier à un compte /RAM</button>`}</div></div>${tabs}<div class="u2fb">${body}</div></div></div>`;
   };
 
   /* Fiche de groupe : le cycle en cours et sa progression en haut, les élèves tout de suite (ajout et retrait), puis les
@@ -985,4 +991,305 @@ if (UI2) {
     const h = u2EleveObj(id);
     return h.replace(/(Objectifs<\/span><\/h2>)<div class="card"><p>[\s\S]*?<\/p><\/div>/, (m, t) => t + u2ObjEleve(id));
   };
+
+  /* ---------- Programmer une séance depuis la fiche d'un élève ----------
+     La formule préremplit durée, sport et prix ; la séance est rattachée à un achat en cours (pack ou abonnement) qui la décompte
+     (REGLES.achatsDecomptables, seanceElevePlan : mêmes règles que le connecteur, coach_programmer_seance). Sans achat compatible,
+     « Attribuer » crée l'achat puis la séance d'un coup. Un achat de cycle de groupe reçoit la date dans son cycle. */
+  const pgOffres = () => {
+    const O = typeof OFFRES !== 'undefined' ? OFFRES : { formules: [], packs: [], abos: [] },
+      f = x => (O.formules || []).find(y => y.id === x);
+    return [
+      ...(O.formules || []).map(x => ({ v: 'f:' + x.id, l: `${x.nom} · ${x.duree} min · ${x.prix} €`, dur: x.duree, sport: x.sport, prix: x.prix })),
+      ...(O.packs || []).map(x => ({ v: 'p:' + x.id, l: `${x.nom || 'Pack ' + x.seances + ' séances'} · ${x.prix} €`, dur: (f(x.formule) || {}).duree, sport: (f(x.formule) || {}).sport, prix: x.seances ? Math.round((x.prix / x.seances) * 100) / 100 : x.prix, pack: x })),
+      ...(O.abos || []).map(x => ({ v: 'a:' + x.id, l: `${x.nom} · abonnement`, dur: null, sport: null, prix: 0, abo: x }))
+    ];
+  };
+  const pgDispos = k => REGLES.achatsDecomptables(coPacks(k), TODAY, REGLES.progParAchat(GROUPS, TODAY));
+  const pgLibres = d => {
+    const l = typeof coLibre === 'function' ? coLibre(d) : [],
+      h = m => Math.floor(m / 60) + ' h' + (m % 60 ? String(m % 60).padStart(2, '0') : '');
+    return l.length ? 'Libre ce jour : ' + l.map(p => h(p.du) + '–' + h(p.au)).join(' · ') : 'Aucun créneau libre indiqué ce jour.';
+  };
+  A.u2Prog = d => {
+    const k = d.id,
+      cl = coClubList(),
+      cur = (S.coClub !== 'all' && S.coClub) || coMainId(),
+      of = pgOffres(),
+      dispos = pgDispos(k),
+      fiche = coEl(k) || {},
+      sel0 = dispos.length === 1 ? dispos[0].id : '';
+    sheet(
+      'Programmer une séance',
+      `<form class="body" id="u2-prog" data-id="${k}"><p class="muted small">Pour <b>${esc(svName(k))}</b>.</p><div class="fld"><label for="co-pf">Formule</label><select id="co-pf"><option value="">Séance libre</option>${of.map(o => `<option value="${o.v}">${esc(o.l)}</option>`).join('')}</select></div>${Dt('co-pd', 'Date', false, TODAY)}<p class="muted small" id="co-plib">${esc(pgLibres(TODAY))}</p>${Sel('co-ph', 'Heure', HOURS, '18 h')}${Sel('co-pdu', 'Durée', ['45 min', '1 h', '1 h 15', '1 h 30', '2 h'], '1 h')}${Sel('co-ps', 'Sport', ['Padel', 'Tennis'], fiche.sport || 'Padel')}${Sel('co-pl', 'Lieu', ['En salle', 'Extérieur'], 'En salle')}${cl.length > 1 ? `<div class="fld"><label for="co-pc">Club</label><select id="co-pc">${cl.map(c => `<option value="${c.id}" ${c.id === cur ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>` : ''}<div class="fld"><label for="co-pt">Thème ou objectif (facultatif)</label><input id="co-pt" autocomplete="off" placeholder="Ex. Travailler la bandeja"></div><div class="fld"><label for="co-pa">Décompter de l’achat</label><select id="co-pa"><option value="">Aucun, à payer à l’unité</option>${dispos.map(a => `<option value="${a.id}" ${a.id === sel0 ? 'selected' : ''}>${esc(a.libelle)}</option>`).join('')}</select></div><div class="fld" id="co-ppw">${O('co-pp', 'Prix de la séance en euros (à l’unité)', '35')}</div><p class="muted small" id="co-pnote"></p><button class="btn full">${ic('cal')}Programmer la séance</button></form>`
+    );
+    $('co-pp').inputMode = 'decimal';
+    u2ProgMaj();
+  };
+  /* le panneau suit la formule, la date et l'achat choisis */
+  function u2ProgMaj(quoi) {
+    const f = $('co-pf');
+    if (!f) return;
+    const k = $('u2-prog').dataset.id,
+      o = pgOffres().find(x => x.v === f.value),
+      a = $('co-pa'),
+      dispos = pgDispos(k);
+    if (quoi === 'formule' && o) {
+      if (o.dur) {
+        const t = minTxt(o.dur),
+          s = $('co-pdu');
+        if (![...s.options].some(x => x.value === t)) s.add(new Option(t, t));
+        s.value = t;
+      }
+      if (o.sport) $('co-ps').value = o.sport;
+      if (o.prix != null && !o.abo) $('co-pp').value = String(o.prix).replace('.', ',');
+    }
+    // « Attribuer … » : un pack ou un abonnement choisi dans la formule, que l'élève n'a pas encore en cours
+    const choisi = a.value;   // le choix de l'achat survit au recalcul (changer la date ne doit pas le défaire)
+    [...a.options].filter(x => x.dataset.nouveau).forEach(x => x.remove());
+    if (o && (o.pack || o.abo) && !dispos.some(x => x.t === (o.pack ? 'pack' : 'abo') && (coPacks(k).find(y => y.id === x.id) || {}).ref === (o.pack || o.abo).id)) {
+      const n = new Option('Attribuer « ' + (o.pack ? o.pack.nom || 'Pack ' + o.pack.seances + ' séances' : o.abo.nom) + ' » et décompter', 'new:' + o.v);
+      n.dataset.nouveau = '1';
+      a.add(n);
+      if (quoi === 'formule' && !dispos.length) a.value = n.value;
+      else if (choisi === n.value) a.value = choisi;
+    }
+    const couvert = !!a.value;
+    $('co-ppw').hidden = couvert;
+    $('co-pnote').textContent = couvert ? 'Séance couverte par l’achat : pas de paiement à l’unité.' : '';
+    if (quoi === 'date') $('co-plib').textContent = pgLibres($('co-pd').value);
+  }
+  document.addEventListener('change', e => {
+    if (!$('u2-prog')) return;
+    if (e.target.id === 'co-pf') u2ProgMaj('formule');
+    else if (e.target.id === 'co-pd') u2ProgMaj('date');
+    else if (e.target.id === 'co-pa') u2ProgMaj('achat');
+  });
+  document.addEventListener('submit', e => {
+    if (e.target.id !== 'u2-prog') return;
+    e.preventDefault();
+    const v = x => ($(x) ? $(x).value.trim() : ''),
+      k = e.target.dataset.id,
+      d = v('co-pd');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('Choisis la date de la séance');
+    const cid = v('co-pc') || coMainId(),
+      ext = CO_EXT[cid] ? cid : null,
+      fiche = coElGet(k),
+      choix = v('co-pa');
+    let achat = null;
+    if (choix.startsWith('new:')) {
+      // l'élève n'a pas d'achat : on lui attribue le pack ou l'abonnement choisi (à régler), puis la séance
+      const o = pgOffres().find(x => x.v === choix.slice(4)),
+        p = o && (o.pack || o.abo);
+      if (!p) return;
+      const a = { id: 'h' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4), t: o.pack ? 'pack' : 'abo', ref: p.id, d: TODAY, nom: o.pack ? p.nom || 'Pack ' + p.seances + ' séances' : p.nom, prix: p.prix || 0 };
+      if (o.pack) a.n = p.seances;
+      else {
+        const mois = ({ mois: 1, trimestre: 3, '6 mois': 6, an: 12 }[p.periode] || 1) * (p.duree || 1),
+          [y, m, j] = TODAY.split('-').map(Number);
+        a.fin = new Date(Date.UTC(y, m - 1 + mois, j - 1)).toISOString().slice(0, 10);
+      }
+      a.pay = { ech: [{ s: 0, m: a.prix, ok: '' }] };
+      fiche.achats = (fiche.achats || []).concat(a);
+      achat = { id: a.id, t: a.t, cycle: '' };
+    } else if (choix) achat = pgDispos(k).find(x => x.id === choix) || null;
+    if (achat && achat.cycle) {
+      // achat d'un cycle de groupe : la date rejoint ce cycle
+      const [gid, cid2] = achat.cycle.split(':'),
+        g = grp(gid),
+        c = g && (g.cycles || []).find(x => x.id === cid2);
+      if (g && c) {
+        coCycleSet(g, c, (c.dates || []).concat(d));
+        g.hr = Object.assign({}, g.hr, { [d]: v('co-ph') });
+        closeSheet();
+        return coSave('Séance ajoutée au cycle le ' + fmtD(d));
+      }
+    }
+    const g = REGLES.seanceElevePlan({
+      date: d,
+      h: v('co-ph'),
+      dur: v('co-pdu'),
+      sport: v('co-ps'),
+      lieu: v('co-pl'),
+      coach: coKeyIn(ext),
+      mem: M[k] ? [k] : [],
+      ext: M[k] ? [] : [k],
+      theme: v('co-pt'),
+      prix: parseFloat(v('co-pp').replace(',', '.')) || 0,
+      achat
+    });
+    g.id = 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    if (ext) g._club = ext;
+    GROUPS.push(g);
+    closeSheet();
+    coSave('Séance programmée le ' + fmtD(d) + (achat ? ' · décomptée de l’achat' : ''));
+  });
+
+  /* ---------- Supprimer une séance de l'historique : glissement vers la gauche (téléphone), survol et clavier (ordinateur) ----------
+     Même règle que le connecteur (coach_supprimer_seance) : sans élève, la séance disparaît pour tous ; depuis la fiche d'UN élève, seul cet
+     élève est retiré d'une séance de groupe ou à plusieurs. Les achats ne changent pas : le décompte suit les séances faites, donc le pack est
+     recrédité. Filet de sécurité : un bandeau « Annuler » pendant quelques secondes. */
+  const u2Copie = o => JSON.parse(JSON.stringify(o));
+  function u2SesRetire(gid, d, k) {
+    const g = grp(gid);
+    if (!g) return null;
+    const sid = gid + '.' + d,
+      meme = s => s.id === sid && (s._club || '') === (g._club || ''),
+      sRec = SEANCES.find(meme),
+      tous = (g.mem || []).concat(g.ext || []),
+      avant = { g: u2Copie(g), s: sRec ? u2Copie(sRec) : null, tout: g.once ? SEANCES.filter(x => x.g === gid && (x._club || '') === (g._club || '')).map(u2Copie) : [] },
+      partiel = !!k && !(g.once && tous.length <= 1);
+    if (!partiel) {
+      if (g.once) {
+        GROUPS.splice(GROUPS.indexOf(g), 1);
+        for (let i = SEANCES.length - 1; i >= 0; i--) if (SEANCES[i].g === gid && (SEANCES[i]._club || '') === (g._club || '')) SEANCES.splice(i, 1);
+      } else {
+        (g.cycles || []).forEach(c => (c.dates = (c.dates || []).filter(x => x !== d)));
+        g.extra = (g.extra || []).filter(x => x !== d);
+        g.cancel = (g.cancel || []).filter(x => x !== d);
+        if (typeof trainOn === 'function' && trainOn(g, d)) g.skip = (g.skip || []).concat(d);
+        if (sRec) SEANCES.splice(SEANCES.indexOf(sRec), 1);
+      }
+    } else if (g.once) {
+      g.mem = (g.mem || []).filter(x => x !== k);
+      g.ext = (g.ext || []).filter(x => x !== k);
+      if (sRec && sRec.pres) delete sRec.pres[k];
+    } else {
+      const s = sesGet(sid);
+      if (s.pres) delete s.pres[k];
+      s.plus = (s.plus || []).filter(x => x !== k);
+      if (!s.plus.length) delete s.plus;
+      if (tous.includes(k)) s.out = [...new Set((s.out || []).concat(k))];
+    }
+    return () => {
+      // annuler : le groupe et les séances reprennent leur état d'avant
+      const actuel = GROUPS.find(x => x.id === gid && (x._club || '') === (g._club || ''));
+      if (actuel) {
+        Object.keys(actuel).forEach(c => delete actuel[c]);
+        Object.assign(actuel, u2Copie(avant.g));
+      } else GROUPS.push(u2Copie(avant.g));
+      const remet = rec => {
+        const i = SEANCES.findIndex(x => x.id === rec.id && (x._club || '') === (rec._club || ''));
+        if (i >= 0) SEANCES.splice(i, 1, u2Copie(rec));
+        else SEANCES.push(u2Copie(rec));
+      };
+      if (avant.s) remet(avant.s);
+      else {
+        const i = SEANCES.findIndex(meme);
+        if (i >= 0) SEANCES.splice(i, 1);
+      }
+      avant.tout.forEach(remet);
+    };
+  }
+  let u2Rappel = null;
+  function u2Banniere(msg, restaure) {
+    if (u2Rappel) clearTimeout(u2Rappel.t);
+    const ancien = $('u2undo');
+    if (ancien) ancien.remove();
+    const b = document.createElement('div');
+    b.id = 'u2undo';
+    b.className = 'u2undo';
+    b.setAttribute('role', 'status');
+    b.innerHTML = `<span>${esc(msg)}</span><button type="button" data-a="u2Annule">Annuler</button>`;
+    $('phone').appendChild(b);
+    u2Rappel = { restaure, t: setTimeout(() => { b.remove(); u2Rappel = null; }, 7000) };
+  }
+  A.u2Annule = () => {
+    if (!u2Rappel) return;
+    clearTimeout(u2Rappel.t);
+    u2Rappel.restaure();
+    u2Rappel = null;
+    const b = $('u2undo');
+    if (b) b.remove();
+    coSave('Séance rétablie');
+  };
+  A.u2SesDel = d => {
+    const restaure = u2SesRetire(d.g, d.d, d.k || '');
+    if (!restaure) return;
+    coSave();
+    u2Banniere(d.k ? 'Séance retirée de la fiche' : 'Séance supprimée', restaure);
+  };
+  /* le glissement : seuil d'angle (plus horizontal que vertical) et de distance, un seul élément ouvert à la fois, le défilement vertical reste libre */
+  (function () {
+    const L = 88;
+    let st = null,
+      ouvert = null,
+      vu = 0;
+    const ferme = w => {
+      if (!w) return;
+      w.classList.remove('open');
+      const c = w.querySelector('.u2hs');
+      if (c) c.style.transform = '';
+    };
+    document.addEventListener('touchstart', e => {
+      const w = e.target.closest && e.target.closest('.u2sw');
+      if (ouvert && w !== ouvert && !(e.target.closest && e.target.closest('.u2swd'))) {
+        ferme(ouvert);
+        ouvert = null;
+      }
+      if (!w || e.touches.length !== 1 || e.target.closest('.u2swd')) return (st = null);
+      const t = e.touches[0];
+      st = { w, x: t.clientX, y: t.clientY, dx: 0, lock: false, base: w.classList.contains('open') ? -L : 0 };
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (!st) return;
+      const t = e.touches[0],
+        dx = t.clientX - st.x,
+        dy = t.clientY - st.y;
+      if (!st.lock) {
+        if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx) * 0.6) return (st = null);   // défilement vertical : on laisse faire
+        if (Math.abs(dx) > 10 && Math.abs(dx) > 1.6 * Math.abs(dy)) st.lock = true;
+        else return;
+      }
+      if (e.cancelable) e.preventDefault();
+      st.dx = dx;
+      const c = st.w.querySelector('.u2hs');
+      c.style.transition = 'none';
+      c.style.transform = 'translateX(' + Math.max(-st.w.offsetWidth, Math.min(0, st.base + dx)) + 'px)';
+    }, { passive: false });
+    document.addEventListener('touchend', () => {
+      if (!st || !st.lock) return (st = null);
+      const w = st.w,
+        c = w.querySelector('.u2hs'),
+        total = st.base + st.dx;
+      c.style.transition = '';
+      c.style.transform = '';
+      vu = Date.now();
+      if (-total > w.offsetWidth * 0.6) {
+        w.classList.remove('open');
+        ouvert = null;
+        vu = 0;
+        w.querySelector('.u2swd').click();   // glissement long et complet : suppression directe
+        vu = Date.now();
+      } else if (-total > L / 2) {
+        if (ouvert && ouvert !== w) ferme(ouvert);
+        w.classList.add('open');
+        ouvert = w;
+      } else {
+        ferme(w);
+        if (ouvert === w) ouvert = null;
+      }
+      st = null;
+    });
+    // un toucher sur une carte ouverte la referme (il n'ouvre pas la séance) ; juste après un glissement, aucun clic ne passe
+    document.addEventListener('click', e => {
+      const carte = e.target.closest && e.target.closest('.u2sw > .u2hs');
+      if (Date.now() - vu < 350 || (carte && carte.parentNode.classList.contains('open'))) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (carte) {
+          ferme(carte.parentNode);
+          if (ouvert === carte.parentNode) ouvert = null;
+        }
+      }
+    }, true);
+    // clavier : Suppr ou Retour arrière sur une carte la supprime
+    document.addEventListener('keydown', e => {
+      const carte = e.target.closest && e.target.closest('.u2sw > .u2hs');
+      if (carte && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        carte.parentNode.querySelector('.u2swd').click();
+      }
+    });
+  })();
 }
