@@ -439,7 +439,7 @@ function coToday() {
     if (x.d >= isoIn(-90) && x.pres) Object.keys(x.pres).forEach(k => x.pres[k] === 'P' && actifs.add(k));
   });
   const tile = (i, n, l) => `<div class="cotile">${ic(i)}<b>${n}</b><span>${l}</span></div>`;
-  return `<div class="pad cowide">${coNoClub()}${hd('Raccourcis')}<div class="card cotools coshort"><button class="btn ghost" data-a="newPost" data-k="stage">${ic('racket')}Créer un stage</button><button class="btn ghost" data-a="nvNew" data-m="cours">${ic('school')}Créer une séance collective</button><button class="btn ghost" data-a="newPost" data-k="anim">${ic('users')}Créer une animation</button><button class="btn ghost" data-a="coNewMsg">${ic('chat')}Écrire à un élève</button><button class="btn ghost" data-a="coNewGrpMsg">${ic('chat')}Écrire à un groupe</button><button class="btn ghost" data-a="open" data-v="forms">${ic('poll')}Formulaires</button><button class="btn ghost" data-a="coContentPick">${ic('spark')}Donner du contenu</button><button class="btn ghost" data-a="coTimer">${ic('timer')}Minuteur</button><button class="btn ghost" data-a="open" data-v="aide">${ic('info')}Aide</button></div>${coSetup()}<div class="cotiles">${tile('cal', today.filter(x => !isCx(x.g, x.d)).length, "Séances aujourd'hui")}${tile('clock', fr(hrs), 'Heures cette semaine')}${tile('users', actifs.size, 'Élèves actifs')}${tile('video', vids.length, 'Vidéos à traiter')}</div>
+  return `<div class="pad cowide">${coNoClub()}${hd('Raccourcis')}<div class="card cotools coshort"><button class="btn ghost" data-a="newPost" data-k="stage">${ic('racket')}Créer un stage</button><button class="btn ghost" data-a="nvNew" data-m="cours">${ic('school')}Créer une séance collective</button><button class="btn ghost" data-a="coPdPick">${ic('racket')}Créer une partie dirigée</button><button class="btn ghost" data-a="newPost" data-k="anim">${ic('users')}Créer une animation</button><button class="btn ghost" data-a="coNewMsg">${ic('chat')}Écrire à un élève</button><button class="btn ghost" data-a="coNewGrpMsg">${ic('chat')}Écrire à un groupe</button><button class="btn ghost" data-a="open" data-v="forms">${ic('poll')}Formulaires</button><button class="btn ghost" data-a="coContentPick">${ic('spark')}Donner du contenu</button><button class="btn ghost" data-a="coTimer">${ic('timer')}Minuteur</button><button class="btn ghost" data-a="open" data-v="aide">${ic('info')}Aide</button></div>${coSetup()}<div class="cotiles">${tile('cal', today.filter(x => !isCx(x.g, x.d)).length, "Séances aujourd'hui")}${tile('clock', fr(hrs), 'Heures cette semaine')}${tile('users', actifs.size, 'Élèves actifs')}${tile('video', vids.length, 'Vidéos à traiter')}</div>
 <div class="cobento"><div class="cobmain">${evDay(TODAY, today.length ? today.map(x => coSesCard(x, 1)).join('') : none('cal', 'Pas de cours aujourd’hui', ''))}
 ${tom.length ? evDay(isoIn(1), tom.map(x => coSesCard(x, 1)).join('')) : ''}</div>
 <div class="cobside">${hd(ic('check') + 'À traiter', S.coBil.length ? `<button class="chip" data-a="coSelMode" aria-pressed="${sel}">${sel ? 'Terminé' : 'Sélectionner'}</button>` : '')}${sel ? coSelBar() : ''}${todo.length ? list((sel ? todo.slice(0, S.coBil.length) : todo).join('')) : none('check', 'Tout est à jour', 'Bilans écrits, vidéos analysées, messages lus.')}
@@ -476,6 +476,7 @@ const coPlanTools = () =>
     ['coNewSes', '', 'plus', 'Séance', 'Ajouter une séance'],
     ['coNewGrp', '', 'users', 'Groupe', 'Créer un groupe'],
     ['nvNew', 'data-m="cours"', 'school', 'Collectif', 'Ouvrir un collectif'],
+    ['coPdPick', '', 'racket', 'Partie dirigée', 'Créer une partie dirigée'],
     ['open', 'data-v="histo"', 'cal', 'Historique', 'Historique des séances']
   ]
     .map(
@@ -733,7 +734,19 @@ function coEleves() {
     l = coStudents()
       .filter(k => !q || fold(svName(k)).includes(q))
       .filter(k => coInClub(M[k] || coEl(k) || {}))
-      .filter(k => f === 'all' || (f === 'act' ? coEnActivite(k) : f === 'abo' ? coAbonne(k) : f === 'nc' ? !M[k] : f === 'jeunes' ? M[k] && isMinor(k) : coSport(k) === f))
+      .filter(
+        k =>
+          f === 'all' ||
+          (f === 'act'
+            ? coEnActivite(k)
+            : f === 'abo'
+              ? coAbonne(k)
+              : f === 'nc'
+                ? !M[k]
+                : f === 'jeunes'
+                  ? M[k] && isMinor(k)
+                  : coSport(k) === f)
+      )
       .sort((a, b) => svName(a).localeCompare(svName(b)));
   const chip = (v, t, i) =>
       `<button class="chip" data-a="coElF" data-v="${v}" aria-pressed="${f === v}">${ic(i)}${t}</button>`,
@@ -890,7 +903,9 @@ function coMsgs() {
       .sort((a, b) => (svOf(b).slice(-1)[0].at || 0) - (svOf(a).slice(-1)[0].at || 0))
       .sort((a, b) => coIsFav('e:' + b) - coIsFav('e:' + a)); // favoris en haut
     b =
-      `<div class="card"><button class="btn full" data-a="coNewMsg">${ic('plus')}Nouveau message</button></div>` +
+      (document.documentElement.dataset.ui === '2'
+        ? ''
+        : `<div class="card"><button class="btn full" data-a="coNewMsg">${ic('plus')}Nouveau message</button></div>`) +
       (l.length
         ? list(
             l
@@ -906,7 +921,7 @@ function coMsgs() {
               })
               .join('')
           )
-        : none('chat', 'Aucune conversation', 'Toi seul peux commencer une conversation avec un élève.'));
+        : `<div class="card"><p class="muted small">Aucune conversation</p></div>`);
   } else {
     const gs = coGroups('', true)
         .filter(coIsGrp)
