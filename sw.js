@@ -1,6 +1,6 @@
 /* ---------- Service worker de l'appli du club : hors connexion + notifications push ----------
    Changer VERSION à chaque mise en ligne : l'ancien cache est supprimé à l'activation. */
-const VERSION = '2026-11-19-inscrits-visibles';
+const VERSION = '2026-11-22-couleurs-dojo';
 /* /RAM Coach (coach.html) enregistre ce même fichier avec « ?app=coach » : sa page et ses fichiers à lui */
 const APP = new URL(location.href).searchParams.get('app') === 'coach' ? 'coach' : 'club';
 const SHELL = APP === 'coach' ? 'coach.html' : 'index.html';
@@ -20,8 +20,8 @@ const CORE = [
   'dojo.css',
   'ram-sync.js',
   'noms.js',
-  'img/ram-club-blanc.png',
-  'img/ram-club-noir.png',
+  'img/buvette-detoure-blanc.png',
+  'img/buvette-detoure-noir.png',
   'img/favicon.png',
   'icon-192.png',
   'logo.js',
@@ -91,7 +91,7 @@ if (APP === 'coach')
           ? 'coach.webmanifest'
           : /^icon-/.test(f)
             ? 'coach-v2-' + f
-            : f.replace('ram-club-', 'coach-v2-logo-')
+            : f.replace('buvette-detoure-', 'dojo-detoure-')
     ),
     'coach/coach.css',
     'coach/dojo.css',
