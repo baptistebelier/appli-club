@@ -1,4 +1,4 @@
-/* /RAM Club — app/5-actions.js : Table des actions (A) : chaque bouton data-a="…" de l'appli.
+/* /Buvette — app/5-actions.js : Table des actions (A) : chaque bouton data-a="…" de l'appli.
    Morceau de l'ancien app.js : les fichiers app/*.js se chargent dans l'ordre de leur numéro (voir index.html). */
 /* ---------- actions ---------- */
 /* agenda : changer de vue ou d'agenda fait remonter la page en défilant, comme retoucher un onglet */
@@ -390,7 +390,7 @@ const A = {
     const body = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//RAM Club//FR',
+      'PRODID:-//Buvette//FR',
       'BEGIN:VEVENT',
       'UID:' + p.id + '@appli-club',
       'DTSTAMP:' + dt(TODAY) + 'T000000Z',
@@ -552,7 +552,7 @@ const A = {
     );
   },
   att(d) {
-    // le même appel que /RAM Coach (data.js appelNote) : il compte pour les jauges, les cycles et les paiements
+    // le même appel que /Dojo (data.js appelNote) : il compte pour les jauges, les cycles et les paiements
     const g = grp(d.id),
       cur = REGLES.presDe(sesDu(g, d.d), g, d.d)[d.u],
       v = d.s === '1' ? 'P' : 'A';
@@ -1330,7 +1330,7 @@ const A = {
       sx = me.g === 'F' ? 'Femme' : 'Homme';
     sheet(
       'Mes informations',
-      `<form class="body" id="me-form">${F('e-name', 'Prénom et nom', '', me.n)}<div class="fld"><label for="e-lic">Numéro de licence FFT</label><input id="e-lic" autocapitalize="characters" autocorrect="off" spellcheck="false" value="${esc(me.lic || '')}" placeholder="Facultatif" autocomplete="off"><span class="muted small">Il relie ton profil à tes tournois /RAM JA.</span></div><div class="two">${Sel('e-g', 'Sexe', ['Homme', 'Femme'], sx)}${Dt('e-bd', 'Date de naissance', 1, me.bd)}</div><div class="fld"><label for="e-tel">Téléphone</label><input id="e-tel" inputmode="tel" value="${esc(MYCT.tel[2])}" autocomplete="off"></div><div class="fld"><label for="e-mail">E-mail</label><input id="e-mail" type="email" value="${esc(MYCT.mail[2])}" autocomplete="off"></div><div class="two">${Sel('e-net', 'Réseau social', ['Instagram', 'Facebook', 'TikTok'], MYCT.soc[1])}${O('e-soc', 'Identifiant', '', MYCT.soc[2])}</div><p class="muted small">Téléphone, e-mail et réseau social ne sont visibles que si leur interrupteur est activé dans ton profil.</p><button class="btn full">Enregistrer</button></form>`
+      `<form class="body" id="me-form">${F('e-name', 'Prénom et nom', '', me.n)}<div class="fld"><label for="e-lic">Numéro de licence FFT</label><input id="e-lic" autocapitalize="characters" autocorrect="off" spellcheck="false" value="${esc(me.lic || '')}" placeholder="Facultatif" autocomplete="off"><span class="muted small">Il relie ton profil à tes tournois /Pista.</span></div><div class="two">${Sel('e-g', 'Sexe', ['Homme', 'Femme'], sx)}${Dt('e-bd', 'Date de naissance', 1, me.bd)}</div><div class="fld"><label for="e-tel">Téléphone</label><input id="e-tel" inputmode="tel" value="${esc(MYCT.tel[2])}" autocomplete="off"></div><div class="fld"><label for="e-mail">E-mail</label><input id="e-mail" type="email" value="${esc(MYCT.mail[2])}" autocomplete="off"></div><div class="two">${Sel('e-net', 'Réseau social', ['Instagram', 'Facebook', 'TikTok'], MYCT.soc[1])}${O('e-soc', 'Identifiant', '', MYCT.soc[2])}</div><p class="muted small">Téléphone, e-mail et réseau social ne sont visibles que si leur interrupteur est activé dans ton profil.</p><button class="btn full">Enregistrer</button></form>`
     );
   },
   addKid() {
@@ -1352,7 +1352,7 @@ const A = {
       `<div class="fld"><label for="${id}">${l}</label><input type="file" id="${id}" accept="image/png,image/svg+xml,image/webp,image/*"><div class="lkl ${id === 'lk-ll' ? 'dk' : 'lt'}" id="${id}-p" ${u ? '' : 'hidden'}>${u ? `<img src="${u}" alt="">` : ''}</div>${u ? `<label class="chk" for="${id}-x"><input type="checkbox" id="${id}-x">Retirer ce logo</label>` : ''}<span class="muted small">${h}</span></div>`;
     sheet(
       'Apparence du club',
-      `<form class="body" id="look-form"><div class="two">${F('lk-name', 'Nom du club', '', c.name)}<div class="fld"><label for="lk-short">Sigle (4 lettres max)</label><input id="lk-short" required maxlength="4" value="${esc(c.short)}" autocomplete="off"></div></div><div class="two"><div class="fld"><label for="lk-acc">Couleur du club</label><input type="color" id="lk-acc" value="${c.accent}"></div><div class="fld"><label for="lk-acc2">Couleur d'accent</label><input type="color" id="lk-acc2" value="${c.accent2 || '#F5104C'}"></div></div>${Sel('lk-bg', 'Fond', ['Sombre', 'Clair'], c.dark ? 'Sombre' : 'Clair')}<div id="lk-prev"></div><p class="muted small">La couleur du club habille les boutons, le curseur et les titres ; la couleur d'accent fait les ombres et les détails. Le rouge d'alerte et le bleu du padel restent fixes pour être reconnaissables.</p>${lp('lk-ll', c.logoL, 'Logo clair (pour fond sombre)', "Logo entier, de préférence en PNG transparent. Affiché en haut de l'appli et dans le menu sur ordinateur.")}${lp('lk-ld', c.logoD, 'Logo sombre (pour fond clair)', "Le même logo en version foncée : l'appli prend celui qui ressort sur le fond du club.")}<div class="fld"><label for="lk-logo">Photo de profil du club</label><input type="file" id="lk-logo" accept="image/*"><div class="prev" id="a-prev" ${c.logo ? `style="background-image:url(${c.logo})"` : 'hidden'}></div><span class="muted small">Image carrée : elle accompagne les publications et les messages du club.</span></div><button class="btn full">Appliquer au club</button></form>`
+      `<form class="body" id="look-form"><div class="two">${F('lk-name', 'Nom du club', '', c.name)}<div class="fld"><label for="lk-short">Sigle (4 lettres max)</label><input id="lk-short" required maxlength="4" value="${esc(c.short)}" autocomplete="off"></div></div><div class="two"><div class="fld"><label for="lk-main">Couleur principale</label><input type="color" id="lk-main" value="${menuOf(clubCouleurs(c).main)}"><span class="muted small">Menu et teinte des fonds</span></div><div class="fld"><label for="lk-acc">Couleur d'accent</label><input type="color" id="lk-acc" value="${clubCouleurs(c).accent}"><span class="muted small">Boutons, surbrillance, élément actif</span></div></div>${Sel('lk-bg', 'Fond', ['Sombre', 'Clair'], c.dark ? 'Sombre' : 'Clair')}<div id="lk-prev"></div><p class="muted small">La couleur principale habille le menu et teinte les fonds ; la couleur d'accent fait les boutons, l'élément actif du menu et les surbrillances. Par défaut : les bleus de /Buvette. Le rouge d'alerte et le bleu du padel restent fixes pour être reconnaissables.</p>${lp('lk-ll', c.logoL, 'Logo clair (pour fond sombre)', "Logo entier, de préférence en PNG transparent. Affiché en haut de l'appli et dans le menu sur ordinateur.")}${lp('lk-ld', c.logoD, 'Logo sombre (pour fond clair)', "Le même logo en version foncée : l'appli prend celui qui ressort sur le fond du club.")}<div class="fld"><label for="lk-logo">Photo de profil du club</label><input type="file" id="lk-logo" accept="image/*"><div class="prev" id="a-prev" ${c.logo ? `style="background-image:url(${c.logo})"` : 'hidden'}></div><span class="muted small">Image carrée : elle accompagne les publications et les messages du club.</span></div><button class="btn full">Appliquer au club</button></form>`
     );
     lookPrev();
   },

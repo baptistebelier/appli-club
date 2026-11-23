@@ -1,4 +1,4 @@
-/* /RAM Club — app/7-enregistrement.js : Enregistrement de tous les formulaires envoyés.
+/* /Buvette — app/7-enregistrement.js : Enregistrement de tous les formulaires envoyés.
    Morceau de l'ancien app.js : les fichiers app/*.js se chargent dans l'ordre de leur numéro (voir index.html). */
 document.addEventListener('submit', e => {
   e.preventDefault();
@@ -224,14 +224,15 @@ document.addEventListener('submit', e => {
     (S.setup = S.setup || {}).look = true;
     const c = club(),
       acc = $('lk-acc').value,
+      main = $('lk-main').value,
       dark = val('lk-bg') === 'Sombre',
       dv = derive(acc, BASE[dark].bg);
     ['bg', 'card', 'card2', 'line', 'fg', 'muted'].forEach(k => delete c[k]);
     Object.assign(c, {
       name: val('lk-name') || c.name,
       short: (val('lk-short') || c.short).slice(0, 4).toUpperCase(),
-      accent: dv.col,
-      accent2: $('lk-acc2').value,
+      main,
+      accent: acc,
       dark
     });
     if (S.img) c.logo = S.img;
@@ -442,7 +443,7 @@ document.addEventListener('submit', e => {
         o = me.pad || null;
       if (np === o) return closeSheet();
       me.pad = np;
-      // la fiche joueur /RAM JA reprend le classement padel (vu par les juges-arbitres)
+      // la fiche joueur /Pista reprend le classement padel (vu par les juges-arbitres)
       if (window.ramPlayerSync) ramPlayerSync({ rank: np ? String(np) : '' }).catch(() => {});
       title = `Nouveau classement de padel <em>pour ${qui}</em>`;
       body = `${o ? 'N° ' + o : 'Non classé'} → ${np ? 'n° ' + np : 'non classé'}`;
@@ -740,8 +741,8 @@ document.addEventListener('submit', e => {
         toast("L'âge minimum est plus grand que l'âge maximum");
         return;
       }
-      // padel avec /RAM JA : le tournoi est créé dans /RAM JA, qui le publie lui-même sur le mur
-      if (pad && /RAM JA/.test(val('tr-mgr')) && window.RAM && RAM.live) {
+      // padel avec /Pista : le tournoi est créé dans /Pista, qui le publie lui-même sur le mur
+      if (pad && /Pista|Pista/.test(val('tr-mgr')) && window.RAM && RAM.live) {
         jaCreateTournament({
           name: val('a-title'),
           d1,
