@@ -62,13 +62,50 @@ try {
   SV_SEEN = JSON.parse(localStorage.getItem('club-suivi-vu') || '{}') || {};
 } catch (e) {}
 const svUnread = id => svOf(id).filter(x => svMe(x.by) !== ME() && (x.at || 0) > (SV_SEEN[id] || 0)).length;
-function svSeen(id) {
-  const l = svOf(id);
-  SV_SEEN[id] = Math.max(SV_SEEN[id] || 0, l.length ? l[l.length - 1].at || 0 : 0);
+/* le « lu » est aussi gardé sur le compte (/api/ram/suivi-vu) : sur iPad, l'appli rouverte dans Safari perdait la mémoire
+   de l'appareil et le dernier message redevenait « non lu » à chaque lancement */
+let svVuT = 0;
+const svVuGarder = () => {
   try {
     localStorage.setItem('club-suivi-vu', JSON.stringify(SV_SEEN));
   } catch (e) {}
+};
+function svSeen(id) {
+  const l = svOf(id),
+    avant = SV_SEEN[id] || 0;
+  SV_SEEN[id] = Math.max(avant, l.length ? l[l.length - 1].at || 0 : 0);
+  if (SV_SEEN[id] === avant) return;
+  svVuGarder();
+  svVuEnvoyer();
 }
+function svVuEnvoyer() {
+  if (!(window.RAM && RAM.live)) return;
+  clearTimeout(svVuT);
+  svVuT = setTimeout(
+    () =>
+      fetch('/api/ram/suivi-vu', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vu: SV_SEEN })
+      }).catch(() => {}),
+    1000
+  );
+}
+/* lectures gardées sur le compte, reçues au démarrage : true si une conversation est devenue lue */
+window.svVuFusion = vu => {
+  let ch = false;
+  Object.keys(vu || {}).forEach(k => {
+    if (+vu[k] > (SV_SEEN[k] || 0)) {
+      SV_SEEN[k] = +vu[k];
+      ch = true;
+    }
+  });
+  if (ch) svVuGarder();
+  // des lectures de cet appareil que le compte n'a pas encore : on les lui envoie
+  if (Object.keys(SV_SEEN).some(k => SV_SEEN[k] > (+(vu || {})[k] || 0))) svVuEnvoyer();
+  return ch;
+};
 const sesOf = id => SEANCES.find(s => s.id === id);
 const sesLbl = s => {
   const g = s && grp(s.g);
@@ -305,24 +342,40 @@ function abEng(a) {
   if (n <= 1) return '';
   return m ? `engagement ${n * m} mois` : `engagement ${n} ${a.periode === 'an' ? 'ans' : a.periode}`;
 }
+/* les formules de l'enseignant en cartes (comme sa page « Formules et tarifs » dans /Dojo) : une carte par formule avec son
+   prix bien visible et ses packs en pastilles, puis une carte par abonnement avec ses variantes */
 function proOffersHtml(o) {
   const e = n => (Math.round(n * 100) / 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' €',
     mn = n => (n % 60 ? (n >= 60 ? Math.floor(n / 60) + ' h ' + (n % 60) : n + ' min') : n / 60 + ' h'),
-    kind = f => (f.joueurs === 1 ? 'individuel' : f.joueurs === 2 ? 'duo' : 'collectif à ' + f.joueurs),
-    line = (t, p, sub) =>
-      `<li><span class="ptl"><b>${t}</b><span class="ptp">${p}</span></span>${sub ? `<span class="muted small">${sub}</span>` : ''}</li>`,
+    kind = f => (f.joueurs === 1 ? 'Individuel' : f.joueurs === 2 ? 'Duo' : 'Collectif à ' + f.joueurs),
     // vendu sur la boutique : le lien d'achat
-    achat = x =>
-      x.url && svLink(toUrlP(x.url))
-        ? ` · <a href="${esc(svLink(toUrlP(x.url)))}" target="_blank" rel="noopener">Acheter</a>`
-        : '';
+    lien = x => (x.url && svLink(toUrlP(x.url)) ? esc(svLink(toUrlP(x.url))) : ''),
+    acheter = x =>
+      lien(x) ? `<a class="pofa" href="${lien(x)}" target="_blank" rel="noopener">${ic('link')}Acheter</a>` : '',
+    carte = (icone, nom, sous, prix, per, bas) =>
+      `<div class="pof"><div class="pofh"><span class="pofi">${ic(icone)}</span><span class="pofn"><b>${nom}</b>${sous ? `<span class="small">${sous}</span>` : ''}</span><span class="pofp"><b>${prix}</b>${per ? `<span class="small">${per}</span>` : ''}</span></div>${bas ? `<div class="pofk">${bas}</div>` : ''}</div>`,
+    pastille = (titre, prix, detail, x) =>
+      `<span class="pofc"><span class="pofct"><b>${titre}</b><span>${prix}</span></span>${detail ? `<span class="small">${detail}</span>` : ''}${acheter(x)}</span>`;
   const seance = o.formules
     .map(f => {
-      const pk = o.packs.filter(p => p.formule === f.id);
-      return line(
-        `${esc(f.nom)} · ${mn(f.duree)}`,
-        e(f.prix) + (f.par === 'personne' && f.joueurs > 1 ? ' / pers.' : ''),
-        pk.map(p => `${esc(p.nom || 'Pack')} : ${p.seances} séances, ${e(p.prix)}${achat(p)}`).join('<br>')
+      const pk = o.packs.filter(p => p.formule === f.id),
+        pers = f.par === 'personne' && f.joueurs > 1;
+      return carte(
+        f.joueurs > 1 ? 'users' : 'user',
+        esc(f.nom),
+        kind(f) + ' · ' + mn(f.duree),
+        e(f.prix),
+        pers ? 'par personne' : 'la séance',
+        pk
+          .map(p =>
+            pastille(
+              esc(p.nom || 'Pack ' + p.seances + ' séances'),
+              e(p.prix),
+              p.seances ? p.seances + ' séances · ' + e(p.prix / p.seances) + ' la séance' : '',
+              p
+            )
+          )
+          .join('')
       );
     })
     .join('');
@@ -332,25 +385,35 @@ function proOffersHtml(o) {
     .map(a => {
       if (a.ens) {
         const l = o.abos.filter(x => x.ens === a.ens),
-          min = Math.min(...l.map(x => +x.prix || 0));
-        return line(
+          min = l.reduce((m, x) => ((+x.prix || 0) < (+m.prix || 0) ? x : m), l[0]);
+        return carte(
+          'cal',
           esc(a.ens),
-          (l.length > 1 ? 'dès ' : '') + e(min),
-          l.map(x => `${esc(x.nom)} : ${e(x.prix)} ${abPer(x)}${achat(x)}`).join('<br>')
+          l.length > 1 ? l.length + ' formules au choix' : '',
+          (l.length > 1 && l.some(x => +x.prix !== +min.prix) ? 'dès ' : '') + e(min.prix),
+          abPer(min),
+          l.map(x => pastille(esc(x.nom), e(x.prix), abPer(x), x)).join('')
         );
       }
       const f = o.formules.find(x => x.id === a.formule),
         eng = abEng(a),
         det = [
           REGLES.parMoisDef(a) ? `${REGLES.parMoisDef(a)} séance${REGLES.parMoisDef(a) > 1 ? 's' : ''} par mois` : '',
-          f ? `cours ${kind(f)} de ${mn(f.duree)}` : '',
+          f ? kind(f).toLowerCase() + ' de ' + mn(f.duree) : '',
           /* le nom dit souvent déjà l'engagement : « Academy Training (6 mois) » */
           eng && !new RegExp('\\b' + (+a.duree || 0) + '\\s*(mois|ans?)\\b', 'i').test(a.nom) ? eng : ''
         ].filter(Boolean);
-      return line(esc(a.nom), `${e(a.prix)} ${abPer(a)}`, det.join(' · ') + achat(a));
+      return carte(
+        'cal',
+        esc(a.nom),
+        det.join(' · '),
+        e(a.prix),
+        abPer(a),
+        acheter(a) ? `<span class="pofc">${acheter(a)}</span>` : ''
+      );
     })
     .join('');
-  return `${seance ? `<span class="ptt">À la séance et en pack</span><ul class="ptar">${seance}</ul>` : ''}${abos ? `<span class="ptt">Abonnements</span><ul class="ptar">${abos}</ul>` : ''}`;
+  return `${seance ? `<span class="ptt">À la séance et en pack</span><div class="pofs">${seance}</div>` : ''}${abos ? `<span class="ptt">Abonnements</span><div class="pofs">${abos}</div>` : ''}`;
 }
 const toUrlP = u => (u ? (/^https?:\/\//i.test(u) ? u : 'https://' + u) : '');
 /* une ligne par enseignant, qui s'ouvre comme un menu déroulant */

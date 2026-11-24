@@ -21,6 +21,7 @@ TABBAR.splice(0, TABBAR.length, ...BV_MENU, ...BV_HORS);
 const bvHors = k => BV_HORS.some(x => x[0] === k);
 /* la rubrique du menu qui reste allumée pour une page hors menu : l'École s'ouvre depuis Club */
 const BV_PARENT = { ecole: 'club' };
+window.tabActif = () => (BV_PARENT[S.tab] && !S.stack.length ? BV_PARENT[S.tab] : S.tab);
 if (!S.jouTab) S.jouTab = 'parties';
 // Équipes n'est plus le premier sous-onglet de Club (il est parti dans Jouer)
 if (S.clubTab === 'teams') S.clubTab = 'club';
@@ -147,15 +148,7 @@ function bvNav() {
     tabs.querySelectorAll('button[data-t]').forEach(b => {
       if (bvHors(b.dataset.t)) b.remove();
     });
-    // une page hors menu allume sa rubrique (École → Club)
-    const par = BV_PARENT[S.tab];
-    if (par && main) {
-      const b = tabs.querySelector(`button[data-t="${par}"]`);
-      if (b) {
-        b.setAttribute('aria-current', 'page');
-        if (typeof pillTo === 'function') pillTo(b, true);
-      }
-    }
+    // une page hors menu allume sa rubrique (École → Club) : choisi avant l'affichage par window.tabActif
   }
   // grand écran : « Moi » en bas du menu, avec l'avatar
   const rb = $('rbot');
@@ -558,7 +551,7 @@ function bvPartieCard(p) {
           : full
             ? `<button class="btn ${wt ? 'on' : 'ghost'}" data-a="play" data-id="${p.id}" data-r="wait" aria-pressed="${wt}">${wt ? 'Quitter l’attente' : 'Liste d’attente'}</button>`
             : `<button class="btn" data-a="play" data-id="${p.id}" data-r="in">Je viens</button>`;
-  return `<article class="card bvpar"><div class="bvpar-tags">${sportTag(y.sport)}<span class="tag">${esc(y.fmt || '')}</span>${bvMonNiveau(y) ? '<span class="tag lime">Mon niveau</span>' : ''}</div><button class="bvpar-t" data-a="open" data-v="post" data-id="${p.id}"><span class="h3">${esc(niv)}</span><span class="bvpar-q">${ic('cal')}${esc(quand)}</span></button><div class="bvpar-f"><span class="dots" aria-hidden="true">${Array.from({ length: y.places }, (_, i) => `<i class="${i < y.in.length ? 'on' : ''}"></i>`).join('')}</span><span class="grow muted small">${esc(first(p.by))} · ${full ? 'complet' + (y.wait.length ? ', ' + y.wait.length + ' en attente' : '') : reste + ' place' + (reste > 1 ? 's' : '')}</span>${act}</div></article>`;
+  return `<article class="card bvpar"><div class="bvpar-tags">${sportTag(y.sport)}<span class="tag">${esc(y.fmt || '')}</span>${bvMonNiveau(y) ? '<span class="tag lime">Mon niveau</span>' : ''}</div><button class="bvpar-t" data-a="open" data-v="post" data-id="${p.id}"><span class="h3">${esc(niv)}</span><span class="bvpar-q">${ic('cal')}${esc(quand)}</span></button><div class="bvpar-f"><span class="dots" aria-hidden="true">${Array.from({ length: y.places }, (_, i) => `<i class="${i < y.in.length ? 'on' : ''}"></i>`).join('')}</span><span class="grow muted small">${pLien(p.by, esc(first(p.by)))} · ${full ? 'complet' + (y.wait.length ? ', ' + y.wait.length + ' en attente' : '') : reste + ' place' + (reste > 1 ? 's' : '')}</span>${act}</div></article>`;
 }
 /* parties dirigées et séances collectives à venir (créées dans /Dojo), celles de mon niveau */
 const bvCollectifs = () => {

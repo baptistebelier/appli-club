@@ -1,5 +1,7 @@
 /* /Buvette — ui/1-briques.js : Briques communes : catégories, classements, avatars, petits éléments réutilisés partout.
    Morceau de l'ancien ui.js : les fichiers ui/*.js se chargent dans l'ordre de leur numéro (voir index.html). */
+/* appli de l'App Store (coque Capacitor) : pas d'achat d'offre ni de prix dans l'appli (règles d'Apple) */
+const enNatif = () => !!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
 /* Briques d'interface et écrans */
 const hue = id => [...id].reduce((a, c) => a + c.charCodeAt(0) * 7, 0) % 360;
 const ini = id =>
@@ -12,8 +14,11 @@ const av = (id, c = '') =>
   id === 'club'
     ? `<span class="av club ${c} ${club().logo ? 'logo' : ''}" ${club().logo ? `style="background-image:url(${club().logo})"` : ''}>${club().logo ? '' : club().short}</span>`
     : M[id].photo
-      ? `<span class="av ${c}${frc(id)}" style="background-image:url(${M[id].photo})"></span>`
-      : `<span class="av ${c}${frc(id)}" style="--h:${hue(id)}">${ini(id)}</span>`;
+      ? `<span class="av ${c}${frc(id)}" data-pk="${id}" style="background-image:url(${M[id].photo})"></span>`
+      : `<span class="av ${c}${frc(id)}" data-pk="${id}" style="--h:${hue(id)}">${ini(id)}</span>`;
+/* un nom qui mène au profil de la personne (texte simple si elle n'a pas de compte) */
+const pLien = (k, t) =>
+  M[k] && k !== 'club' ? `<button type="button" class="plien" data-a="member" data-id="${k}">${t}</button>` : t;
 /* Jamais d'âge affiché : une catégorie à la place (U12, Senior, +45…) */
 const catOf = id => {
   const a = age(id);
