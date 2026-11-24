@@ -46,7 +46,10 @@ function ofLabel(t, id) {
       ? `${p.nom || 'Pack ' + p.seances + ' séances'}${f ? ' · ' + foKind(f) + ' ' + minTxt(f.duree) : ''}`
       : 'Pack';
   }
-  if (t === 'abo') return (OFFRES.abos.find(x => x.id === id) || {}).nom || 'Abonnement';
+  if (t === 'abo') {
+    const a = OFFRES.abos.find(x => x.id === id) || {};
+    return (a.ens ? a.ens + ' · ' : '') + (a.nom || 'Abonnement');
+  }
   const f = foOf(id);
   return f ? `${f.nom} · ${minTxt(f.duree)}` : 'Séance';
 }
@@ -95,29 +98,125 @@ addEventListener('load', () =>
   })
 );
 
-/* ---------- page « Formules et tarifs » ---------- */
-function coFormules() {
-  const fo = OFFRES.formules.map(f => {
-    const pk = OFFRES.packs.filter(p => p.formule === f.id);
-    return `<div class="card cofo"><div class="row" style="gap:10px;align-items:flex-start"><span class="tile">${ic(f.joueurs > 1 ? 'users' : 'user')}</span><div class="grow"><span class="h3" style="font-size:18px">${esc(f.nom)}</span><br><span class="muted small">${foKind(f)} · ${minTxt(f.duree)} · ${f.sport}</span><p class="cofop">${foPrice(f)}</p></div><button class="ib" data-a="coFoEdit" data-id="${f.id}" aria-label="Modifier la formule">${ic('edit')}</button></div>${
-      pk.length
-        ? `<div class="copk">${pk.map(p => `<button class="copki" data-a="coPkEdit" data-id="${p.id}"><span class="grow"><b>${esc(p.nom || 'Pack ' + p.seances + ' séances')}</b><br><span class="muted small">${pkPrice(p)}</span></span>${ic('edit')}</button>`).join('')}</div>`
-        : ''
-    }<button class="btn sm ghost full" data-a="coPkEdit" data-f="${f.id}">${ic('plus')}Créer un pack de séances</button></div>`;
-  });
-  const abRow = a =>
-      `<button class="item" data-a="coAbEdit" data-id="${a.id}"><span class="tile">${ic('cal')}</span><span class="grow"><span class="nm">${esc(a.nom)}</span><br><span class="muted small">${abPrice(a)}${a.formule && foOf(a.formule) ? ' · ' + esc(ofLabel('f', a.formule)) : ''}${a.moyen ? ' · ' + esc(a.moyen) : ''}</span></span>${ic('edit')}</button>`,
-    ens = [...new Set(OFFRES.abos.map(a => a.ens).filter(Boolean))],
-    // un ensemble : une seule ligne, ses variantes à la demande
-    abEns = ens
-      .map(n => {
-        const l = OFFRES.abos.filter(a => a.ens === n),
-          px = l.map(a => +a.prix || 0);
-        return `<details class="card coens"><summary><span class="tile">${ic('cal')}</span><span class="grow"><span class="nm">${esc(n)}</span><br><span class="muted small">${plural(l.length, 'variante')} · ${Math.min(...px) === Math.max(...px) ? eur(px[0]) : 'de ' + eur(Math.min(...px)) + ' à ' + eur(Math.max(...px))}</span></span><span class="chev" aria-hidden="true">${ic('back')}</span></summary><div class="list">${l.map(abRow).join('')}</div><button class="btn sm ghost full" data-a="coAbEdit" data-id="${l[0].id}" data-plus="1">${ic('plus')}Ajouter une variante</button></details>`;
+/* ---------- page « Formules et tarifs » (maquette validée le 23/11/2026) ----------
+   Chiffres clés, puis deux intercalaires collés à la carte : « À la séance et packs » (les formules à gauche, la
+   formule choisie à droite avec ses packs en tableau) et « Abonnements » (chaque abonnement en grille : une ligne
+   par formule comprise, une colonne par engagement, une case par variante). */
+if (!I.eyeOff)
+  I.eyeOff =
+    '<path d="M3 3l18 18"/><path d="M10.6 6.1A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a17 17 0 0 1-2.6 3.3M6.6 7.6C4 9.4 2.5 12 2.5 12s3.5 6 9.5 6a9.7 9.7 0 0 0 4.3-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>';
+/* visible ou non sur la page publique de réservation (masque : true) ; reste utilisable dans /Dojo */
+const ofVisChk = (id, x) =>
+  `<label class="chk fovischk" for="${id}"><input type="checkbox" id="${id}" class="co-vis"${x && x.masque ? '' : ' checked'}>Visible sur ma page de réservation</label>`;
+const ofVisBtn = (t, x) =>
+  `<button class="ib fovis${x.masque ? ' off' : ''}" data-a="coVis" data-t="${t}" data-id="${x.id}" aria-pressed="${!x.masque}" aria-label="${x.masque ? 'Masqué sur ta page de réservation : rendre visible' : 'Visible sur ta page de réservation : masquer'}" title="${x.masque ? 'Masqué sur ma page de réservation' : 'Visible sur ma page de réservation'}">${ic(x.masque ? 'eyeOff' : 'eye')}</button>`;
+const ofMasqueTag = x => (x.masque ? '<span class="tag fomasq">Masqué</span>' : '');
+if (!I.pack) I.pack = '<rect x="4" y="7" width="16" height="13"/><path d="M9 7V4h6v3M4 12h16"/>';
+/* les abonnements, une entrée par abonnement : ses variantes (une seule pour un abonnement simple) */
+const abGroupes = () => {
+  const vus = {};
+  return OFFRES.abos
+    .filter(a => !a.ens || (vus[a.ens] ? false : (vus[a.ens] = 1)))
+    .map(a => (a.ens ? OFFRES.abos.filter(x => x.ens === a.ens) : [a]));
+};
+const abParCourt = a => '/ ' + (a.periode || 'mois');
+const abMoisDe = a => ({ mois: 1, trimestre: 3, '6 mois': 6, an: 12 })[a.periode] || 1;
+const abColTxt = a => {
+  const e = abEng(a);
+  return (
+    (e ? e.charAt(0).toUpperCase() + e.slice(1) : 'Sans engagement') + (a.periode !== 'mois' ? ' · ' + abPer(a) : '')
+  );
+};
+const foParTxt = f => (f.par === 'personne' && f.joueurs > 1 ? 'par pers.' : 'la séance');
+function coFoSeance(sel) {
+  const pk = OFFRES.packs.filter(p => p.formule === sel.id),
+    ab = OFFRES.abos.filter(a => a.formule === sel.id),
+    u = foSeance(sel),
+    rows = pk.map(p => {
+      const nom = esc(p.nom || 'Pack ' + p.seances + ' séances'),
+        x = p.prix / p.seances,
+        r = u > 0 ? Math.round((1 - x / u) * 100) : 0,
+        n = (p.ech || []).length;
+      return `<tr${p.masque ? ' class="fooff"' : ''}><td><b>${nom}</b></td><td>${p.seances}</td><td>${eur(p.prix)}</td><td class="foacc">${eur(x)}</td><td>${r > 0 ? `<span class="tag">−${r} %</span>` : '—'}</td><td class="muted">${n > 1 ? 'en ' + n + ' fois' : 'en 1 fois'}</td><td>${ofVisBtn('packs', p)}</td><td><button class="ib" data-a="coPkEdit" data-id="${p.id}" aria-label="Modifier ${nom}">${ic('edit')}</button></td></tr>`;
+    });
+  return `<div class="fod"><div class="fodh"><span class="tile">${ic(sel.joueurs > 1 ? 'users' : 'user')}</span><div class="grow"><h2 class="foh">${esc(sel.nom)}</h2>${ofMasqueTag(sel)}<span class="muted small">${sel.sport} · ${plural(sel.joueurs, 'joueur')} · ${minTxt(sel.duree)}</span></div><div class="fobig"><b>${eur(sel.prix)}</b><span class="muted small">${foParTxt(sel)}${sel.par === 'personne' && sel.joueurs > 1 ? ' · ' + eur(sel.prix * sel.joueurs) + ' la séance' : ''}</span></div>${ofVisBtn('formules', sel)}<button class="ib" data-a="coFoEdit" data-id="${sel.id}" aria-label="Modifier la formule">${ic('edit')}</button></div>${
+    rows.length
+      ? `<div class="fotw"><table class="fot"><thead><tr><th>Pack</th><th>Séances</th><th>Prix</th><th>La séance</th><th>Remise</th><th>Paiement</th><th>Page</th><th><span class="sr">Modifier</span></th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`
+      : '<p class="muted small">Aucun pack pour cette formule : plusieurs séances à un prix d’ensemble, le prix de la séance se calcule tout seul.</p>'
+  }<div class="cotools"><button class="btn sm" data-a="coPkEdit" data-f="${sel.id}">${ic('plus')}Créer un pack de séances</button></div>${ab.length ? `<p class="muted small folien">${ic('cal')}<span>Comprise dans : ${ab.map(a => esc((a.ens ? a.ens + ' · ' : '') + a.nom)).join(', ')}</span></p>` : ''}</div>`;
+}
+/* un abonnement en grille : lignes = formule comprise (et séances par mois si elles varient), colonnes = engagement */
+function coAbGrille(l) {
+  const nom = l[0].ens || l[0].nom,
+    pms = [...new Set(l.map(a => REGLES.parMoisDef(a)))],
+    rk = a => (a.formule || '') + '|' + (pms.length > 1 ? REGLES.parMoisDef(a) : ''),
+    ck = a => a.periode + '|' + a.duree,
+    rows = [...new Set(l.map(rk))],
+    cols = [...new Set(l.map(ck))].sort((x, y) => {
+      const a = l.find(v => ck(v) === x),
+        b = l.find(v => ck(v) === y);
+      return abMoisDe(a) * a.duree - abMoisDe(b) * b.duree || abMoisDe(a) - abMoisDe(b);
+    }),
+    min = l.reduce((m, a) => (+a.prix < +m.prix ? a : m), l[0]),
+    body = rows
+      .map(r => {
+        const dans = l.filter(a => rk(a) === r),
+          f = foOf(dans[0].formule),
+          pm = REGLES.parMoisDef(dans[0]),
+          tete = `<th scope="row"><span class="fogf">${ic(f && f.joueurs > 1 ? 'users' : 'user')}<span><b>${f ? esc(f.nom) : 'Sans formule précise'}</b><span class="muted small">${f ? foKind(f) + ' · ' + minTxt(f.duree) : 'Toute formule'}${pms.length > 1 ? ' · ' + (pm ? plural(pm, 'séance') + ' par mois' : 'sans limite') : ''}</span></span></span></th>`;
+        return `<tr>${tete}${cols
+          .map(c => {
+            const v = dans.filter(a => ck(a) === c);
+            if (!v.length) return '<td class="muted">—</td>';
+            return `<td class="${v.every(a => a.masque) ? 'fooff' : ''}">${v
+              .map(a => {
+                const max = Math.max(...dans.filter(x => x.periode === a.periode).map(x => +x.prix || 0)),
+                  eco = max - (+a.prix || 0),
+                  p = REGLES.parMoisDef(a);
+                return `<button class="foc" data-a="coAbEdit" data-id="${a.id}" data-v="${a.id}" aria-label="Modifier ${esc(a.nom)}"><span class="focp"><b>${eur(a.prix)}</b><span class="muted">${abParCourt(a)}</span>${eco > 0 ? `<span class="tag">−${eur(eco)} ${abParCourt(a).slice(2) === 'mois' ? 'par mois' : abParCourt(a)}</span>` : ''}</span><span class="muted small">${a.periode === 'mois' && p ? eur(a.prix / p) + ' la séance' : esc(a.nom)}</span>${ofMasqueTag(a)}</button><span class="focv">${ofVisBtn('abos', a)}</span>`;
+              })
+              .join('')}</td>`;
+          })
+          .join('')}</tr>`;
       })
-      .join(''),
-    ab = OFFRES.abos.filter(a => !a.ens).map(abRow);
-  return `<div class="pad"><div class="card"><p class="muted small">Tes formules, pour tous tes clubs. Elles s'affichent sur ta fiche enseignant dans /Buvette et serviront à la prise de rendez-vous. Pour chaque formule, crée des packs de plusieurs séances : le prix de la séance se calcule tout seul.</p></div>${hd('Formules · à la séance')}${fo.join('') || none('ball', 'Aucune formule', 'Une formule : un nombre de joueurs, une durée, un prix.')}<div class="card"><button class="btn full" data-a="coFoEdit" data-id="new">${ic('plus')}Ajouter une formule</button></div>${hd('Abonnements')}${abEns}${ab.length ? list(ab.join('')) : abEns ? '' : none('cal', 'Aucun abonnement', 'Un prix par mois, par trimestre ou à l’année, avec un engagement si tu veux.')}<div class="card"><button class="btn full ghost" data-a="coAbEdit" data-id="new">${ic('plus')}Ajouter un abonnement</button></div></div>`;
+      .join('');
+  return `<section class="foab"><div class="fodh"><span class="tile">${ic('cal')}</span><div class="grow"><h2 class="foh">${esc(nom)}</h2><span class="muted small">${plural(l.length, 'variante')}${pms.length === 1 && pms[0] ? ' · ' + plural(pms[0], 'séance') + ' par mois' : ''}${l[0].moyen ? ' · ' + esc(l[0].moyen) : ''}</span></div><div class="fobig"><b>${l.length > 1 && l.some(a => +a.prix !== +min.prix) ? 'dès ' : ''}${eur(min.prix)}</b><span class="muted small">${abPer(min)}</span></div><button class="ib" data-a="coAbEdit" data-id="${l[0].id}" aria-label="Modifier ${esc(nom)}">${ic('edit')}</button></div><div class="fotw"><table class="fog"><thead><tr><th>Formule comprise</th>${cols.map(c => `<th>${abColTxt(l.find(a => ck(a) === c))}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div><div class="cotools"><button class="btn sm ghost" data-a="coAbEdit" data-id="${l[0].id}" data-plus="1" data-pp="${l[0].periode}" data-pd="${l[0].duree}">${ic('plus')}Ajouter une formule à l’abonnement</button><button class="btn sm ghost" data-a="coAbEdit" data-id="${l[0].id}" data-plus="1" data-pf="${esc(l[0].formule || '')}" data-pp="${l[0].periode}">${ic('plus')}Ajouter un engagement</button></div></section>`;
+}
+function coFormules() {
+  const tab = S.foTab === 'abo' ? 'abo' : 'seance',
+    grs = abGroupes(),
+    px = OFFRES.formules.map(f => +f.prix).filter(n => n > 0),
+    mn = Math.min(...px),
+    mx = Math.max(...px),
+    kpi = [
+      [OFFRES.formules.length, (OFFRES.formules.length > 1 ? 'formules' : 'formule') + ' à la séance', 'user'],
+      [OFFRES.packs.length, (OFFRES.packs.length > 1 ? 'packs' : 'pack') + ' de séances', 'pack'],
+      [
+        grs.length,
+        (grs.length > 1 ? 'abonnements' : 'abonnement') +
+          (OFFRES.abos.length > grs.length ? ' · ' + plural(OFFRES.abos.length, 'variante') : ''),
+        'cal'
+      ],
+      [px.length ? (mn === mx ? eur(mn) : mn + ' à ' + eur(mx)) : '—', 'la séance', 'euro']
+    ],
+    tabs = [
+      ['seance', 'À la séance et packs', 'user', OFFRES.formules.length],
+      ['abo', 'Abonnements', 'cal', grs.length]
+    ];
+  let corps;
+  if (tab === 'seance') {
+    const sel = OFFRES.formules.find(f => f.id === S.foSel) || OFFRES.formules[0];
+    corps = `<div class="fos"><div class="fol"><span class="kicker">Mes formules</span>${OFFRES.formules
+      .map(f => {
+        const n = OFFRES.packs.filter(p => p.formule === f.id).length;
+        return `<button class="foi${f === sel ? ' on' : ''}${f.masque ? ' fooff' : ''}" data-a="coFoSel" data-id="${f.id}" aria-pressed="${f === sel}"><span class="foit">${ic(f.joueurs > 1 ? 'users' : 'user')}</span><span class="grow"><b>${esc(f.nom)}${f.masque ? ' · masquée' : ''}</b><span class="small">${foKind(f)} · ${minTxt(f.duree)}${n ? ' · ' + plural(n, 'pack') : ''}</span></span><span class="foip"><b>${eur(f.prix)}</b><span class="small">${foParTxt(f)}</span></span></button>`;
+      })
+      .join(
+        ''
+      )}<button class="codadd foadd" data-a="coFoEdit" data-id="new">${ic('plus')}Ajouter une formule</button></div>${sel ? coFoSeance(sel) : `<div class="fod">${none('ball', 'Aucune formule', 'Une formule : un nombre de joueurs, une durée, un prix.')}</div>`}</div>`;
+  } else
+    corps = `${grs.map(coAbGrille).join('') || none('cal', 'Aucun abonnement', 'Un prix par mois, par trimestre ou à l’année, avec un engagement si tu veux.')}${grs.length ? `<p class="muted small folien">${ic('edit')}<span>Touche un prix pour modifier sa variante : formule, séances par mois, prix, engagement, vente sur Shopify.</span></p>` : ''}<button class="codadd foadd" data-a="coAbEdit" data-id="new">${ic('plus')}${grs.length ? 'Créer un autre abonnement' : 'Créer un abonnement'}</button>`;
+  return `<div class="pad fopage u2f"><div class="fokpi">${kpi.map(([n, l, i]) => `<div class="fok">${ic(i)}<span><b>${n}</b><span class="muted small">${l}</span></span></div>`).join('')}</div><div class="fotabs" role="tablist" aria-label="Formules et tarifs">${tabs.map(([k, l, i, n]) => `<button role="tab" aria-selected="${k === tab}" data-a="coFoTab" data-k="${k}">${ic(i)}<span>${l}</span><span class="fon">${n}</span></button>`).join('')}</div><div class="card fobox">${corps}</div></div>`;
 }
 V.formules = coFormules;
 TITLES.formules = () => ['Formules et tarifs', 'Séances, packs et abonnements'];
@@ -347,7 +446,13 @@ function coPayTodo(depuis) {
       Object.keys(x.s.pres)
         .filter(k => x.s.pres[k] === 'P' && coDue(k, x.d) && !((coEl(k) || {}).payIgn || []).includes(x.d))
         .forEach(k => {
-          const f = REGLES.formuleDe(OFFRES, Math.max(1, coStu(x.g).length), durMin(durAt(x.g, x.d)), x.g.sport);
+          const f = REGLES.formuleDe(
+            OFFRES,
+            Math.max(1, coStu(x.g).length),
+            durMin(durAt(x.g, x.d)),
+            x.g.sport,
+            x.g.name
+          );
           out.push({
             id: 's|' + k + '|' + x.d,
             t: esc(svName(k)),
@@ -522,7 +627,7 @@ Object.assign(A, {
       e = coElGet(d.k);
     if (d.v === '1') {
       const n = Math.max(1, coStu(g).length),
-        f = REGLES.formuleDe(OFFRES, n, durMin(g.dur), g.sport),
+        f = REGLES.formuleDe(OFFRES, n, durMin(g.dur), g.sport, g.name),
         prix = f ? REGLES.prixEleve(f, n) : +tarifOf(g).prix || 0;
       e.achats = (e.achats || []).concat({
         id: 'h' + Date.now().toString(36),
@@ -586,11 +691,17 @@ document.addEventListener('submit', e => {
 /* ---------- fenêtres de saisie ---------- */
 /* une variante d'abonnement (libellé, fréquence, prix, période, engagement, vente en ligne) */
 let coAbN = 0;
+const ofFoOpts = () =>
+  [['', 'Aucune en particulier']].concat(OFFRES.formules.map(f => [f.id, ofLabel('f', f.id) + ' · ' + foKind(f)]));
 function coAbVRow(a, nom) {
   const k = 'co-av' + ++coAbN,
     f = (c, l, v, step, req) =>
       `<div class="fld"><label for="${k}-${c}">${l}</label><input id="${k}-${c}" class="co-av${c}" type="number" inputmode="decimal" min="0" step="${step || 'any'}" value="${v == null ? '' : v}"${req ? ' required' : ''}></div>`;
-  return `<div class="card coabv" data-id="${a.id || ''}"><div class="row" style="gap:8px;align-items:flex-end"><div class="fld grow"><label for="${k}-n">Libellé de la variante</label><input id="${k}-n" class="co-avn" maxlength="60" placeholder="1 fois par semaine, formule annuelle…" value="${esc(nom || '')}"></div><button type="button" class="ib" data-a="coAbVDel" aria-label="Retirer cette variante">${ic('x')}</button></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0 8px">${f('w', 'Séances par mois', REGLES.parMoisDef(a), 1)}${f('p', 'Prix en euros', a.prix, 0, 1)}<div class="fld"><label for="${k}-e">Par</label><select id="${k}-e" class="co-ave">${PERIODES.map(x => `<option ${x === a.periode ? 'selected' : ''}>${x}</option>`).join('')}</select></div>${f('d', 'Engagement', a.duree, 1)}</div><details class="coabvs"${a.sku || a.url ? ' open' : ''}><summary class="muted small">Vente sur Shopify (facultatif)</summary><div class="fld"><label for="${k}-s">Référence Shopify (SKU)</label><input id="${k}-s" class="co-avs" value="${esc(a.sku || '')}" placeholder="ABO-1"></div><div class="fld"><label for="${k}-u">Lien d’achat Shopify</label><input id="${k}-u" class="co-avu" value="${esc(a.url || '')}" placeholder="https://…"></div></details></div>`;
+  return `<div class="card coabv" data-id="${a.id || ''}"><div class="row" style="gap:8px;align-items:flex-end"><div class="fld grow"><label for="${k}-n">Libellé de la variante</label><input id="${k}-n" class="co-avn" maxlength="60" placeholder="1 fois par semaine, formule annuelle…" value="${esc(nom || '')}"></div><button type="button" class="ib" data-a="coAbVDel" aria-label="Retirer cette variante">${ic('x')}</button></div><div class="fld"><label for="${k}-f">Formule comprise</label><select id="${k}-f" class="co-avf">${ofFoOpts()
+    .map(([v, t]) => `<option value="${esc(v)}" ${v === (a.formule || '') ? 'selected' : ''}>${esc(t)}</option>`)
+    .join(
+      ''
+    )}</select></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0 8px">${f('w', 'Séances par mois', REGLES.parMoisDef(a), 1)}${f('p', 'Prix en euros', a.prix, 0, 1)}<div class="fld"><label for="${k}-e">Par</label><select id="${k}-e" class="co-ave">${PERIODES.map(x => `<option ${x === a.periode ? 'selected' : ''}>${x}</option>`).join('')}</select></div>${f('d', 'Engagement', a.duree, 1)}</div>${ofVisChk(k + '-m', a)}<details class="coabvs"${a.sku || a.url ? ' open' : ''}><summary class="muted small">Vente sur Shopify (facultatif)</summary><div class="fld"><label for="${k}-s">Référence Shopify (SKU)</label><input id="${k}-s" class="co-avs" value="${esc(a.sku || '')}" placeholder="ABO-1"></div><div class="fld"><label for="${k}-u">Lien d’achat Shopify</label><input id="${k}-u" class="co-avu" value="${esc(a.url || '')}" placeholder="https://…"></div></details></div>`;
 }
 const ofSel = (id, l, opts, sel) =>
   `<div class="fld"><label for="${id}">${l}</label><select id="${id}">${opts.map(([v, t]) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`).join('')}</select></div>`;
@@ -624,7 +735,7 @@ Object.assign(A, {
           ['personne', 'Par personne']
         ],
         f.par
-      )}${ofVente('co-fv', f)}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coFoDel', d.id)}</div></form>`
+      )}${ofVente('co-fv', f)}${ofVisChk('co-fvis', f)}<div class="cotools"><button class="btn">Enregistrer</button>${d.id === 'new' ? '' : ofDel('coFoDel', d.id)}</div></form>`
     );
   },
   coFoDel(d) {
@@ -639,7 +750,7 @@ Object.assign(A, {
       f = foOf(p.formule);
     sheet(
       p.id ? 'Pack de séances' : 'Nouveau pack',
-      `<form class="body" id="co-pk" data-id="${p.id || 'new'}" data-f="${p.formule}"><p class="muted small">${f ? esc(f.nom) + ' · ' + foKind(f) + ' · ' + minTxt(f.duree) + ' · à l’unité : ' + foPrice(f) : ''}</p>${O('co-kn', 'Nom du pack (facultatif)', 'Pack Découverte, Perfectionnement…', p.nom)}${ofNum('co-ks', 'Nombre de séances', p.seances, 1)}${ofNum('co-kp', 'Prix du pack en euros', p.prix)}<p class="muted small" id="co-kx"></p><span class="kicker">Paiement en plusieurs fois</span><div id="co-kr" class="stack">${(p.ech || []).map((s, i) => coKeRow(s, (p.echm || [])[i])).join('')}</div><button type="button" class="btn sm ghost full" data-a="coKeAdd">${ic('plus')}Ajouter un paiement</button><p class="muted small">À quelle séance chaque paiement est dû, et son montant. Vaut pour tous les élèves qui prennent ce pack. Sans montant : à parts égales. Sans ligne : tout d’un coup.</p>${ofVente('co-kv', p)}<div class="cotools"><button class="btn">Enregistrer</button>${p.id ? ofDel('coPkDel', p.id) : ''}</div></form>`
+      `<form class="body" id="co-pk" data-id="${p.id || 'new'}" data-f="${p.formule}"><p class="muted small">${f ? esc(f.nom) + ' · ' + foKind(f) + ' · ' + minTxt(f.duree) + ' · à l’unité : ' + foPrice(f) : ''}</p>${O('co-kn', 'Nom du pack (facultatif)', 'Pack Découverte, Perfectionnement…', p.nom)}${ofNum('co-ks', 'Nombre de séances', p.seances, 1)}${ofNum('co-kp', 'Prix du pack en euros', p.prix)}<p class="muted small" id="co-kx"></p><span class="kicker">Paiement en plusieurs fois</span><div id="co-kr" class="stack">${(p.ech || []).map((s, i) => coKeRow(s, (p.echm || [])[i])).join('')}</div><button type="button" class="btn sm ghost full" data-a="coKeAdd">${ic('plus')}Ajouter un paiement</button><p class="muted small">À quelle séance chaque paiement est dû, et son montant. Vaut pour tous les élèves qui prennent ce pack. Sans montant : à parts égales. Sans ligne : tout d’un coup.</p>${ofVente('co-kv', p)}${ofVisChk('co-kvis', p)}<div class="cotools"><button class="btn">Enregistrer</button>${p.id ? ofDel('coPkDel', p.id) : ''}</div></form>`
     );
     const upd = () => {
       const n = +$('co-ks').value,
@@ -666,15 +777,45 @@ Object.assign(A, {
       ens = (a0 ? a0.ens : d.ens) || '',
       l = ens ? OFFRES.abos.filter(x => x.ens === ens) : a0 ? [a0] : [],
       base = l[0] || { formule: '', moyen: '' },
-      vide = { periode: 'mois', duree: 1, parMois: 4, prix: '' },
+      // une variante ajoutée depuis la grille : la formule (pf), la période (pp) ou l'engagement (pd) d'une ligne ou d'une colonne
+      vide = { periode: d.pp || 'mois', duree: d.pd ? +d.pd : 1, parMois: 4, prix: '', formule: d.pf || '' },
       rows = (l.length ? l : [vide]).concat(d.plus ? [vide] : []);
     sheet(
       l.length ? 'Abonnement' : 'Nouvel abonnement',
-      `<form class="body" id="co-ab" data-ids="${l.map(x => x.id).join(',')}">${F('co-an', 'Nom de l’abonnement', 'Academy, abonnement performance…', ens || base.nom || '')}${ofSel('co-af', 'Formule comprise', [['', 'Aucune en particulier']].concat(OFFRES.formules.map(f => [f.id, ofLabel('f', f.id) + ' · ' + foKind(f)])), base.formule)}${O('co-amy', 'Moyen de paiement (facultatif)', 'Espèces, virement, Shopify', base.moyen)}<span class="kicker">Variantes</span><p class="muted small">Une ou plusieurs : 1 ou 2 fois par semaine, au mois ou à l’année… Chacune a son prix ; l’engagement se compte en périodes (6 par mois : 6 mois).</p><div id="co-avl">${rows.map((x, i) => coAbVRow(x, rows.length > 1 || l.length > 1 ? x.nom : '')).join('')}</div><button type="button" class="btn sm ghost full" data-a="coAbVAdd">${ic('plus')}Ajouter une variante</button><div class="cotools"><button class="btn">Enregistrer</button>${l.length ? `<button type="button" class="btn ghost" data-a="coAbDel" data-ids="${l.map(x => x.id).join(',')}">${ic('trash')}Supprimer</button>` : ''}</div></form>`
+      `<form class="body" id="co-ab" data-ids="${l.map(x => x.id).join(',')}">${F('co-an', 'Nom de l’abonnement', 'Academy, abonnement performance…', ens || base.nom || '')}${O('co-amy', 'Moyen de paiement (facultatif)', 'Espèces, virement, Shopify', base.moyen)}<span class="kicker">Variantes</span><p class="muted small">Une ou plusieurs : individuel ou duo, 1 h ou 1 h 30, 6 ou 12 mois… Chacune a sa formule et son prix ; l’engagement se compte en périodes (6 par mois : 6 mois).</p><div id="co-avl">${rows.map((x, i) => coAbVRow(x, rows.length > 1 || l.length > 1 ? x.nom : '')).join('')}</div><button type="button" class="btn sm ghost full" data-a="coAbVAdd">${ic('plus')}Ajouter une variante</button><div class="cotools"><button class="btn">Enregistrer</button>${l.length ? `<button type="button" class="btn ghost" data-a="coAbDel" data-ids="${l.map(x => x.id).join(',')}">${ic('trash')}Supprimer</button>` : ''}</div></form>`
     );
+    // la variante touchée dans la grille (ou la nouvelle) : à l'écran, son prix prêt à changer
+    const v = d.plus
+      ? [...document.querySelectorAll('#co-avl .coabv')].pop()
+      : d.v && document.querySelector(`#co-avl .coabv[data-id="${d.v}"]`);
+    if (v) {
+      v.classList.add('coabv-on');
+      v.scrollIntoView({ block: 'center' });
+      const p = v.querySelector('.co-avp');
+      if (p) p.focus({ preventScroll: true });
+    }
+  },
+  /* visible ou non sur la page de réservation, d'un geste */
+  coVis(d) {
+    const x = (OFFRES[d.t] || []).find(y => y.id === d.id);
+    if (!x) return;
+    x.masque = !x.masque;
+    ofSave(x.masque ? 'Masqué sur ta page de réservation' : 'Visible sur ta page de réservation');
+  },
+  coFoTab(d) {
+    S.foTab = d.k;
+    render(true);
+  },
+  coFoSel(d) {
+    S.foSel = d.id;
+    render(true);
   },
   coAbVAdd() {
-    $('co-avl').insertAdjacentHTML('beforeend', coAbVRow({ periode: 'mois', duree: 1, parMois: 4, prix: '' }, ''));
+    const der = [...document.querySelectorAll('#co-avl .co-avf')].pop();
+    $('co-avl').insertAdjacentHTML(
+      'beforeend',
+      coAbVRow({ periode: 'mois', duree: 1, parMois: 4, prix: '', formule: der ? der.value : '' }, '')
+    );
     const l = document.querySelectorAll('#co-avl .coabv');
     l[l.length - 1].querySelector('.co-avn').focus();
   },
@@ -732,6 +873,7 @@ document.addEventListener('submit', e => {
       duree: +v('co-fd'),
       prix: n('co-fp'),
       par: v('co-fpp'),
+      masque: !$('co-fvis').checked,
       ...ofVenteLue('co-fv')
     };
     if (f.dataset.id === 'new') OFFRES.formules.push(Object.assign({ id: nid('f') }, x));
@@ -746,6 +888,7 @@ document.addEventListener('submit', e => {
         nom: v('co-kn'),
         seances: Math.max(2, Math.round(n('co-ks'))),
         prix: n('co-kp'),
+        masque: !$('co-kvis').checked,
         ...ofVenteLue('co-kv')
       },
       lignes = [...document.querySelectorAll('#co-kr .co-ker')]
@@ -778,7 +921,7 @@ document.addEventListener('submit', e => {
       neuf = vs.map(r => {
         const w = Math.round(num(r, 'w')),
           x = {
-            formule: v('co-af'),
+            formule: r.querySelector('.co-avf').value,
             moyen: v('co-amy'),
             parMois: w,
             parSemaine: 0,
@@ -786,7 +929,8 @@ document.addEventListener('submit', e => {
             periode: r.querySelector('.co-ave').value,
             duree: Math.max(1, Math.round(num(r, 'd'))),
             sku: r.querySelector('.co-avs').value.trim(),
-            url: r.querySelector('.co-avu').value.trim()
+            url: r.querySelector('.co-avu').value.trim(),
+            masque: !r.querySelector('.co-vis').checked
           },
           lib = r.querySelector('.co-avn').value.trim().slice(0, 60);
         // plusieurs variantes : chacune porte son libellé, l'abonnement est leur ensemble

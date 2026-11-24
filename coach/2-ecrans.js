@@ -493,6 +493,27 @@ const coTopClub = () =>
     : '';
 /* ---------- vue jour : un quadrillage d'heures ; le libre en fond, les cours dessus ---------- */
 const CO_H = 56; // hauteur d'une heure, en pixels
+/* ligne de l'heure actuelle, comme dans un agenda : sur le jour d'aujourd'hui, elle descend en temps réel
+   (data-lo : première heure de la grille, data-h : hauteur d'une heure en pixels) */
+const coMinNow = () => {
+  const n = new Date();
+  return n.getHours() * 60 + n.getMinutes();
+};
+const coNow = (lo, hi, h, style) => {
+  const m = coMinNow();
+  return m < lo * 60 || m > hi * 60
+    ? ''
+    : `<div class="conow" data-lo="${lo}" data-hi="${hi}" data-h="${h}" style="top:${((m - lo * 60) / 60) * h}px;${style}" aria-hidden="true"><i></i></div>`;
+};
+setInterval(() => {
+  const m = coMinNow();
+  document.querySelectorAll('.conow').forEach(el => {
+    const lo = +el.dataset.lo,
+      hi = +el.dataset.hi;
+    el.hidden = m < lo * 60 || m > hi * 60;
+    el.style.top = ((m - lo * 60) / 60) * +el.dataset.h + 'px';
+  });
+}, 30000);
 function coPlanJour() {
   const d = S.pl.j || TODAY,
     l = coSessions(d, d, '', 1),
@@ -517,7 +538,7 @@ function coPlanJour() {
   let lignes = '';
   for (let h = lo; h < hi; h++)
     lignes += `<div class="cogh" style="top:${(h - lo) * CO_H}px"><span>${h} h</span></div>`;
-  return `<div class="pad covuej">${coPlanTools()}<div class="card coweek" style="display:flex"><button class="ib" data-a="coJour" data-n="-1" aria-label="Jour précédent">${ic('back')}</button><span class="grow" style="text-align:center"><b>${DAYS[coDow(d)]} ${+d.slice(8)} ${MO[+d.slice(5, 7) - 1]}</b><br><span class="muted small">${d === TODAY ? "Aujourd'hui · " : ''}${plural(l.filter(x => !isCx(x.g, x.d)).length, 'séance')}</span></span><button class="ib flip" data-a="coJour" data-n="1" aria-label="Jour suivant">${ic('back')}</button></div>${coCollHtml(d)}<div class="card cogrid" style="height:${(hi - lo) * CO_H}px">${lignes}${libres.map(p => `<div class="cogfree" style="top:${y(p.du)}px;height:${y(p.au) - y(p.du)}px"><span>Libre${p.lieu ? ' · ' + esc(p.lieu) : ''}</span></div>`).join('')}${blocs.map(({ x, du, au, n }) => `<button class="cogb${isCx(x.g, x.d) ? ' cx' : ''}" data-a="open" data-v="seance" data-id="${sesKey(x.g, x.d)}" style="top:${y(du)}px;height:${y(au) - y(du)}px;left:calc(44px + (100% - 48px) * ${n} / ${nb});width:calc((100% - 48px) / ${nb} - 2px)"><b>${esc(hAt(x.g, x.d))}${isCx(x.g, x.d) ? ' · annulé' : ''}</b> ${esc(x.g.name)}</button>`).join('')}</div></div>`;
+  return `<div class="pad covuej">${coPlanTools()}<div class="card coweek" style="display:flex"><button class="ib" data-a="coJour" data-n="-1" aria-label="Jour précédent">${ic('back')}</button><span class="grow" style="text-align:center"><b>${DAYS[coDow(d)]} ${+d.slice(8)} ${MO[+d.slice(5, 7) - 1]}</b><br><span class="muted small">${d === TODAY ? "Aujourd'hui · " : ''}${plural(l.filter(x => !isCx(x.g, x.d)).length, 'séance')}</span></span><button class="ib flip" data-a="coJour" data-n="1" aria-label="Jour suivant">${ic('back')}</button></div>${coCollHtml(d)}<div class="card cogrid" style="height:${(hi - lo) * CO_H}px">${lignes}${d === TODAY ? coNow(lo, hi, CO_H, 'left:44px;right:4px') : ''}${libres.map(p => `<div class="cogfree" style="top:${y(p.du)}px;height:${y(p.au) - y(p.du)}px"><span>Libre${p.lieu ? ' · ' + esc(p.lieu) : ''}</span></div>`).join('')}${blocs.map(({ x, du, au, n }) => `<button class="cogb${isCx(x.g, x.d) ? ' cx' : ''}" data-a="open" data-v="seance" data-id="${sesKey(x.g, x.d)}" style="top:${y(du)}px;height:${y(au) - y(du)}px;left:calc(44px + (100% - 48px) * ${n} / ${nb});width:calc((100% - 48px) / ${nb} - 2px)"><b>${esc(hAt(x.g, x.d))}${isCx(x.g, x.d) ? ' · annulé' : ''}</b> ${esc(x.g.name)}</button>`).join('')}</div></div>`;
 }
 /* ---------- vue mois : chaque jour, ses cours ; toucher un jour l'ouvre ---------- */
 function coPlanMois() {
@@ -623,7 +644,7 @@ function coPlanning() {
       .join('');
   return `<div class="pad covues">${coPlanTools()}
 <div class="card coweek" style="display:flex"><button class="ib" data-a="coWeek" data-n="-1" aria-label="Semaine précédente">${ic('back')}</button><span class="grow" style="text-align:center"><b>Semaine du ${+from.slice(8)} ${MO[+from.slice(5, 7) - 1]}</b><br><span class="muted small">${n}${S.pl.w ? '' : ' · cette semaine'}</span></span><button class="ib flip" data-a="coWeek" data-n="1" aria-label="Semaine suivante">${ic('back')}</button></div>
-<div class="card cowg"><div class="cowh"><div class="cowjs">${tete}</div>${vac ? `<div class="cowvs">${vac}</div>` : ''}</div><div class="cowc" style="height:${(hi - lo) * CO_HW}px">${lignes}${fond}${corps}</div></div>${jours.map(coCollHtml).join('')}${stages.length ? hd('Stages') + list(stages.map(p => `<div class="item"><button class="grow row" data-a="open" data-v="post" data-id="${p.id}" style="gap:10px;text-align:left"><span class="tile">${ic('ball')}</span><span class="grow"><span class="nm">${esc(String(p.title).replace(/<[^>]*>/g, ''))}</span><br><span class="muted small">${esc(p.date || '')}${typeof prixTxt === 'function' && prixTxt(p) ? ' · ' + prixTxt(p) : ''}${typeof ensTxt === 'function' && ensTxt(p) ? ' · avec ' + esc(ensTxt(p)) : ''}</span></span></button><button class="btn sm ghost" data-a="pedit" data-id="${p.id}">${ic('edit')}Modifier</button></div>`).join('')) : ''}</div>`;
+<div class="card cowg"><div class="cowh"><div class="cowjs">${tete}</div>${vac ? `<div class="cowvs">${vac}</div>` : ''}</div><div class="cowc" style="height:${(hi - lo) * CO_HW}px">${lignes}${fond}${corps}${jours.includes(TODAY) ? coNow(lo, hi, CO_HW, pos(jours.indexOf(TODAY))) : ''}</div></div>${jours.map(coCollHtml).join('')}${stages.length ? hd('Stages') + list(stages.map(p => `<div class="item"><button class="grow row" data-a="open" data-v="post" data-id="${p.id}" style="gap:10px;text-align:left"><span class="tile">${ic('ball')}</span><span class="grow"><span class="nm">${esc(String(p.title).replace(/<[^>]*>/g, ''))}</span><br><span class="muted small">${esc(p.date || '')}${typeof prixTxt === 'function' && prixTxt(p) ? ' · ' + prixTxt(p) : ''}${typeof ensTxt === 'function' && ensTxt(p) ? ' · avec ' + esc(ensTxt(p)) : ''}</span></span></button><button class="btn sm ghost" data-a="pedit" data-id="${p.id}">${ic('edit')}Modifier</button></div>`).join('')) : ''}</div>`;
 }
 /* actions d'une séance : une grille de tuiles avec pictogramme (lieu, annuler, reporter, changer la date, supprimer) */
 function coActs(g, d, loc, cx) {
@@ -1073,8 +1094,17 @@ function coQuarters() {
   });
 }
 /* courbe du mois : séances cumulées jour après jour, le mois précédent en arrière-plan. L'axe montre tout le mois ;
-   la courbe s'arrête aujourd'hui, les séances prévues ne sont pas dessinées. On compare le 12 avec le 12. */
+   la courbe pleine s'arrête aujourd'hui, puis la prévision (séances déjà au planning, non annulées) continue en pointillés
+   jusqu'à la fin du mois (demande de Baptiste, 23/11/2026). On compare le 12 avec le 12. */
 function coMonthCurve(histo) {
+  const finMois = (() => {
+      const [a, b] = TODAY.split('-').map(Number);
+      return TODAY.slice(0, 8) + String(new Date(a, b, 0).getDate()).padStart(2, '0');
+    })(),
+    prevues = TODAY < finMois ? coSessions(isoIn(1), finMois).filter(x => !isCx(x.g, x.d)) : [];
+  return coMonthCurveDe(histo, prevues);
+}
+function coMonthCurveDe(histo, prevues) {
   const [y, m] = TODAY.split('-').map(Number),
     nD = new Date(y, m, 0).getDate(),
     pD = new Date(y, m - 1, 0).getDate(),
@@ -1091,7 +1121,18 @@ function coMonthCurve(histo) {
     cur = cum(TODAY.slice(0, 8), nD),
     prev = cum(prevKey, pD),
     last = Math.min(nD, pD),
-    max = Math.max(1, cur[now], prev[last]),
+    // prévision : à partir du total d'aujourd'hui, chaque séance prévue s'ajoute à son jour
+    fut = (() => {
+      const by = Array(nD + 1).fill(0);
+      prevues.forEach(x => {
+        if (x.d.startsWith(TODAY.slice(0, 8)) && +x.d.slice(8) > now) by[+x.d.slice(8)]++;
+      });
+      const out = [];
+      let c = cur[now];
+      for (let d = now; d <= nD; d++) out.push(d === now ? c : (c += by[d]));
+      return out;
+    })(),
+    max = Math.max(1, cur[now], prev[last], fut[fut.length - 1]),
     W = 420,
     H = 190,
     L = 30,
@@ -1102,7 +1143,8 @@ function coMonthCurve(histo) {
     Y = v => +(H - B - (v * (H - T - B)) / max).toFixed(1),
     line = (l, n) => Array.from({ length: n }, (_, i) => X(i + 1) + ',' + Y(l[i + 1])).join(' '),
     ticks = [1, 8, 15, 22, nD];
-  return `<div class="cocurvew" data-c="${cur.slice(1, now + 1).join()}" data-p="${prev.slice(1, last + 1).join()}" data-n="${nD}" data-max="${max}" data-g="${[W, H, L, R, T, B].join()}"><svg class="cocurve" viewBox="0 0 ${W} ${H}" role="img" aria-label="${cur[now]} séances ce mois à ce jour, ${prev[Math.min(now, pD)]} à la même date le mois dernier">${[
+  const futLine = now < nD ? fut.map((v, i) => X(now + i) + ',' + Y(v)).join(' ') : '';
+  return `<div class="cocurvew" data-c="${cur.slice(1, now + 1).join()}" data-p="${prev.slice(1, last + 1).join()}" data-f="${fut.join()}" data-now="${now}" data-n="${nD}" data-max="${max}" data-g="${[W, H, L, R, T, B].join()}"><svg class="cocurve" viewBox="0 0 ${W} ${H}" role="img" aria-label="${cur[now]} séances ce mois à ce jour, ${prev[Math.min(now, pD)]} à la même date le mois dernier">${[
     0,
     Math.round(max / 2),
     max
@@ -1113,7 +1155,7 @@ function coMonthCurve(histo) {
     )
     .join(
       ''
-    )}${ticks.map(d => `<text x="${X(d)}" y="${H - 8}" text-anchor="middle">${d}</text>`).join('')}<line class="conow" x1="${X(now)}" x2="${X(now)}" y1="${T}" y2="${H - B}"/><polyline class="coprev" points="${line(prev, last)}"/><polyline class="cocur" points="${line(cur, now)}"/><g class="coscrub" hidden><line y1="${T}" y2="${H - B}"/><circle class="coprev" r="4"/><circle class="cocur" r="5"/></g></svg><div class="cotip" hidden></div></div><div class="cocycl"><span><i class="cocur"></i>Ce mois : ${plural(cur[now], 'séance')}</span><span><i class="coprev"></i>Le mois dernier à la même date : ${prev[Math.min(now, pD)]}</span></div>`;
+    )}${ticks.map(d => `<text x="${X(d)}" y="${H - 8}" text-anchor="middle">${d}</text>`).join('')}<line class="conow" x1="${X(now)}" x2="${X(now)}" y1="${T}" y2="${H - B}"/><polyline class="coprev" points="${line(prev, last)}"/>${futLine ? `<polyline class="cofut" points="${futLine}"/>` : ''}<polyline class="cocur" points="${line(cur, now)}"/><g class="coscrub" hidden><line y1="${T}" y2="${H - B}"/><circle class="coprev" r="4"/><circle class="cocur" r="5"/></g></svg><div class="cotip" hidden></div></div><div class="cocycl"><span><i class="cocur"></i>Ce mois : ${plural(cur[now], 'séance')}</span><span><i class="coprev"></i>Le mois dernier à la même date : ${prev[Math.min(now, pD)]}</span>${now < nD ? `<span><i class="cofut"></i>Prévu fin du mois : ${plural(fut[fut.length - 1], 'séance')}</span>` : ''}</div>`;
 }
 /* une ligne d'activité avec sa barre : le graphique dit la part de chacun */
 const coActRows = (rows, sort) => {
@@ -1185,7 +1227,7 @@ function coDash() {
   done.forEach(x => {
     const n = Math.max(1, coStu(x.g).length),
       min = durMin(durAt(x.g, x.d)),
-      f = REGLES.formuleDe(OFFRES, n, min, x.g.sport),
+      f = REGLES.formuleDe(OFFRES, n, min, x.g.sport, x.g.name),
       k = f ? ofLabel('f', f.id) : foKind({ joueurs: n }) + ' · ' + minTxt(min) + ' · ' + x.g.sport;
     (byF[k] = byF[k] || []).push(x);
   });
@@ -1242,7 +1284,7 @@ function coDash() {
     tabs +
     `<div class="pad cowide">${coClubChips()}<div class="card"><div class="chips">${chip('mois', 'Mois en cours')}${chip('mprec', 'Mois dernier')}${chip('tcur', 'Trimestre en cours')}${chip('saison', 'Saison en cours')}${coAutrePer(per)}</div></div>
 <div class="cotiles">${coTile('cal', F.n, F.n > 1 ? 'Séances réalisées' : 'Séance réalisée')}${coTile('clock', fr(F.h), 'Heures d’enseignement')}${coTile('users', pris.size, pris.size > 1 ? 'Élèves ont pris des cours' : 'Élève a pris des cours')}${coTile('star', nouveaux.length, nouveaux.length > 1 ? 'Nouveaux élèves' : 'Nouvel élève')}</div>
-<div class="cobento"><div class="cobmain">${per === 'mois' ? hd(ic('chart') + 'Séances cumulées du mois') + `<div class="card">${coMonthCurve(histo)}</div>` : hd(ic('chart') + 'Heures mois par mois') + `<div class="card cobars comonths">${months.map(([l, n, h]) => `<div><b>${h ? fr(h) : ''}</b><i style="height:${Math.round((h / mx) * 100)}%"></i><span>${l}</span><small>${plural(n, 'séance')}</small></div>`).join('')}</div>`}
+<div class="cobento"><div class="cobmain">${per === 'mois' ? hd(ic('chart') + 'Séances cumulées du mois') + `<div class="card">${coMonthCurve(histo)}</div>` : hd(ic('chart') + 'Heures mois par mois') + `<div class="card"><div class="cobars comonths">${months.map(([l, n, h]) => `<div title="${l} : ${fr(h)} h, ${plural(n, 'séance')}"><em><i style="height:${((h / mx) * 100).toFixed(1)}%">${h ? `<b>${fr(h)}</b>` : ''}</i></em><span>${l}</span><small>${n}</small></div>`).join('')}</div><p class="cobarsleg">Au-dessus : heures d’enseignement · sous le mois : nombre de séances</p></div>`}
 ${hd(ic('ball') + 'Par formule')}<div class="card">${coActRows(rowsF) || empty('ball', 'Aucune séance', '')}</div>
 ${hd(ic('users') + 'Par groupe')}<div class="card">${coActRows(rowsG) || empty('users', 'Aucun groupe', '')}</div></div>
 <div class="cobside">${hd(ic('star') + 'Nouveaux élèves · ' + nouveaux.length)}<div class="card">${nouveaux.length ? nouveaux.map(k => `<button class="item" data-a="open" data-v="eleve" data-id="${k}">${coAv(k, 'sm')}<span class="grow"><span class="nm">${esc(svName(k))}</span><br><span class="muted small">Premier cours le ${fmtD(premier[k])}</span></span></button>`).join('') : '<p class="muted small">Aucun élève n’a pris son tout premier cours sur cette période.</p>'}</div>
