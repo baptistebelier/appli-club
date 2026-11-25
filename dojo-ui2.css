@@ -229,3 +229,24 @@
   :root[data-ui="2"] .u2gm { grid-template-columns: 1fr 1fr; }
   :root[data-ui="2"] .u2ga .btn { flex: 1 1 auto; }
 }
+
+/* ===== Boîtes imbriquées : gérées par empilement.js (moteur commun aux applis, qui lit les couleurs affichées) ===== */
+
+/* ===== Navigation active et survolée : règle commune, dans empilement.js ===== */
+/* dates des séances à venir : heure en gras (le fond contrasté vient de empilement.js) */
+:root[data-ui="2"] .u2d span { font-weight: 700; }
+/* menu vertical (ordinateur, iPad en paysage) : la section active prend toute la largeur de la barre, bord à bord,
+   comme sur la barre du bas du téléphone ; plus une boîte posée sous le pictogramme. Même chose dans le sous-menu. */
+@media (min-width: 1024px) {
+  :root #phone .tabs, :root .tabs { padding-left: 0 !important; padding-right: 0 !important; }
+  :root .tabs > button { width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; }
+  :root #subnav > .seg { padding-left: 0 !important; padding-right: 0 !important; }
+  :root #subnav > .seg button { width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: 24px !important; padding-right: 24px !important; }
+  :root #subnav > .seg > :not(button) { padding-left: 24px !important; padding-right: 24px !important; }
+}
+
+/* ===== Éléments de données : toujours un contour noir =====
+   Jauges, barres et cases sont repérées par empilement.js (sans liste de classes). Restent ici les composants cliquables
+   de données (échelle de niveau, grille de notes), que le moteur ne touche pas puisque ce sont des boutons. */
+:root .coscale button, :root .cogauge button { border: var(--bw, 2px) solid var(--c-ink) !important; }
+:root .cobarre { height: 12px; }
